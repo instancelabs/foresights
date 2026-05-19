@@ -1,0 +1,17 @@
+{
+  "name": "foresights",
+  "version": "0.1.0",
+  "description": "Spin up a live news dashboard customised to your product — releases, patterns, and recommendations filtered for your stack, with built-in Claude Code integration.",
+  "author": {
+    "name": "Instance Labs Ltd"
+  },
+  "homepage": "https://instancelabs.dev",
+  "keywords": [
+    "dashboard",
+    "news",
+    "ecosystem",
+    "claude-code",
+    "upgrades",
+    "developer-tools"
+  ]
+}

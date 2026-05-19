@@ -1,0 +1,57 @@
+<!--
+  Foresights dashboard template — stub.
+  To be filled in by porting the proven aws-cdk-news / aws-serverless-news artifact
+  (~2500 lines) with ~50 placeholder substitutions:
+
+    {{topic}}                — the dashboard topic (e.g. "Rust async ecosystem")
+    {{topic_slug}}           — kebab-case slug for IDs / localStorage keys
+    {{sources}}              — JSON array of GitHub sources to fetch
+    {{web_search_queries}}   — JSON array of optional web search queries
+    {{products}}             — JSON array of products to flag (name, slug, repo, matcher rules, badge colour, brief context)
+    {{highlights}}           — initial 6 highlight cards (seeded by Claude during wizard)
+    {{spotlight_pool}}       — initial spotlight rotation entries
+    {{patterns}}             — initial 6 community-lib cards
+    {{tips}}                 — initial 8 advanced tip cards
+    {{resources}}            — link list of canonical sources
+    {{cadence}}              — daily | weekly | on-demand
+
+  Critical reminders from the brief (do NOT re-learn these the hard way):
+
+  - sendPrompt() does NOT exist in Cowork artifacts. Only window.cowork.callMcpTool,
+    window.cowork.askClaude, and window.cowork.runScheduledTask are available.
+
+  - askClaude payloads fail past ~8KB. Batch into chunks of ≤10 items with compact JSON
+    and trimmed field names.
+
+  - Script ordering / TDZ: const/let are NOT hoisted. Place all init…() and setup IIFE
+    invocations at the very bottom of the <script> block, after every const is declared.
+
+  - CSS cascade trap: a global `pre { background: var(--code-bg) }` rule will silently
+    paint over dark code blocks. Scope dark <pre> styles with a utility class or high-
+    specificity selector.
+
+  - Filesystem from artifacts: cannot write to arbitrary paths. Available outputs are
+    URL.createObjectURL + a-tag click (Downloads), navigator.clipboard, localStorage.
+
+  - Always Node-based smoke-test the boot block before update_artifact, and ALWAYS push
+    via mcp__cowork__update_artifact after editing the source file.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{topic}} — Foresights</title>
+  <!-- TODO: port styles from aws-cdk-news -->
+</head>
+<body>
+  <!-- TODO: port markup from aws-cdk-news -->
+  <main>
+    <h1>{{topic}}</h1>
+    <p>Template stub — populate from the proven dashboard.</p>
+  </main>
+  <script>
+    // TODO: port the 5-layer JS from aws-cdk-news.
+    // Layers: live-data fetch, curated render, relevance matcher, brief panel, digest builder.
+  </script>
+</body>
+</html>
