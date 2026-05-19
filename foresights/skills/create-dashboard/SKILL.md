@@ -5,11 +5,11 @@ description: Wizard that builds a live news dashboard customised to the user's p
 
 # Create Dashboard
 
-> **Status:** v0.2 (Phases 1–4 landed) — architecture-of-record is captured in `references/v0.2-architecture.md`, the TS source tree under `templates/` is scaffolded with 25 modules, leaf modules (`util/*`, `mcp/*`) are ported with 68 passing tests, and the spotlight vertical slice is fully ported with 30 more tests plus a real JSDOM integration smoke test. The toolchain (biome + tsc + esbuild + vitest) is wired and green. Phase 5+ (porting `render/*`, `products/*`, `digest/*`, and the wizard's full build-pipeline implementation) lands in v0.2.x. See `Implementation status` below before invoking.
+> **Status:** v0.3 (Phase 10.1 landed) — RSS / Atom source kind ships alongside the three GitHub kinds. Every existing GitHub-source + Claude-Code-actionType dashboard keeps working byte-for-byte identically; RSS slots in additively. See `Implementation status` below.
 
 ## What this skill does
 
-Walks the user through 5–6 questions, then generates a fully-populated Cowork dashboard artifact: live ecosystem news (GitHub releases / PRs / issues) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder.
+Walks the user through 5–6 questions, then generates a fully-populated Cowork dashboard artifact: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder.
 
 The output follows the 5-layer architecture proven in `aws-cdk-news` and `aws-serverless-news`. See `reference/analysis.md` in this repo (gitignored) for the full structural breakdown.
 
@@ -19,7 +19,7 @@ Use `AskUserQuestion` for each step. Don't ask follow-ups if the user's free-tex
 
 ### 1. Topic + slug
 
-Free text. Examples: "Rust async ecosystem", "Kubernetes operators", "JAX/ML research".
+Free text. Examples: "Rust async ecosystem", "Kubernetes operators", "JAX/ML research", "B2B SaaS marketing trends".
 
 Derive `topic_slug` (kebab-case) from the topic. Used for HTML IDs, localStorage keys, and the artifact's display name (`<slug>-news`).
 
@@ -32,21 +32,29 @@ Pick from a preset palette so the dashboard has a coherent colour identity:
 - Purple (`#5c3bbb`, soft `#efeaff`) — Rust / systems
 - Teal (`#0a6f7d`, soft `#e6f6f8`) — data / ML
 - Green (`#1b8a3a`, soft `#e6f5ec`) — observability / SRE
-- Pink (`#c43c8e`, soft `#fce7f3`) — frontend / design
+- Pink (`#c43c8e`, soft `#fce7f3`) — frontend / design / marketing
 
 User can override with a custom hex.
 
 ### 3. Data sources
 
-Multi-input. For each source:
+Multi-input. Two source families today: **GitHub** (releases / issues / pull requests via the user's GitHub MCP) and **RSS / Atom feeds** (any blog, newsroom, Substack, podcast, or service with a feed URL — fetched directly from the artifact via `window.fetch`).
 
-- `owner` / `repo` (GitHub coordinates)
-- `kind` — `releases` | `issues` | `pull_requests`
-- `args` — kind-specific:
-  - releases: `perPage` (default 5)
-  - issues: `perPage`, `state` (default OPEN), `orderBy` (default UPDATED_AT), `direction` (default DESC)
-  - pull_requests: `perPage`, `state` (default closed), `sort` (default updated), `direction` (default desc)
+For each source:
+
+- `kind` — `releases` | `issues` | `pull_requests` | `rss`
+- **GitHub kinds** (`releases | issues | pull_requests`):
+  - `owner` / `repo` (GitHub coordinates) — required
+  - `args` — kind-specific:
+    - releases: `perPage` (default 5)
+    - issues: `perPage`, `state` (default OPEN), `orderBy` (default UPDATED_AT), `direction` (default DESC)
+    - pull_requests: `perPage`, `state` (default closed), `sort` (default updated), `direction` (default desc)
+- **RSS kind** (`rss`):
+  - `url` — full feed URL (required). Both RSS 2.0 (`<rss><channel><item>`) and Atom 1.0 (`<feed><entry>`) are supported.
+  - No `args` — RSS sources render up to 10 most-recent items per section.
 - `section` — optional; explicit section ID this source feeds. If omitted, sources of the same `kind` get merged into a single auto-named section.
+
+**CORS caveat for RSS sources:** the artifact fetches feeds directly with `window.fetch`. Most modern feed hosts (Substack, Medium, GitHub `/releases.atom`, podcast platforms) serve permissive CORS so this works. Some legacy WordPress or self-hosted feeds don't — the section renders an empty-state card and the rest of the dashboard continues to work. If the user reports a feed that doesn't load, suggest they use the GitHub `/releases.atom` mirror (if available) or a Substack equivalent.
 
 Examples:
 
@@ -65,6 +73,21 @@ Examples:
   { owner: 'sst',            repo: 'sst',                           kind: 'releases' },
   { owner: 'middyjs',        repo: 'middy',                         kind: 'releases' },
   { owner: 'serverless',     repo: 'serverless',                    kind: 'releases' },
+]
+
+// Mixed: GitHub releases + RSS feeds, side by side:
+[
+  { owner: 'aws', repo: 'aws-cdk',  kind: 'releases', section: 'cdk-releases' },
+  { url: 'https://aws.amazon.com/blogs/aws/feed/', kind: 'rss', label: 'AWS News Blog',  section: 'industry' },
+  { url: 'https://stratechery.com/feed/',          kind: 'rss', label: 'Stratechery',    section: 'industry' },
+  { url: 'https://newsletter.pragmaticengineer.com/feed', kind: 'rss', label: 'Pragmatic Engineer', section: 'industry' },
+]
+
+// Non-dev: marketing-focused, RSS only:
+[
+  { url: 'https://blog.hubspot.com/marketing/rss.xml', kind: 'rss', label: 'HubSpot Marketing', section: 'updates' },
+  { url: 'https://www.marketingweek.com/feed/',        kind: 'rss', label: 'Marketing Week',    section: 'updates' },
+  { url: 'https://thinkwithgoogle.com/feeds/articles', kind: 'rss', label: 'Think with Google', section: 'updates' },
 ]
 ```
 
@@ -98,7 +121,7 @@ Ask for 2–3 example patterns the user thinks are cool in this domain. Minimum 
 
 After the questions, the wizard:
 
-1. **Fetches a sample of live data** from each configured source via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind).
+1. **Fetches a sample of live data** from each configured source. GitHub sources go via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind); RSS sources fetch the feed XML directly (`window.fetch`).
 2. **Runs Haiku batches** (chunk size ≤10 to stay under the askClaude payload ceiling) to generate the curated content, then stashes each batch's output in the corresponding `WizardConfig` field before invoking the build orchestrator:
    - 6 `spotlights` from user seeds + live data → `WizardConfig.spotlights`
    - 6 `highlights` from live data → `WizardConfig.highlights`
@@ -233,6 +256,18 @@ The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUC
 
 ## Implementation status
 
+### v0.3 — RSS source kind (Phase 10.1)
+
+Strictly additive. Every existing GitHub-source + Claude-Code-actionType dashboard renders byte-for-byte identically. New: a fourth `kind: 'rss'` for RSS 2.0 / Atom 1.0 feeds. RSS sources fetch via `window.fetch`, parse with DOMParser, and render through a new `render/rss.ts` module that mirrors the GitHub-renderer contract. Product flagging works identically across all source kinds (regex matcher runs on `${title} ${description}`).
+
+What's in:
+
+- **`util/rss-parser.ts`** — RSS 2.0 + Atom 1.0 parser, returns normalised `RssItem[]`. Robust against malformed XML; empty array on parse failure.
+- **`mcp/fetch-rss.ts`** — native fetch + parser wrapper. Returns `[]` on network / CORS / parse failure so one bad feed doesn't break the dashboard.
+- **`render/rss.ts`** — card renderer matching the GitHub-renderer shape. Strips embedded HTML in descriptions, truncates long bodies, integrates with `flagsForText` so per-product matchers fire on RSS items the same way they fire on PRs.
+- **WizardSource** carries optional `url` (required for `kind: 'rss'`) alongside the existing optional `owner` / `repo` (required for GitHub kinds).
+- 32 new tests across the three new modules. 442 total green under `npm run preflight`.
+
 ### v0.2 (this session — Phases 1–4 landed)
 
 The v0.1 → v0.2 boundary turned into a major architectural shift: the dashboard source-of-truth moved from inline JS in `templates/dashboard.html` to a modular TypeScript codebase under `templates/*.ts`, compiled at wizard time by esbuild and injected into the HTML shell. Rationale, file tree, and full pipeline in `references/v0.2-architecture.md`.
@@ -240,9 +275,9 @@ The v0.1 → v0.2 boundary turned into a major architectural shift: the dashboar
 What's in:
 
 - **HTML markup sentinels wrapped** for RESOURCES_MARKUP, TIPS_MARKUP, PATTERNS_MARKUP, HIGHLIGHTS_MARKUP, SECTION_NAV, SECTION_MARKUP:ABOVE_HIGHLIGHTS, SECTION_MARKUP:BELOW_HIGHLIGHTS. Generator specs in this file for the first five; SECTION_* specs land in v0.3 alongside the others.
-- **TS architecture in place**: `templates/` holds 25 modules organised under `util/`, `mcp/`, `spotlight/`, `render/`, `products/`, `digest/`, with shared `types.ts` defining `Deps`, `Source`, `Product`, `Spotlight`, `Brief`, `FlagMeta`, `Flag`, `TriagedItem`, etc. Every runtime-touching module takes `Deps` for dependency injection.
+- **TS architecture in place**: `templates/` holds 25+ modules organised under `util/`, `mcp/`, `spotlight/`, `render/`, `products/`, `digest/`, with shared `types.ts` defining `Deps`, `Source`, `Product`, `Spotlight`, `Brief`, `FlagMeta`, `Flag`, `TriagedItem`, `RssItem`, etc. Every runtime-touching module takes `Deps` for dependency injection.
 - **Toolchain**: biome 1.9.4 + tsc 5.6.3 (strict + noUncheckedIndexedAccess + exactOptionalPropertyTypes) + esbuild 0.24 + vitest 2.1 + jsdom 25. `npm run preflight` runs lint + type-check + tests; all green.
-- **Leaf modules ported with tests**: `util/escape`, `util/date`, `util/storage`, `mcp/call-tool`, `mcp/ask-claude`. 68 unit tests.
+- **Leaf modules ported with tests**: `util/escape`, `util/date`, `util/storage`, `util/rss-parser`, `mcp/call-tool`, `mcp/ask-claude`, `mcp/fetch-rss`. 90+ unit tests.
 - **Spotlight vertical slice ported with tests**: `spotlight/data` (SPOTLIGHTS_CONST sentinel), `spotlight/carousel` (initSpotlight, renderSpotlight, hydrate/persist), `spotlight/refresh` (Haiku-backed regeneration generalised over `Deps + sources`). 30 unit tests.
 - **Integration smoke test**: `tests/integration.test.ts` compiles the bundle with esbuild and runs it inside JSDOM, asserting the IIFE bundle boots, the guard error fires when `window.cowork` is missing, and the empty-SPOTLIGHTS case is graceful. **3 tests; the milestone proof that the architecture is real.**
 - **TS-side sentinels placed**: SOURCES_CONST in `sources.ts`, SPOTLIGHTS_CONST in `spotlight/data.ts`, LOAD_BODY in `boot.ts`, and the five `PRODUCTS_CONFIG:*` sub-sentinels in `products/{config,rules,prompts,cc-prompts,context-refresh}.ts`.
@@ -276,7 +311,7 @@ The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wi
 - `footerNote`, `artifactName`, `artifactDescription` — metadata.
 - `ghServer` — the user's GitHub MCP server name (e.g. `mcp__github`).
 - `headerSourcesLinks` — pre-rendered HTML for the source links in the hero.
-- `sources: WizardSource[]` — repo coordinates + kind + section + optional args.
+- `sources: WizardSource[]` — mix of github coordinates (kind: releases | issues | pull_requests + owner/repo) and rss feeds (kind: rss + url). Optional section + args.
 - `spotlights: WizardSpotlight[]` — 6 entries; the spotlight generator's output.
 - `products: WizardProduct[]` — 0-N products (empty = no flagging machinery emitted).
 - `highlights: WizardHighlightCard[]` — 6 entries; output of the highlights Haiku batch. Empty array → "get started" placeholder card. Shape: `{tag, title, body, url, cta?}`.
@@ -348,12 +383,14 @@ The orchestrator runs these steps in order inside a temp working directory; fail
 7. **Inject + final substitute** — read `dist/dashboard.js`, substitute it into `dashboard.html` at `{{COMPILED_JS}}`, expand remaining placeholders (`{{TOPIC}}`, `{{ACCENT}}`, etc.).
 8. **Write** — emit the final HTML to `--out`.
 
-The substitution layer (`wizard/substitute.ts` + `wizard/build-config.ts`) has 86 unit tests; the orchestrator (`wizard/build.ts`) has a 9-case integration test that runs steps 1, 2, 7, 8 end-to-end against the real templates with `--skip-preflight` for speed. Full preflight covers the orchestrator's substitution + injection logic; the toolchain shell-outs are only exercised at wizard time.
+The substitution layer (`wizard/substitute.ts` + `wizard/build-config.ts`) has 90+ unit tests; the orchestrator (`wizard/build.ts`) has a 9-case integration test that runs steps 1, 2, 7, 8 end-to-end against the real templates with `--skip-preflight` for speed. Full preflight covers the orchestrator's substitution + injection logic; the toolchain shell-outs are only exercised at wizard time.
 
-What's deferred to v0.3:
+What's deferred to v0.3+:
 
 - Per-block generator specs for SECTION_NAV, SECTION_MARKUP, SOURCES_CONST, LOAD_BODY, PRODUCT_CSS, PRODUCT_UI_BARS, PRODUCTS_CONFIG (5 sub-sentinels).
 - Per-product context-refresh as a wizard question (currently a Phase 6 module but not exposed in the wizard flow).
+- Additional source kinds: Reddit, HackerNews, YouTube channels, generic URL watch (Phase 10.2–4).
+- Pluggable per-product `actionType` for non-developer actions (Phase 10.5).
 
 ### Toolchain commands
 
