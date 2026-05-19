@@ -99,15 +99,32 @@ Ask for 2–3 example patterns the user thinks are cool in this domain. Minimum 
 After the questions, the wizard:
 
 1. **Fetches a sample of live data** from each configured source via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind).
-2. **Runs Haiku batches** (chunk size ≤10 to stay under the askClaude payload ceiling) to generate:
-   - 6 spotlight entries from user seeds + live data
-   - 6 highlight cards from live data
-   - 6 community-library / pattern cards from live data
-   - 8 advanced tips from live data
-3. **Builds the populated HTML** by substituting placeholders in `templates/dashboard.html` (see below).
+2. **Runs Haiku batches** (chunk size ≤10 to stay under the askClaude payload ceiling) to generate the curated content, then stashes each batch's output in the corresponding `WizardConfig` field before invoking the build orchestrator:
+   - 6 `spotlights` from user seeds + live data → `WizardConfig.spotlights`
+   - 6 `highlights` from live data → `WizardConfig.highlights`
+   - 6 community-library / pattern cards from live data → `WizardConfig.patterns`
+   - 8 advanced tips from live data → `WizardConfig.tips`
+   - 4–8 `resources` (canonical sources + community hubs) → `WizardConfig.resources`
+3. **Builds the populated HTML** by handing the fully-populated `WizardConfig` to `templates/wizard/build.ts` (see "Build step" below). The orchestrator's sentinel substitution turns each field into the matching HTML block.
 4. **Smoke-tests the boot block** by running it in Node with stubbed `window`, `document`, `localStorage`. Catches TDZ errors and missing functions.
 5. **Calls `mcp__cowork__create_artifact`** with the populated HTML.
-6. **Reports** the dashboard URL and suggests `/setup-claude-code` as the next step.
+6. **Reports** the dashboard URL and suggests `/setup-cc` as the next step.
+
+### Haiku batch contract — what the wizard agent must produce
+
+Each curated-content batch is a single Haiku call returning a JSON array. The agent parses, validates, and retries once if the count is wrong; on a second failure it falls back to an empty array (which produces a placeholder card via the generator's empty-array branch).
+
+| Field | Count | Per-entry JSON shape |
+|---|---|---|
+| `spotlights` | 6 | `{tag, title, summary, trick, code, why, url}` — see SPOTLIGHTS_CONST below |
+| `highlights` | 6 | `{tag, title, body, url, cta?}` — `cta` defaults to "GitHub" for github.com URLs |
+| `patterns`   | 6 | `{tag, title, body, url, cta?}` — same shape as highlights |
+| `tips`       | 8 | `{title, why?, body, code?}` — `code` is pre-rendered HTML with `<span class="k">/<span class="s">/<span class="t">` |
+| `resources`  | 4–8 | `{name, desc, url}` — one per canonical source / community hub |
+
+**Inline HTML in `title` / `body`:** the generators allow bare `<code>...</code>` through but escape everything else (including `<code class="x">`, `<strong>`, `<script>`, etc.). Tell Haiku: "Use `<code>` for inline code spans only — no other HTML, no markdown." The system prompt should also forbid `<span class="insights-tag">` in highlight/pattern markup; product flagging is purely runtime via `upgradeHighlightBadges()`.
+
+**Tip `code` field:** when emitting a tip with a code sample, ask Haiku for ready-to-render HTML with `<span class="k">` (keyword), `<span class="s">` (string), `<span class="t">` (type). NOT plain `<pre>` — the generator wraps the value in `<pre class="code-block">` to dodge the dark-pre cascade trap.
 
 ## Template substitution
 
@@ -262,6 +279,10 @@ The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wi
 - `sources: WizardSource[]` — repo coordinates + kind + section + optional args.
 - `spotlights: WizardSpotlight[]` — 6 entries; the spotlight generator's output.
 - `products: WizardProduct[]` — 0-N products (empty = no flagging machinery emitted).
+- `highlights: WizardHighlightCard[]` — 6 entries; output of the highlights Haiku batch. Empty array → "get started" placeholder card. Shape: `{tag, title, body, url, cta?}`.
+- `patterns: WizardPatternCard[]` — 6 entries; community / pattern cards. Same shape as `highlights`.
+- `tips: WizardTipCard[]` — 8 entries; advanced-tip cards. Shape: `{title, why?, body, code?}`.
+- `resources: WizardResourceLink[]` — 4–8 entries; "where to keep watching" links. Shape: `{name, desc, url}`.
 
 ### Invoking the orchestrator
 
