@@ -13,6 +13,7 @@
  * its own stableId/title/url; only the section is shared per-call).
  */
 
+import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
 import type { Deps, Product, Release } from '../types';
 import { fmtDate } from '../util/date';
@@ -116,7 +117,19 @@ const renderReleaseItem = (
     products,
   );
   for (const f of flags) {
-    html += ` <span class="insights-tag" data-product-id="${escHtml(f.productId)}" title="${escHtml(f.reason)}">${escHtml(f.productId)}</span>`;
+    const product = products.find((p) => p.id === f.productId);
+    const cssMod = product?.cssMod ?? '';
+    const label = product?.label ?? f.productId;
+    html += ` ${flagBadgeHtml(
+      f,
+      {
+        kind: `release-${sectionKind}`,
+        text: matchText,
+        ...(release.tag_name ? { version: release.tag_name } : {}),
+      },
+      label,
+      cssMod,
+    )}`;
   }
   return html;
 };

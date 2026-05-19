@@ -135,7 +135,9 @@ describe('renderRfcs', () => {
     );
     const badge = document.querySelector('.insights-tag');
     expect(badge?.getAttribute('data-product-id')).toBe('fakeprod');
-    expect(badge?.getAttribute('title')).toBe('mentions webhook');
+    expect(badge?.getAttribute('title')).toBe('mentions webhook · click for full brief');
+    expect(badge?.classList.contains('expandable')).toBe(true);
+    expect(badge?.getAttribute('data-kind')).toBe('rfc');
   });
 
   it('escapes title text to prevent HTML injection', () => {

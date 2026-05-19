@@ -13,6 +13,7 @@
  * spans — product flagging is purely runtime via this function.
  */
 
+import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
 import type { Deps, Product } from '../types';
 
@@ -66,15 +67,15 @@ export const upgradeHighlightBadges = (deps: Deps, products: readonly Product[])
     for (const f of flags) {
       const existing = titleEl.querySelector(`.insights-tag[data-product-id="${f.productId}"]`);
       if (existing) continue;
-      const span = doc.createElement('span');
       const product = products.find((p) => p.id === f.productId);
       const cssMod = product?.cssMod ?? '';
-      span.className = `insights-tag${cssMod ? ` ${cssMod}` : ''} expandable`;
-      span.setAttribute('data-product-id', f.productId);
-      span.setAttribute('title', `${f.reason} · click for full brief`);
-      span.textContent = product?.label ?? f.productId;
-      titleEl.appendChild(doc.createTextNode(' '));
-      titleEl.appendChild(span);
+      const label = product?.label ?? f.productId;
+      // insertAdjacentHTML only parses the new fragment, preserving any
+      // existing text/nodes inside titleEl — no whitespace surprises.
+      titleEl.insertAdjacentHTML(
+        'beforeend',
+        ` ${flagBadgeHtml(f, { kind: 'highlight', text: fullText }, label, cssMod)}`,
+      );
     }
   }
 };

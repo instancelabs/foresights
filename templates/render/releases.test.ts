@@ -214,7 +214,10 @@ describe('renderReleases', () => {
     const badges = document.querySelectorAll('.insights-tag');
     expect(badges.length).toBe(1);
     expect(badges[0]?.getAttribute('data-product-id')).toBe('fakeprod');
-    expect(badges[0]?.getAttribute('title')).toBe('matched feat-prefix');
+    expect(badges[0]?.getAttribute('title')).toBe('matched feat-prefix · click for full brief');
+    expect(badges[0]?.classList.contains('expandable')).toBe(true);
+    expect(badges[0]?.getAttribute('data-kind')?.startsWith('release-')).toBe(true);
+    expect(badges[0]?.getAttribute('data-version')).toBeTruthy();
   });
 
   it('prefixes breaking items with "BREAKING " for matcher purposes', () => {

@@ -11,6 +11,7 @@
  * with `section: string` + `products`. The per-item FlagMeta is built inline.
  */
 
+import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
 import type { Deps, Product, PullRequest } from '../types';
 import { relTime } from '../util/date';
@@ -76,10 +77,12 @@ export const renderPrs = (
         products,
       );
       const flagBadges = flags
-        .map(
-          (f) =>
-            ` <span class="insights-tag" data-product-id="${escHtml(f.productId)}" title="${escHtml(f.reason)}">${escHtml(f.productId)}</span>`,
-        )
+        .map((f) => {
+          const product = products.find((pp) => pp.id === f.productId);
+          const cssMod = product?.cssMod ?? '';
+          const label = product?.label ?? f.productId;
+          return ` ${flagBadgeHtml(f, { kind: 'pr', text: p.title }, label, cssMod)}`;
+        })
         .join('');
       const mergedMeta = p.merged_at ? escHtml(relTime(p.merged_at, deps.now)) : '';
       return `<div class="pr-item">

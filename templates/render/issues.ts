@@ -9,6 +9,7 @@
  * with `section: string` + `products`. The per-item FlagMeta is built inline.
  */
 
+import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
 import type { Deps, Issue, Product } from '../types';
 import { fmtDate, relTime } from '../util/date';
@@ -88,10 +89,12 @@ export const renderRfcs = (
         products,
       );
       const flagBadges = flags
-        .map(
-          (f) =>
-            ` <span class="insights-tag" data-product-id="${escHtml(f.productId)}" title="${escHtml(f.reason)}">${escHtml(f.productId)}</span>`,
-        )
+        .map((f) => {
+          const product = products.find((p) => p.id === f.productId);
+          const cssMod = product?.cssMod ?? '';
+          const label = product?.label ?? f.productId;
+          return ` ${flagBadgeHtml(f, { kind: 'rfc', text: matchText }, label, cssMod)}`;
+        })
         .join('');
       const created = it.updated_at; // Issue type doesn't expose created_at; updated_at is the available timestamp.
       return `<div class="card">
