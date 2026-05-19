@@ -26,7 +26,7 @@
  */
 
 import { execFile } from 'node:child_process';
-import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -92,19 +92,20 @@ export interface BuildResult {
  */
 const stageTemplates = async (templatesDir: string): Promise<string> => {
   const work = await mkdtemp(join(tmpdir(), 'foresights-build-'));
-  // Copy everything; biome.json, tsconfig.json, package.json all needed for
-  // the in-place tool runs.
+  // Copy everything except node_modules and dist. We skip node_modules in the
+  // cp (it's ~200MB and we don't need a copy), then symlink it in so the
+  // staged toolchain's `npx biome/tsc/esbuild` calls resolve against the
+  // host's installed deps. dist/ stays excluded entirely — esbuild emits a
+  // fresh dist/ in the staged dir.
   await cp(templatesDir, work, {
     recursive: true,
     filter: (src) => {
-      // Skip the heavy node_modules — the build step uses the host's
-      // node_modules via NODE_PATH. (Trade-off: simpler than `npm install`
-      // in the temp dir; works because all deps are dev-only.)
       if (src.includes(`${templatesDir}/node_modules`)) return false;
       if (src.includes(`${templatesDir}/dist`)) return false;
       return true;
     },
   });
+  await symlink(join(templatesDir, 'node_modules'), join(work, 'node_modules'), 'dir');
   return work;
 };
 

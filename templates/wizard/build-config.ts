@@ -117,6 +117,14 @@ const j = (v: unknown): string => JSON.stringify(v);
 const regexLiteral = (source: string, flags = ''): string =>
   `new RegExp(${j(source)}${flags ? `, ${j(flags)}` : ''})`;
 
+/**
+ * Escape a string so it's safe to inject as literal text inside a JS
+ * backtick template literal at emit time. Handles backslashes, the
+ * literal backtick, and `${` (which would otherwise start a substitution).
+ */
+const escForBacktick = (s: string): string =>
+  s.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+
 /** Indent every line of `body` by 2 spaces. */
 const indent2 = (body: string): string =>
   body
@@ -252,7 +260,9 @@ export const genContextRefresh = (_products: readonly WizardProduct[]): string =
 /**
  * Emit `PRODUCTS_CONFIG:CC_BUILDERS` — Record<productId, CcPromptBuilder>.
  * Uses each product's optional `ccPromptBody`, or a generic default that
- * formats brief.why + integrations + meta.title + mode.
+ * references every fn parameter (brief / meta / mode) and avoids template
+ * literals to dodge generator-side escaping. The product label is JSON-
+ * stringified at emit time so it stays safely quoted in the output.
  */
 export const genCcBuilders = (products: readonly WizardProduct[]): string => {
   if (products.length === 0) {
@@ -260,19 +270,15 @@ export const genCcBuilders = (products: readonly WizardProduct[]): string => {
   }
   const entries = products
     .map((p) => {
+      const safeLabel = escForBacktick(p.label);
+      // Default body — emits a backtick template literal so biome's
+      // useTemplate rule doesn't trigger after substitution. The \${...}
+      // sequences are escaped in the generator's own template literal so
+      // they stay LITERAL in the emitted source (and interpolate at
+      // runtime inside the EMITTED backtick).
       const body =
         p.ccPromptBody ??
-        `return [
-  ${j(`# ${p.label}: ${'$'}{meta.title ?? meta.stableId}`)},
-  '',
-  '## Why it matters',
-  brief.why,
-  '',
-  '## Suggested integrations',
-  ...brief.integrations.map((i, idx) => ${j(`${'$'}{idx + 1}. **${'$'}{i.title}** — ${'$'}{i.detail}`)}),
-  '',
-  ${j(`Mode: ${'$'}{mode}. ${p.label} repo guidance follows.`)},
-].join('\\n');`;
+        `const title = meta.title ?? meta.stableId;\nreturn \`# ${safeLabel}: \${title}\\n\\n\${brief.why}\\n\\nMode: \${mode}. ${safeLabel} repo guidance follows.\`;`;
       return `  ${j(p.id)}: ({ brief, meta, mode }) => {\n${indent2(body)}\n  },`;
     })
     .join('\n');
