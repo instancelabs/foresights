@@ -133,7 +133,19 @@ The 12 complex content blocks (see `Block generators (v0.2 sentinels)` below) ar
 
 The 12 sentinel-wrapped blocks the wizard fills in. Each generator takes a slice of wizard data (and, where noted, the live data sample fetched in `Wizard outputs` step 1) and produces a string slotted between the matching sentinels. Generators that exceed ~80 lines of spec live in `references/<block>.md` and are referenced by name.
 
-Sentinel naming: `<!-- FORESIGHTS_START:RESOURCES_MARKUP -->` ... `<!-- FORESIGHTS_END:RESOURCES_MARKUP -->` in HTML regions, `// FORESIGHTS_START:SPOTLIGHTS_CONST` ... `// FORESIGHTS_END:SPOTLIGHTS_CONST` in JS regions inside `<script>`. The wizard's replace handles both forms (match `(<!--|//)\s*FORESIGHTS_START:NAME\s*(-->|\n)`).
+Sentinel naming: three comment forms, picked by the host language of the region the sentinel sits in.
+
+- **HTML** (markup regions): `<!-- FORESIGHTS_START:NAME -->` ... `<!-- FORESIGHTS_END:NAME -->`
+- **TS/JS** (inside `<script>` blocks or `.ts` modules): `// FORESIGHTS_START:NAME` ... `// FORESIGHTS_END:NAME`
+- **CSS** (inside `<style>` blocks): `/* FORESIGHTS_START:NAME */` ... `/* FORESIGHTS_END:NAME */`
+
+The wizard's replacer matches all three. Regex (per-sentinel-name, non-greedy across forms):
+
+```
+(<!--|//|/\*)\s*FORESIGHTS_START:NAME\s*(-->|\*/|\n)
+  [\s\S]*?
+(<!--|//|/\*)\s*FORESIGHTS_END:NAME\s*(-->|\*/|\n)
+```
 
 The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUCTS_CONFIG:RULES`, `PRODUCTS_CONFIG:CC_BUILDERS`, `PRODUCTS_CONFIG:PRODUCTS_CONST`, `PRODUCTS_CONFIG:CONTEXT_REFRESH`) because the underlying JS sits in non-contiguous regions of the template; from the wizard's point of view it's still one logical generator.
 
@@ -219,19 +231,25 @@ What's in:
 - **TS-side sentinels placed**: SOURCES_CONST in `sources.ts`, SPOTLIGHTS_CONST in `spotlight/data.ts`, LOAD_BODY in `boot.ts`, and the five `PRODUCTS_CONFIG:*` sub-sentinels in `products/{config,rules,prompts,cc-prompts,context-refresh}.ts`.
 - **`config.ts`** holds wizard-substituted runtime values (TOPIC, TOPIC_SLUG, GH_SERVER) so the build pipeline has a typed seam for those rather than `{{X}}` placeholders.
 
+### v0.2.x — dashboard.html cutover (2026-05-19)
+
+The HTML cutover landed ahead of Phase 5+. The 2300-line inline `<script>` block is gone; the wizard injects the compiled esbuild bundle at `<script>{{COMPILED_JS}}</script>`. HTML markup sentinels carry minimal placeholder content (skeleton cards) so the un-substituted shell still renders as a recognisable loading state.
+
+- All 9 HTML-side sentinels are now wrapped: SECTION_NAV, SECTION_MARKUP:ABOVE_HIGHLIGHTS, SECTION_MARKUP:BELOW_HIGHLIGHTS, HIGHLIGHTS_MARKUP, PATTERNS_MARKUP, TIPS_MARKUP, RESOURCES_MARKUP, **PRODUCT_CSS** (in `<style>`, empty default), **PRODUCT_UI_BARS** (in body, empty default).
+- PRODUCT_CSS lives inside `<style>` and uses CSS-comment sentinel form `/* FORESIGHTS_START:NAME */`. The wizard's matcher (regex above) handles all three comment forms.
+- Slim shell: 1199 lines / ~38 KB. Substitution smoke test verifies all 9 sentinels fill cleanly, all 12 `{{...}}` placeholders substitute, and the 11 spotlight DOM IDs survive end-to-end.
+
 What's deferred to v0.2.x (separate sessions):
 
 - Phase 5: port `render/{releases,issues,prs,highlights,error}.ts` with tests.
 - Phase 6: port `products/{config,rules,prompts,cc-prompts,context-refresh,matcher,brief}.ts` with tests.
 - Phase 7: port `digest/{triage,markdown,panel}.ts` with tests.
-- Phase 8: implement the wizard's full build pipeline (steps 1–10 in the ADR) — currently only the manual `npm run preflight` exists.
-- HTML-side sentinels still to wrap: PRODUCT_CSS, PRODUCT_UI_BARS.
+- Phase 8: implement the wizard's full build pipeline (steps 1–10 in the ADR) — currently only the manual `npm run preflight` exists. The substitution layer in Phase 8 must implement the three-form matcher above.
 
 What's deferred to v0.3:
 
 - Per-block generator specs for SECTION_NAV, SECTION_MARKUP, SOURCES_CONST, LOAD_BODY, PRODUCT_CSS, PRODUCT_UI_BARS, PRODUCTS_CONFIG (5 sub-sentinels).
 - Per-product context-refresh as a wizard question (currently a Phase 6 module but not exposed in the wizard flow).
-- Cutover of `dashboard.html`'s inline `<script>` block to `<script>{{COMPILED_JS}}</script>`. The bundle is built; the HTML cutover is pending the rest of the module ports so the substituted artifact has parity with v0.1.
 
 ### Toolchain commands
 
