@@ -241,10 +241,85 @@ The HTML cutover landed ahead of Phase 5+. The 2300-line inline `<script>` block
 
 What's deferred to v0.2.x (separate sessions):
 
-- Phase 5: port `render/{releases,issues,prs,highlights,error}.ts` with tests.
-- Phase 6: port `products/{config,rules,prompts,cc-prompts,context-refresh,matcher,brief}.ts` with tests.
-- Phase 7: port `digest/{triage,markdown,panel}.ts` with tests.
-- Phase 8: implement the wizard's full build pipeline (steps 1–10 in the ADR) — currently only the manual `npm run preflight` exists. The substitution layer in Phase 8 must implement the three-form matcher above.
+- ~~Phase 5: port `render/{releases,issues,prs,highlights,error}.ts` with tests.~~ **Done** — see `templates/render/`.
+- ~~Phase 6: port `products/{config,rules,prompts,cc-prompts,context-refresh,matcher,brief}.ts` with tests.~~ **Done** — see `templates/products/`. Adds `panel.ts` (brief click-to-expand) and `badge.ts` (the data-attr contract between renderers and the brief panel).
+- ~~Phase 7: port `digest/{triage,markdown,panel}.ts` with tests.~~ **Done** — see `templates/digest/`.
+- ~~Phase 8: implement the wizard's full build pipeline.~~ **Done** — see `templates/wizard/` and "Build step" below.
+
+## Build step (Phase 8 — the wizard's final move)
+
+After collecting the wizard answers, the skill assembles a `WizardConfig` JSON object and shells out to the build orchestrator. The orchestrator handles every substitution + bundle injection step deterministically.
+
+### WizardConfig shape
+
+The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wizard must fill:
+
+- `topic`, `topicSlug`, `taglineSuffix`, `taglineSub` — branding strings (placeholders).
+- `accent`, `accentSoft` — hex colours.
+- `footerNote`, `artifactName`, `artifactDescription` — metadata.
+- `ghServer` — the user's GitHub MCP server name (e.g. `mcp__github`).
+- `headerSourcesLinks` — pre-rendered HTML for the source links in the hero.
+- `sources: WizardSource[]` — repo coordinates + kind + section + optional args.
+- `spotlights: WizardSpotlight[]` — 6 entries; the spotlight generator's output.
+- `products: WizardProduct[]` — 0-N products (empty = no flagging machinery emitted).
+
+### Invoking the orchestrator
+
+Write the config to a temp file, then run the orchestrator via `npx tsx`:
+
+```bash
+# From templates/:
+echo "$WIZARD_CONFIG_JSON" > /tmp/foresights-config.json
+npx tsx wizard/build.ts \
+  --config /tmp/foresights-config.json \
+  --out    /tmp/foresights-dashboard.html
+```
+
+Flags:
+
+- `--config <path>` — path to the WizardConfig JSON. **Required.**
+- `--out <path>`    — where to write the final dashboard HTML. **Required.**
+- `--templates <dir>` — override the templates source directory (default: parent of `wizard/`).
+- `--skip-preflight` — skip biome/tsc/esbuild/vitest. Used only in tests; do NOT pass in production.
+- `--with-tests` — also run `npm run test` (vitest) on the substituted tree. Slower but thorough.
+
+The orchestrator writes a one-line JSON summary to stdout:
+
+```json
+{"workDir":"/tmp/foresights-build-xyz","outFile":"/tmp/foresights-dashboard.html","artifact":{"name":"AWS CDK news","description":"..."},"outBytes":54321}
+```
+
+Pipe stdout into `jq` (or parse with `JSON.parse`) to pick up the `artifact.name` / `artifact.description` for the next step.
+
+### Creating the artifact
+
+Read the final HTML and call `mcp__cowork__create_artifact`:
+
+```bash
+HTML=$(cat /tmp/foresights-dashboard.html)
+# Then invoke mcp__cowork__create_artifact with:
+#   - name        = artifact.name (from the orchestrator stdout)
+#   - description = artifact.description
+#   - html_code   = $HTML
+#   - mcp_tools   = [ "${ghServer}__list_releases", "${ghServer}__list_issues",
+#                     "${ghServer}__list_pull_requests", "${ghServer}__get_file_contents",
+#                     "${ghServer}__search_repositories" ]
+```
+
+### Pipeline guarantees
+
+The orchestrator runs these steps in order inside a temp working directory; failure in any step aborts with the failing command's stdout/stderr surfaced in the error:
+
+1. **Stage** — `cp` `templates/` (minus `node_modules` + `dist`) into the temp dir.
+2. **Substitute** — apply sentinel substitution (three-form matcher: HTML / TS / CSS) to every `.ts` file with sentinels + to `dashboard.html`. Apply placeholder substitution to `config.ts`'s `TOPIC` / `TOPIC_SLUG` / `GH_SERVER` constants.
+3. **biome** — `npx biome check --write .` (auto-fixes formatter quirks introduced by generated TS).
+4. **tsc** — `npx tsc --noEmit` (strict type-check).
+5. **esbuild** — `npx esbuild dashboard.ts --bundle --format=iife --target=es2022 --sourcemap=inline --outfile=dist/dashboard.js`.
+6. **vitest** *(optional, `--with-tests`)* — `npx vitest run`.
+7. **Inject + final substitute** — read `dist/dashboard.js`, substitute it into `dashboard.html` at `{{COMPILED_JS}}`, expand remaining placeholders (`{{TOPIC}}`, `{{ACCENT}}`, etc.).
+8. **Write** — emit the final HTML to `--out`.
+
+The substitution layer (`wizard/substitute.ts` + `wizard/build-config.ts`) has 86 unit tests; the orchestrator (`wizard/build.ts`) has a 9-case integration test that runs steps 1, 2, 7, 8 end-to-end against the real templates with `--skip-preflight` for speed. Full preflight covers the orchestrator's substitution + injection logic; the toolchain shell-outs are only exercised at wizard time.
 
 What's deferred to v0.3:
 
