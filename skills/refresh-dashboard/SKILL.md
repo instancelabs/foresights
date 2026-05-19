@@ -1,6 +1,6 @@
 ---
 name: refresh-dashboard
-description: Refreshes the curated content (highlights, spotlight, patterns, tips) on an existing Foresights dashboard using the latest live data. Use when the user says "refresh my dashboard", "regenerate the spotlight", "update the highlights on my X dashboard", "rotate the spotlight", "refresh Foresights content", "the dashboard feels stale", or asks to re-curate any section of a dashboard built with /create-dashboard.
+description: Refreshes the curated content on an existing Foresights dashboard using the latest live data. Use when the user asks to refresh their dashboard, regenerate the spotlight, rotate the spotlight, refresh Foresights content, or re-curate a section of a dashboard built with /create-dashboard.
 ---
 
 # Refresh Dashboard

@@ -22,7 +22,7 @@ In Cowork, install the `.plugin` file from this repo's release artifact (or buil
 |---|---|
 | `/create-dashboard` | Wizard that asks 5–6 questions (topic, sources, products to flag, seed patterns, cadence) then generates a fully-populated live dashboard artifact. |
 | `/refresh-dashboard` | Re-curate the spotlight, highlights, patterns, and tips on an existing dashboard using the latest data. |
-| `/setup-claude-code` | Generate `CLAUDE.md` additions, `.claude/upgrade-digests/` scaffold, and `/digest` + `/digest-save` slash commands for a target repo. |
+| `/setup-cc` | Generate `CLAUDE.md` additions, `.claude/upgrade-digests/` scaffold, and `/digest` + `/digest-save` slash commands for a target repo. |
 
 ## The 5-layer architecture
 
