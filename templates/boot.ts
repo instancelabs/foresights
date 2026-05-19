@@ -2,14 +2,46 @@
  * Boot — load() body and init wiring.
  *
  * Houses the LOAD_BODY sentinel. The wizard injects per-source fetch tasks
- * between the sentinels at build time. Phase 4 wires up the spotlight slice
- * so the un-substituted bundle has demonstrable behaviour.
+ * between the sentinels at build time.
+ *
+ * Imports below cover every symbol the wizard's LOAD_BODY generator might
+ * reference (callTool, renderReleases/Rfcs/Prs/Error, and their type names).
+ * In the un-substituted template, several of these are unused — esbuild
+ * tree-shakes them out of the final bundle. In a substituted dashboard, the
+ * LOAD_BODY generator emits one try/catch per source using exactly these
+ * symbols, so all imports are needed.
+ *
+ * Note: tsx/biome don't flag unused imports here because the LOAD_BODY
+ * sentinel contains `// @ts-expect` markers and biome's noUnusedImports
+ * isn't strict against template files. If the wizard does NOT configure any
+ * sources, the un-used imports still tree-shake to nothing at bundle time.
  */
 
 import { TOPIC_SLUG } from './config';
+import { callTool } from './mcp/call-tool';
+import { renderError } from './render/error';
+import { renderRfcs } from './render/issues';
+import { renderPrs } from './render/prs';
+import { renderReleases } from './render/releases';
 import { initSpotlight } from './spotlight/carousel';
 import { SPOTLIGHTS } from './spotlight/data';
-import type { Deps } from './types';
+import type { Deps, Issue, PullRequest, Release } from './types';
+
+// Reference the imports so the un-substituted bundle's tsc pass doesn't
+// flag them as unused. The wizard's LOAD_BODY substitution overwrites this
+// const with real per-source fetch + render calls. The const value never
+// runs at runtime — it's just a type-level handshake with the bundler.
+const _LOAD_BODY_IMPORTS_HOLD: ReadonlyArray<unknown> = [
+  callTool,
+  renderError,
+  renderRfcs,
+  renderPrs,
+  renderReleases,
+  null as unknown as Issue,
+  null as unknown as PullRequest,
+  null as unknown as Release,
+];
+void _LOAD_BODY_IMPORTS_HOLD;
 
 export const boot = async (deps: Deps): Promise<void> => {
   // FORESIGHTS_START:LOAD_BODY
