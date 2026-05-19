@@ -97,6 +97,41 @@ describe('genSourcesConst', () => {
     expect(out).toContain('sort: "updated"');
     expect(out).toContain('direction: "desc"');
   });
+
+  it('emits url + omits owner/repo for kind: "rss"', () => {
+    const out = genSourcesConst([
+      {
+        id: 'stratechery',
+        label: 'Stratechery',
+        kind: 'rss',
+        url: 'https://stratechery.com/feed/',
+        section: 'updates',
+      },
+    ]);
+    expect(out).toContain('kind: "rss"');
+    expect(out).toContain('url: "https://stratechery.com/feed/"');
+    expect(out).toContain('section: "updates"');
+    expect(out).not.toContain('owner:');
+    expect(out).not.toContain('repo:');
+  });
+
+  it('handles mixed github + rss sources in one SOURCES const', () => {
+    const out = genSourcesConst([
+      source({ id: 'gh1', section: 'releases' }),
+      {
+        id: 'rss1',
+        label: 'Substack',
+        kind: 'rss',
+        url: 'https://example.substack.com/feed',
+        section: 'updates',
+      },
+    ]);
+    // GitHub entry has owner/repo, rss entry has url. Both kinds present.
+    expect(out).toContain('owner: "aws"');
+    expect(out).toContain('kind: "releases"');
+    expect(out).toContain('kind: "rss"');
+    expect(out).toContain('url: "https://example.substack.com/feed"');
+  });
 });
 
 describe('genSpotlightsConst', () => {
@@ -261,6 +296,47 @@ describe('genLoadBody', () => {
       'mcp__github',
     );
     expect(out).toContain('"pull-requests"');
+  });
+
+  it('dispatches kind: "rss" to fetchRss + renderRssItems (NOT callTool)', () => {
+    const out = genLoadBody(
+      [
+        {
+          id: 'sub',
+          label: 'Substack',
+          kind: 'rss',
+          url: 'https://example.substack.com/feed',
+          section: 'updates',
+        },
+      ],
+      [],
+      'mcp__github',
+    );
+    expect(out).toContain('fetchRss(deps, "https://example.substack.com/feed")');
+    expect(out).toContain('renderRssItems(deps, items, "updates", [])');
+    // No GitHub tool name for rss sources.
+    expect(out).not.toContain('mcp__github__list_rss');
+  });
+
+  it('rss + github sources both emit their own try/catch blocks', () => {
+    const out = genLoadBody(
+      [
+        source({ id: 'gh', section: 'releases' }),
+        {
+          id: 'rss',
+          label: 'Feed',
+          kind: 'rss',
+          url: 'https://example.com/feed',
+          section: 'updates',
+        },
+      ],
+      [],
+      'mcp__github',
+    );
+    const tryCount = (out.match(/try \{/g) ?? []).length;
+    expect(tryCount).toBe(2);
+    expect(out).toContain('callTool(deps');
+    expect(out).toContain('fetchRss(deps');
   });
 });
 
