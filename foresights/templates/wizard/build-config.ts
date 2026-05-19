@@ -23,15 +23,27 @@ import { escHtml } from '../util/escape';
  *      rolled `JSON.stringify` + small helpers keep output diff-stable.
  */
 
-/** One data source the wizard wants the dashboard to fetch. */
+/**
+ * One data source the wizard wants the dashboard to fetch.
+ *
+ * GitHub kinds (`releases | issues | pull_requests`) need `owner` + `repo`.
+ * The `rss` kind (Phase 10.1) needs `url` instead. They're declared on the
+ * same interface as optional fields rather than a discriminated union to
+ * keep the JSON wizard config flat — the generators below dispatch on
+ * `kind` and read the right field.
+ */
 export interface WizardSource {
   /** Short slug for chip rendering + IDs. */
   readonly id: string;
-  /** User-facing label, e.g. `"aws/aws-cdk"`. */
+  /** User-facing label, e.g. `"aws/aws-cdk"` (or feed display name for RSS). */
   readonly label: string;
-  readonly owner: string;
-  readonly repo: string;
-  readonly kind: 'releases' | 'issues' | 'pull_requests';
+  readonly kind: 'releases' | 'issues' | 'pull_requests' | 'rss';
+  /** GitHub owner (required for releases/issues/pull_requests). */
+  readonly owner?: string;
+  /** GitHub repo (required for releases/issues/pull_requests). */
+  readonly repo?: string;
+  /** Feed URL (required for rss). */
+  readonly url?: string;
   /** Which section to feed. Omit to merge into the default per-kind section. */
   readonly section?: string;
   readonly perPage?: number;
@@ -229,11 +241,24 @@ export const genSourcesConst = (sources: readonly WizardSource[]): string => {
     if (s.sort) argFields.push(`sort: ${j(s.sort)}`);
     const argsLit = argFields.length > 0 ? `{ ${argFields.join(', ')} }` : '{}';
     const sectionLine = s.section ? `\n    section: ${j(s.section)},` : '';
+    // Kind-discriminated source fields: github sources carry owner/repo,
+    // rss carries url. Default values for the missing fields (owner: "",
+    // repo: "") keep the emitted shape unambiguous; the runtime
+    // `genLoadBody` dispatch reads only the right field per kind.
+    if (s.kind === 'rss') {
+      return `  {
+    id: ${j(s.id)},
+    label: ${j(s.label)},
+    kind: ${j(s.kind)},
+    url: ${j(s.url ?? '')},${sectionLine}
+    args: ${argsLit},
+  },`;
+    }
     return `  {
     id: ${j(s.id)},
     label: ${j(s.label)},
-    owner: ${j(s.owner)},
-    repo: ${j(s.repo)},
+    owner: ${j(s.owner ?? '')},
+    repo: ${j(s.repo ?? '')},
     kind: ${j(s.kind)},${sectionLine}
     args: ${argsLit},
   },`;
@@ -385,12 +410,23 @@ export const genLoadBody = (
     lines.push('await Promise.resolve();');
     return `\n${lines.join('\n')}\n`;
   }
-  // Per-source dispatch: each source becomes one `await callTool(...)` +
-  // `render*(...)` pair. Errors are caught + rendered as an error card.
+  // Per-source dispatch: each source becomes either a GitHub MCP fetch +
+  // matching renderer, or (for kind: 'rss') a direct browser fetch + parse +
+  // RSS renderer. Errors are caught + rendered as an error card; one bad
+  // source doesn't kill the whole dashboard.
   for (const s of sources) {
     const section = s.section ?? s.kind.replace('_', '-');
+    if (s.kind === 'rss') {
+      lines.push('try {');
+      lines.push(`  const items = await fetchRss(deps, ${j(s.url ?? '')});`);
+      lines.push(`  renderRssItems(deps, items, ${j(section)}, []);`);
+      lines.push('} catch (err) {');
+      lines.push(`  renderError(deps, ${j(section)}, err);`);
+      lines.push('}');
+      continue;
+    }
     const toolName = `${ghServer}__list_${s.kind}`;
-    const argFields: string[] = [`owner: ${j(s.owner)}`, `repo: ${j(s.repo)}`];
+    const argFields: string[] = [`owner: ${j(s.owner ?? '')}`, `repo: ${j(s.repo ?? '')}`];
     if (s.perPage !== undefined) argFields.push(`perPage: ${s.perPage}`);
     if (s.state) argFields.push(`state: ${j(s.state)}`);
     if (s.orderBy) argFields.push(`orderBy: ${j(s.orderBy)}`);
