@@ -14,7 +14,17 @@ When something is worth acting on, click through to a Haiku-generated brief grou
 
 ## Install
 
-In Cowork, install the `.plugin` file from this repo's release artifact (or build it yourself with `zip -r foresights.plugin foresights/`).
+In Cowork, drag-install the latest `foresights-<version>.plugin` from this repo's releases (or build it yourself — see below).
+
+## Building the plugin
+
+The repo keeps `foresights/templates/` at the root of the plugin source for ergonomic local dev (`npm install` / `npm run preflight` run from there). The build script stages a clean copy with `templates/` relocated under `skills/create-dashboard/templates/` (where SKILL.md's `${CLAUDE_PLUGIN_ROOT}` path points), strips cruft, and zips it.
+
+```bash
+bash scripts/build-plugin.sh
+```
+
+Produces `foresights-<version>.plugin` at the repo root. Version comes from `foresights/.claude-plugin/plugin.json`; override with a positional arg (`bash scripts/build-plugin.sh 0.2.2-pre`).
 
 ## Skills
 
@@ -36,4 +46,4 @@ Every generated dashboard follows the proven pattern:
 
 ## Status
 
-v1 — preview. Author: [Instance Labs Ltd](https://instancelabs.dev).
+v0.2.1 — preview. Author: [Instance Labs Ltd](https://instancelabs.dev).
