@@ -237,6 +237,9 @@ export const initDigestBar = (deps: Deps, opts: InitDigestBarOpts): DigestBarHan
         triaged,
         ...(ccBuilders[product.id] ? { ccBuilder: ccBuilders[product.id] } : {}),
         ...(repoContext ? { repoContext } : {}),
+        ...(product.actionType && product.actionType !== 'claude-code'
+          ? { actionType: product.actionType }
+          : {}),
       };
       const markdown = renderDigestMarkdown(renderArgs);
 
