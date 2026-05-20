@@ -231,6 +231,7 @@ export const initBriefAllBar = (deps: Deps, opts: InitBriefAllBarOpts): BriefAll
             task.url,
             briefId,
             hasCcBuilder,
+            product.actionType,
           );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
