@@ -762,3 +762,53 @@ describe('derivePlaceholderMap', () => {
     expect(map.COMPILED_JS).toBe('/* fake bundle */');
   });
 });
+
+describe('action types — genProductsConst + genCcBuilders', () => {
+  it('genProductsConst omits actionType for a default (claude-code) product', () => {
+    expect(genProductsConst([product()])).not.toContain('actionType');
+  });
+
+  it('genProductsConst omits actionType for an explicit claude-code product', () => {
+    expect(genProductsConst([product({ actionType: 'claude-code' })])).not.toContain('actionType');
+  });
+
+  it('genProductsConst emits actionType for a summary product', () => {
+    const out = genProductsConst([product({ id: 'res', actionType: 'summary' })]);
+    expect(out).toContain('actionType: "summary"');
+  });
+
+  it('genCcBuilders emits builders only for claude-code products', () => {
+    const out = genCcBuilders([
+      product({ id: 'cc' }),
+      product({ id: 'sum', actionType: 'summary' }),
+      product({ id: 'tsk', actionType: 'task' }),
+    ]);
+    expect(out).toContain('"cc":');
+    expect(out).not.toContain('"sum":');
+    expect(out).not.toContain('"tsk":');
+  });
+
+  it('genCcBuilders emits an empty Record when every product is non-claude-code', () => {
+    const out = genCcBuilders([product({ id: 'sum', actionType: 'summary' })]);
+    expect(out).toContain(
+      'export const CC_PROMPT_BUILDERS: Readonly<Record<string, CcPromptBuilder>> = {}',
+    );
+  });
+});
+
+describe('action types — additive guarantee', () => {
+  it('a claude-code config produces a sentinel map with no actionType token anywhere', () => {
+    const map = deriveSentinelMap(config({ products: [product()] }));
+    for (const value of Object.values(map)) {
+      expect(value).not.toContain('actionType');
+    }
+  });
+
+  it('omitting actionType and setting it explicitly to claude-code produce an identical sentinel map', () => {
+    const omitted = deriveSentinelMap(config({ products: [product({ id: 'p' })] }));
+    const explicit = deriveSentinelMap(
+      config({ products: [product({ id: 'p', actionType: 'claude-code' })] }),
+    );
+    expect(explicit).toEqual(omitted);
+  });
+});
