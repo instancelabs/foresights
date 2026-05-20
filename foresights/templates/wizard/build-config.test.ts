@@ -300,7 +300,7 @@ describe('genLoadBody', () => {
     expect(out).toContain('"pull-requests"');
   });
 
-  it('dispatches kind: "rss" to fetchRss + renderRssItems (NOT callTool)', () => {
+  it('bakes kind: "rss" items into a renderRssItems call (no fetchRss, no callTool)', () => {
     const out = genLoadBody(
       [
         {
@@ -309,15 +309,28 @@ describe('genLoadBody', () => {
           kind: 'rss',
           url: 'https://example.substack.com/feed',
           section: 'updates',
+          items: [
+            {
+              title: 'Hello world',
+              link: 'https://example.substack.com/p/hello',
+              description: 'A first post.',
+              pubDate: '2026-05-01T00:00:00Z',
+              author: 'Jane',
+              guid: 'https://example.substack.com/p/hello',
+            },
+          ],
         },
       ],
       [],
       'mcp__github',
     );
-    expect(out).toContain('fetchRss(deps, "https://example.substack.com/feed")');
-    expect(out).toContain('renderRssItems(deps, items, "updates", productsArr)');
-    // No GitHub tool name for rss sources.
+    // RSS items are baked at wizard time — no runtime fetch, no MCP call.
+    expect(out).not.toContain('fetchRss');
+    expect(out).not.toContain('callTool(deps');
     expect(out).not.toContain('mcp__github__list_rss');
+    expect(out).toContain('renderRssItems(deps, [{');
+    expect(out).toContain('"Hello world"');
+    expect(out).toContain('"updates", productsArr)');
   });
 
   it('rss + github sources both emit their own try/catch blocks', () => {
@@ -339,7 +352,7 @@ describe('genLoadBody', () => {
     // 1 init try (initSpotlight) + 2 source tries (github + rss) = 3.
     expect(tryCount).toBe(3);
     expect(out).toContain('callTool(deps');
-    expect(out).toContain('fetchRss(deps');
+    expect(out).toContain('renderRssItems(deps');
   });
 
   it('always declares productsArr from PRODUCTS and passes it to every renderer', () => {
@@ -362,9 +375,9 @@ describe('genLoadBody', () => {
     expect(out).toContain(
       'renderReleases(deps, raw as readonly Release[], "releases", productsArr)',
     );
-    expect(out).toContain('renderRssItems(deps, items, "updates", productsArr)');
+    // rss source has no baked items here → renderRssItems gets an empty literal.
+    expect(out).toContain('renderRssItems(deps, [], "updates", productsArr)');
     expect(out).not.toMatch(/renderReleases\([^)]*\[\]\)/);
-    expect(out).not.toMatch(/renderRssItems\([^)]*\[\]\)/);
   });
 
   it('passes productsArr to initSpotlight (was [] in v0.2.x)', () => {
