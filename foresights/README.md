@@ -2,7 +2,7 @@
 
 Spin up a live news dashboard customised to your product — in about 15 minutes.
 
-Foresights gives you a dashboard of just the news, releases, and patterns that affect *your* stack — GitHub releases, PRs and issues from the orgs and repos you care about, plus curated highlights, a rotating "spotlight" of one cool pattern in depth, and per-product relevance flagging so you immediately see what's worth looking at.
+Foresights gives you a dashboard of just the news, releases, and patterns that affect *your* stack — GitHub releases, PRs and issues from the orgs and repos you care about, RSS feeds from the blogs and newsrooms you follow, plus curated highlights, a rotating "spotlight" of one cool pattern in depth, and per-product relevance flagging so you immediately see what's worth looking at.
 
 When something is worth acting on, click through to a Haiku-generated brief grounded in *your* codebase, then generate a self-contained Claude Code prompt to implement it — or batch everything into a triaged upgrade digest that drops into your repo's `.claude/upgrade-digests/` folder.
 
@@ -14,13 +14,13 @@ When something is worth acting on, click through to a Haiku-generated brief grou
 
 ## Install
 
-In Cowork, install the `.plugin` file from this repo's release artifact (or build it yourself with `zip -r foresights.plugin foresights/`).
+In Cowork, install the `.plugin` file from this repo's release artifact (or build it yourself with `scripts/build-plugin.sh`).
 
 ## Skills
 
 | Skill | What it does |
 |---|---|
-| `/create-dashboard` | Wizard that asks 5–6 questions (topic, sources, products to flag, seed patterns, cadence) then generates a fully-populated live dashboard artifact. |
+| `/create-dashboard` | Wizard that asks 5 questions (topic, accent, sources, products to flag, seed patterns) then generates a fully-populated live dashboard artifact. |
 | `/refresh-dashboard` | Re-curate the spotlight, highlights, patterns, and tips on an existing dashboard using the latest data. |
 | `/setup-cc` | Generate `CLAUDE.md` additions, `.claude/upgrade-digests/` scaffold, and `/digest` + `/digest-save` slash commands for a target repo. |
 
