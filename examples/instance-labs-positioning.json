@@ -122,9 +122,225 @@
       }
     }
   ],
-  "spotlights": [],
-  "highlights": [],
-  "patterns": [],
-  "tips": [],
-  "resources": []
+  "spotlights": [
+    {
+      "tag": "Bedrock · L2 stable",
+      "title": "Bedrock AgentCore graduated to stable in v2.255",
+      "summary": "The <code>aws-cdk-lib/aws-bedrockagentcore</code> module just left alpha — the L2 constructs for Bedrock Knowledge Bases, agents, memory, and gateway are now part of the stable surface.",
+      "trick": "Only the <strong>Policy</strong> submodule stays in alpha. Everything else — agents, runtimes, memory strategies, evaluators — is API-stable, which means CDK Insights can now ship Pro-tier rules against this surface without the alpha churn risk. Migration path: rename the import from <code>@aws-cdk/aws-bedrock-agentcore-alpha</code> to <code>aws-cdk-lib/aws-bedrockagentcore</code>; types stay compatible.",
+      "code": "<span class=\"k\">import</span> { <span class=\"t\">Agent</span>, <span class=\"t\">KnowledgeBase</span> } <span class=\"k\">from</span> <span class=\"s\">'aws-cdk-lib/aws-bedrockagentcore'</span>;\n\n<span class=\"k\">new</span> <span class=\"t\">Agent</span>(this, <span class=\"s\">'AllianceAdvisor'</span>, {\n  foundationModel: <span class=\"t\">FoundationModel</span>.<span class=\"t\">ANTHROPIC_CLAUDE_SONNET</span>,\n  instruction: <span class=\"s\">'You advise Last War alliance leaders on...'</span>,\n  knowledgeBases: [allianceKb],\n});",
+      "why": "CDK Insights' Pro tier already runs against Bedrock. Stable AgentCore = new construct identities to fingerprint + new Pro-tier rule opportunities. For Last Command, it's a clean path to ship an in-game alliance-advisor agent without alpha-versioning the dependency.",
+      "url": "https://github.com/aws/aws-cdk/releases/tag/v2.255.0"
+    },
+    {
+      "tag": "Core · synth",
+      "title": "CDK synthesis now emits performance counters",
+      "summary": "v2.256 added perf counters that fire when synthesis is slow — the cloud assembly now carries timing data per phase.",
+      "trick": "The interesting part isn't the counters themselves, it's <em>what gets measured</em>. Phase timings expose hotspots in custom aspects, asset bundling, and (relevantly for CDK Insights) construct-tree traversal. Pull the perf section out of <code>manifest.json</code> after synth and you have a free profiling signal.",
+      "code": "<span class=\"k\">const</span> manifest = <span class=\"t\">JSON</span>.parse(\n  readFileSync(<span class=\"s\">'cdk.out/manifest.json'</span>, <span class=\"s\">'utf8'</span>)\n);\n<span class=\"t\">console</span>.log(manifest.metadata?.[<span class=\"s\">'aws:cdk:performance'</span>]);\n<span class=\"c\">// { synth: 4231ms, validate: 891ms, aspects: 2104ms, ... }</span>",
+      "why": "CDK Insights traverses the construct tree — knowing where synth spends time is directly useful for tuning the analysis pipeline. Bonus: a new opportunity to flag stacks whose synth time exceeds a threshold as a Pro-tier rule.",
+      "url": "https://github.com/aws/aws-cdk/releases/tag/v2.256.0"
+    },
+    {
+      "tag": "Core · cross-stack",
+      "title": "Weak cross-stack references end the 'exports cannot be updated' nightmare",
+      "summary": "v2.253–254 added <code>Fn::GetStackOutput</code> + 'weak' cross-stack references. Stacks that consume outputs from other stacks no longer deadlock on export name changes.",
+      "trick": "The old <code>Fn::ImportValue</code> mechanism forced you to keep the export name stable forever — rename it and CloudFormation refused to update either stack. Weak refs flip the model: the consumer reads the producer's output by stack-ID lookup at deploy time, no exported name involved. Same-environment + cross-region both supported.",
+      "code": "<span class=\"k\">const</span> producer = <span class=\"k\">new</span> <span class=\"t\">Stack</span>(app, <span class=\"s\">'Producer'</span>);\nproducer.exportValue(producer.bucket.bucketName, {\n  weak: <span class=\"k\">true</span>, <span class=\"c\">// new in v2.253</span>\n});\n\n<span class=\"k\">const</span> consumer = <span class=\"k\">new\"</span> <span class=\"t\">Stack</span>(app, <span class=\"s\">'Consumer'</span>);\nconsumer.bucketName = producer.exportedBucket; <span class=\"c\">// resolves at deploy time</span>",
+      "why": "Anyone running multi-stack CDK in production has hit the 'exports cannot be updated' wall. For CDK Insights, this changes how cross-stack references render in the construct-tree analysis — worth a new rule that flags <em>strong</em> exports as a refactor opportunity.",
+      "url": "https://github.com/aws/aws-cdk/releases/tag/v2.253.0"
+    },
+    {
+      "tag": "CloudWatch · L2 new",
+      "title": "PromQL alarms — first-class CloudWatch construct",
+      "summary": "<code>PromQLAlarm</code> just landed as an L2 construct alongside <code>Alarm</code> and <code>CompositeAlarm</code>. CloudWatch alarms can now fire on PromQL queries against your metrics.",
+      "trick": "The query language matters more than the L2 itself. PromQL lets you write <code>rate(http_requests_total[5m]) &gt; 100</code> — multi-metric arithmetic with windowing baked in. The old <code>MathExpression</code> approach was workable but verbose; PromQL is the lingua franca of observability and unlocks far more expressive alarm logic.",
+      "code": "<span class=\"k\">new</span> <span class=\"t\">PromQLAlarm</span>(this, <span class=\"s\">'AllianceErrorBudget'</span>, {\n  query: <span class=\"s\">`(\n    sum(rate(http_5xx_total{tenant=\"</span>${alliance}<span class=\"s\">\"}[5m]))\n    / sum(rate(http_requests_total{tenant=\"</span>${alliance}<span class=\"s\">\"}[5m]))\n  ) &gt; 0.01`</span>,\n  evaluationInterval: <span class=\"t\">Duration</span>.minutes(<span class=\"s\">1</span>),\n  pendingPeriod: <span class=\"t\">Duration</span>.minutes(<span class=\"s\">5</span>),\n});",
+      "why": "Last Command runs ~7 microservices across multiple alliances — per-tenant error budgets via PromQL are exactly the alarm shape that's painful to express today. For CDK Insights, this is a new construct surface that warrants a Pro-tier rule (alarm without recovery period configured = flag).",
+      "url": "https://github.com/aws/aws-cdk/releases/tag/v2.254.0"
+    },
+    {
+      "tag": "Synth · cache",
+      "title": "Persistent asset fingerprint cache cuts synth time ~33%",
+      "summary": "v2.255 added a persistent asset fingerprint cache, and a separate fix made file fingerprinting ~33% faster on its own. Synth time on a 50-stack monorepo drops measurably.",
+      "trick": "The previous fingerprint pass recomputed SHA-256 for every asset on every synth. The new cache keys against <code>(mtime, size, path)</code> and persists to <code>cdk.out/.cache</code>. For Last Command's monorepo (7 services, ~40 Lambda assets), this turns a 12-second synth into roughly 8 seconds — but the bigger win is in CI where the cache survives between runs via a single artifact upload.",
+      "code": "<span class=\"c\">// cdk.json - opt-in for now, default in v2.260+</span>\n{\n  <span class=\"s\">\"context\"</span>: {\n    <span class=\"s\">\"@aws-cdk/core:assetFingerprintCache\"</span>: <span class=\"k\">true</span>\n  }\n}",
+      "why": "Faster synth = faster CDK Insights runs (since CDK Insights runs after synth). Persistent cache is also a new surface to fingerprint for cache-poisoning risks — worth a Pro-tier rule.",
+      "url": "https://github.com/aws/aws-cdk/releases/tag/v2.255.0"
+    },
+    {
+      "tag": "RFC · validation",
+      "title": "CDK Comprehensive Validation moves toward final approval",
+      "summary": "RFC #897 is in final-comments period. The proposal: shift-left CloudFormation deployment failures into synth-time validation via a unified plugin contract.",
+      "trick": "This is competitive surface for CDK Insights. The proposed plugin contract lets validators run alongside synth and emit annotations into the validation report. If approved, this becomes a first-class extension point — CDK Insights' rules could plug in directly as plugin violations, with the new 'plugin violations can be suppressed' feature giving teams a clean opt-out path per finding.",
+      "code": "<span class=\"c\">// Proposed plugin shape (from RFC #897)</span>\n<span class=\"k\">export class</span> <span class=\"t\">CdkInsightsPlugin</span> <span class=\"k\">implements</span> <span class=\"t\">ICdkValidator</span> {\n  validate(ctx: <span class=\"t\">ValidationContext</span>): <span class=\"t\">PluginViolation</span>[] {\n    <span class=\"k\">return</span> ctx.stacks.flatMap(stack =&gt;\n      this.rules.flatMap(rule =&gt; rule.run(stack))\n    );\n  }\n}",
+      "why": "If RFC #897 lands, CDK Insights gets a native integration point. Watching this RFC closely is the right move — the API shape proposed here directly affects whether CDK Insights ships as a plugin vs. a separate pre-synth pass.",
+      "url": "https://github.com/aws/aws-cdk-rfcs/issues/897"
+    }
+  ],
+  "highlights": [
+    {
+      "tag": "v2.255 · May 2026",
+      "title": "Bedrock AgentCore graduates to stable",
+      "body": "The full <code>aws-cdk-lib/aws-bedrockagentcore</code> module is now stable — agents, knowledge bases, runtimes, memory, evaluators. Only the Policy submodule stays in alpha. Stable API surface for Bedrock construct identities means CDK Insights Pro rules can target it without alpha-version churn.",
+      "url": "https://github.com/aws/aws-cdk/releases/tag/v2.255.0",
+      "cta": "Release notes"
+    },
+    {
+      "tag": "v2.254 · May 2026",
+      "title": "PromQL alarms land as a CloudWatch L2",
+      "body": "<code>PromQLAlarm</code> extends AlarmBase alongside <code>Alarm</code> and <code>CompositeAlarm</code>. Maps to <code>AWS::CloudWatch::Alarm</code> with <code>EvaluationCriteria.PromQLCriteria</code>. Multi-metric arithmetic + windowing in a query language teams already know.",
+      "url": "https://github.com/aws/aws-cdk/releases/tag/v2.254.0",
+      "cta": "Release notes"
+    },
+    {
+      "tag": "v2.253 · May 2026",
+      "title": "Weak cross-stack references end the export-rename deadlock",
+      "body": "Stacks can now consume outputs from other stacks via <code>Fn::GetStackOutput</code> instead of <code>Fn::ImportValue</code>. Renaming an output no longer wedges both stacks. Cross-region weak refs also shipped.",
+      "url": "https://github.com/aws/aws-cdk/releases/tag/v2.253.0",
+      "cta": "Release notes"
+    },
+    {
+      "tag": "v2.254 · perf",
+      "title": "File fingerprinting ~33% faster",
+      "body": "The asset fingerprint pass got a measurable speedup. Combined with the new persistent fingerprint cache in v2.255, CI synth times drop noticeably on multi-stack monorepos.",
+      "url": "https://github.com/aws/aws-cdk/pull/37802",
+      "cta": "PR #37802"
+    },
+    {
+      "tag": "RFC · final-comments",
+      "title": "Comprehensive CDK Validation (RFC #897)",
+      "body": "Shift-left CloudFormation deployment failures into synth-time validation. Unified plugin contract; suppressible findings. In final-comments period — landing soon. Direct competitive surface for static-analysis tools.",
+      "url": "https://github.com/aws/aws-cdk-rfcs/issues/897",
+      "cta": "Track RFC"
+    },
+    {
+      "tag": "Apr 2026 · meta",
+      "title": "Automated issue triage RFC (#877) in review",
+      "body": "An overhaul of aws-cdk's issue triage system. Worth watching because it changes how community RFCs (and adjacent tooling proposals) get prioritised. Bar-raiser ergonomics matter for anyone shipping CDK ecosystem tools.",
+      "url": "https://github.com/aws/aws-cdk-rfcs/issues/877",
+      "cta": "Track RFC"
+    }
+  ],
+  "patterns": [
+    {
+      "tag": "Generative AI · L3",
+      "title": "awslabs/generative-ai-cdk-constructs",
+      "body": "Official AWS Labs L3s for Bedrock Knowledge Bases, agents, S3 Vectors, OpenSearch Serverless. Source for many patterns that later land in <code>@aws-cdk/aws-bedrock-alpha</code> and now <code>aws-cdk-lib/aws-bedrockagentcore</code>.",
+      "url": "https://github.com/awslabs/generative-ai-cdk-constructs"
+    },
+    {
+      "tag": "Static analysis",
+      "title": "cdk-nag",
+      "body": "Best-in-class CDK linter. CDK Insights' hard peer dependency — rule additions land here first, then propagate to the CDK Insights ruleset.",
+      "url": "https://github.com/cdklabs/cdk-nag"
+    },
+    {
+      "tag": "Patterns hub",
+      "title": "cdkpatterns.com",
+      "body": "Curated serverless pattern library indexed by problem shape (event sourcing, fan-out, saga). Worth grepping when designing a new Last Command microservice surface.",
+      "url": "https://cdkpatterns.com"
+    },
+    {
+      "tag": "Multi-tenant",
+      "title": "aws-samples/aws-saas-factory-ref-solution-serverless-saas",
+      "body": "AWS Solutions reference for multi-tenant serverless SaaS. Pooled vs. silo tenancy patterns directly applicable to Last Command's per-alliance isolation model.",
+      "url": "https://github.com/aws-samples/aws-saas-factory-ref-solution-serverless-saas"
+    },
+    {
+      "tag": "Observability",
+      "title": "aws-powertools/powertools-lambda-typescript",
+      "body": "AWS Lambda Powertools (TypeScript) — structured logging, metrics, tracing, idempotency, batch processing. The standard for Lambda observability across all of Last Command's ~7 microservices.",
+      "url": "https://github.com/aws-powertools/powertools-lambda-typescript"
+    },
+    {
+      "tag": "Type safety",
+      "title": "AppSync TypeScript resolvers + sjs",
+      "body": "AppSync's JavaScript resolver runtime + the <code>@aws-cdk/aws-appsync-alpha</code> Code-as-resolver patterns. Worth tracking as AppSync continues its TypeScript-first push — directly affects Last Command's GraphQL layer.",
+      "url": "https://docs.aws.amazon.com/appsync/latest/devguide/resolver-reference-overview-js.html"
+    }
+  ],
+  "tips": [
+    {
+      "title": "Pin <code>cdk.context.json</code> in source control",
+      "why": "deterministic synth",
+      "body": "Context lookups (VPCs, AMIs, hosted zones, AZ counts) are cached here. If you don't commit it, CI gets a different snapshot than the dev who synthesized last — silently producing different templates. Commit it; treat regenerations as PRs."
+    },
+    {
+      "title": "Use <code>aws-cdk-lib/aspects</code> for cross-cutting policy",
+      "why": "enforced at synth time",
+      "body": "Aspects walk the construct tree post-synth — perfect for tag enforcement, encryption mandates, removing dev-only resources from prod, or applying CDK Insights-style rules inline.",
+      "code": "<span class=\"t\">Aspects</span>.of(stack).add(\n  <span class=\"k\">new</span> <span class=\"t\">TagAllResources</span>({ env: <span class=\"s\">'prod'</span>, owner: <span class=\"s\">'instance-labs'</span> })\n);"
+    },
+    {
+      "title": "Opt into the asset fingerprint cache early",
+      "why": "33% faster synth",
+      "body": "v2.255's persistent fingerprint cache opts in via feature flag. Enable it in <code>cdk.json</code> now; default in v2.260+. Combined with the standalone fingerprint speedup, CI synth times drop measurably on multi-stack monorepos.",
+      "code": "<span class=\"c\">// cdk.json</span>\n{ <span class=\"s\">\"context\"</span>: { <span class=\"s\">\"@aws-cdk/core:assetFingerprintCache\"</span>: <span class=\"k\">true</span> } }"
+    },
+    {
+      "title": "Migrate <code>Fn::ImportValue</code> to weak cross-stack refs",
+      "why": "no more 'exports cannot be updated'",
+      "body": "If you have stacks that export-and-consume across the synth boundary, the v2.253 weak-ref API removes the rename deadlock. Migrate progressively — start with the stacks that get rebuilt most often.",
+      "code": "<span class=\"c\">// Before</span>\n<span class=\"k\">const</span> name = <span class=\"t\">Fn</span>.importValue(<span class=\"s\">'producer-bucket-name'</span>);\n<span class=\"c\">// After (v2.253+)</span>\nproducer.exportValue(producer.bucket.bucketName, { weak: <span class=\"k\">true</span> });"
+    },
+    {
+      "title": "Run <code>cdk-nag</code> + <code>CDK Insights</code> in CI, fail the build on RED",
+      "why": "shift-left wins",
+      "body": "cdk-nag catches the well-known anti-patterns; CDK Insights layers on architectural rules (construct-tree depth, cross-stack ref strength, missing tags). Run both in PR CI. If RFC #897 lands, this becomes a built-in plugin path."
+    },
+    {
+      "title": "Use SnapStart on every Lambda that's hot-pathed by API Gateway",
+      "why": "10x faster cold starts",
+      "body": "Last Command's per-alliance API microservices are the textbook SnapStart case — request-response, Java or .NET runtime, cold-start sensitive. Enable on every Lambda fronted by API Gateway. The CDK construct already supports it on <code>Function.snapStart</code>."
+    },
+    {
+      "title": "Type your AppSync resolvers with code generation, not strings",
+      "why": "schema drift dies",
+      "body": "AppSync's JS runtime + the GraphQL Code Generator + the alpha <code>aws-cdk-lib/aws-appsync</code> resolver patterns give you full type safety from schema to resolver. For Last Command's per-alliance realtime layer this kills an entire class of drift bugs.",
+      "code": "<span class=\"c\">// schema.graphql → generated types</span>\n<span class=\"k\">export const</span> request = (ctx: <span class=\"t\">AppSyncContext</span>&lt;<span class=\"t\">AllianceQuery</span>&gt;) =&gt; ({\n  operation: <span class=\"s\">'GetItem'</span>,\n  key: <span class=\"t\">util</span>.dynamodb.toMapValues({ pk: ctx.args.id }),\n});"
+    },
+    {
+      "title": "Treat the construct tree like a domain model, not just IaC",
+      "why": "where CDK actually wins",
+      "body": "CloudFormation thinks in resources; CDK thinks in constructs. The leverage is in modelling your domain (\"Alliance\", \"Microservice\", \"DataStore\") as L3 constructs that compose the lower-level pieces. CDK Insights' ruleset works because it walks this model — your own analysis tooling can too."
+    }
+  ],
+  "resources": [
+    {
+      "name": "aws/aws-cdk releases",
+      "desc": "Source of truth for every weekly minor. v2.252+ this year ships fast.",
+      "url": "https://github.com/aws/aws-cdk/releases"
+    },
+    {
+      "name": "aws/aws-cdk-rfcs",
+      "desc": "Where the next breaking changes get debated. RFC #897 is in final-comments — high signal.",
+      "url": "https://github.com/aws/aws-cdk-rfcs"
+    },
+    {
+      "name": "Construct Hub",
+      "desc": "Browse community L3 constructs by service. Discover patterns before building.",
+      "url": "https://constructs.dev/"
+    },
+    {
+      "name": "cdkpatterns.com",
+      "desc": "Indexed serverless pattern library — Eric Bach's curated reference.",
+      "url": "https://cdkpatterns.com"
+    },
+    {
+      "name": "AWS What's New",
+      "desc": "Daily AWS service announcements. Set a filter for the services in your stack.",
+      "url": "https://aws.amazon.com/about-aws/whats-new/"
+    },
+    {
+      "name": "Werner Vogels weblog",
+      "desc": "Strategic signal on where AWS infra investment is going. Weekly cadence.",
+      "url": "https://www.allthingsdistributed.com/"
+    },
+    {
+      "name": "AWS Architecture Blog",
+      "desc": "Reference architectures + multi-tenant SaaS patterns. Often previews what's coming as L2s.",
+      "url": "https://aws.amazon.com/blogs/architecture/"
+    }
+  ]
 }
