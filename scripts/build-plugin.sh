@@ -11,7 +11,7 @@
 #
 # Usage:
 #   bash scripts/build-plugin.sh           # uses version from plugin.json
-#   bash scripts/build-plugin.sh 0.2.2     # override version suffix
+#   bash scripts/build-plugin.sh 0.6.0     # override version suffix
 #
 # Output:
 #   foresights-<version>.plugin            # at the repo root
@@ -62,13 +62,18 @@ if [[ -d "$SRC/templates" ]]; then
   cp -R "$SRC/templates" "$STAGE/skills/create-dashboard/templates"
 fi
 
-# Drop the known cruft patterns.
+# Drop the known cruft patterns. These only appear when building from a
+# working tree where `npm install` / `npm test` / a smoke run have happened;
+# a clean clone has none of them. Everything dropped here is gitignored — see
+# foresights/templates/.gitignore — so it must never reach the bundle.
+TPL="$STAGE/skills/create-dashboard/templates"
 rm -rf "$STAGE/skills/setup-claude-code" 2>/dev/null || true
-rm -rf "$STAGE/skills/create-dashboard/templates/node_modules" 2>/dev/null || true
-rm -rf "$STAGE/skills/create-dashboard/templates/dist" 2>/dev/null || true
+rm -rf "$TPL/node_modules" "$TPL/dist" "$TPL/coverage" 2>/dev/null || true
+rm -f "$TPL/_smoke.mjs" 2>/dev/null || true
 find "$STAGE" -name .DS_Store -delete
-find "$STAGE" -name "vitest.config.ts.timestamp-*" -delete
-find "$STAGE" -name "tmp-wizard-test" -type d -exec rm -rf {} + 2>/dev/null || true
+find "$STAGE" -name '*.tsbuildinfo' -delete
+find "$STAGE" -name 'vitest.config.ts.timestamp-*' -delete
+find "$STAGE" -name 'tmp-wizard-test' -type d -exec rm -rf {} + 2>/dev/null || true
 
 OUT="$REPO_ROOT/foresights-$VERSION.plugin"
 rm -f "$OUT"
@@ -79,7 +84,7 @@ echo "-> Built $OUT ($(du -h "$OUT" | cut -f1))"
 echo
 echo "Sanity-check:"
 unzip -l "$OUT" \
-  | grep -E "(setup-claude-code|DS_Store|tmp-wizard-test|node_modules)" \
+  | grep -E '(setup-claude-code|DS_Store|tmp-wizard-test|node_modules|_smoke|coverage/|tsbuildinfo|timestamp-)' \
   && { echo "!! cruft leaked"; exit 1; } \
   || echo "   clean ✓"
 
