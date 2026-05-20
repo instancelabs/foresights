@@ -375,3 +375,60 @@ describe('renderDigestMarkdown — footer', () => {
     expect(md).toContain('`.claude/upgrade-digests/2026-05-19-cdk-insights-upgrade-digest.md`');
   });
 });
+
+describe('renderDigestMarkdown — non-cc action types', () => {
+  it('embeds the summary builder output in a <details> titled "Summary"', () => {
+    const md = renderDigestMarkdown({
+      ...BASE,
+      entries: [entry('a')],
+      triaged: [triaged('a', 'green')],
+      actionType: 'summary',
+    });
+    expect(md).toContain('<summary>Summary (click to expand)</summary>');
+    expect(md).toContain('Mixins reshape construct composition.');
+    expect(md).toContain('How it could fit:');
+    expect(md).not.toContain('Claude Code prompt (click to expand)');
+  });
+
+  it('embeds the task builder output in a <details> titled "Task"', () => {
+    const md = renderDigestMarkdown({
+      ...BASE,
+      entries: [entry('a')],
+      triaged: [triaged('a', 'green')],
+      actionType: 'task',
+    });
+    expect(md).toContain('<summary>Task (click to expand)</summary>');
+    expect(md).toContain('Checklist:');
+    expect(md).toContain('- [ ] Add mixin-awareness rule');
+  });
+
+  it('a summary digest needs no ccBuilder and ignores one if passed', () => {
+    const md = renderDigestMarkdown({
+      ...BASE,
+      entries: [entry('a')],
+      triaged: [triaged('a', 'green')],
+      actionType: 'summary',
+      ccBuilder: () => 'SHOULD NOT APPEAR',
+    });
+    expect(md).not.toContain('SHOULD NOT APPEAR');
+    expect(md).toContain('<summary>Summary (click to expand)</summary>');
+  });
+
+  it('explicit actionType "claude-code" matches the implicit default', () => {
+    const ccBuilder: CcPromptBuilder = () => 'CC PROMPT BODY';
+    const implicit = renderDigestMarkdown({
+      ...BASE,
+      entries: [entry('a')],
+      triaged: [triaged('a', 'green')],
+      ccBuilder,
+    });
+    const explicit = renderDigestMarkdown({
+      ...BASE,
+      entries: [entry('a')],
+      triaged: [triaged('a', 'green')],
+      ccBuilder,
+      actionType: 'claude-code',
+    });
+    expect(explicit).toBe(implicit);
+  });
+});
