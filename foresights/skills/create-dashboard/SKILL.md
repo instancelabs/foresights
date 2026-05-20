@@ -1,11 +1,11 @@
 ---
 name: create-dashboard
-description: Wizard that builds a live news dashboard customised to the user's product. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, stay on top of an ecosystem, set up Foresights, or wants filtered ecosystem news for their stack. Asks 5 questions then ships a Cowork dashboard artifact.
+description: Wizard that builds a live, product-customised news dashboard. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, or set up Foresights — and also whenever they describe wanting to keep up with, stay on top of, stay current on, follow what's new in, or stop falling behind on a technology, library, framework, tool, or ecosystem. Asks 5 questions, then ships a Cowork dashboard artifact.
 ---
 
 # Create Dashboard
 
-> **Status:** v0.3 (Phase 10.1 landed) — RSS / Atom source kind ships alongside the three GitHub kinds. Every existing GitHub-source + Claude-Code-actionType dashboard keeps working byte-for-byte identically; RSS slots in additively. See `Implementation status` below.
+> **Status:** v0.6.0 (Phase 10.5 landed) — pluggable per-product action types (`claude-code` default, `summary`, `task`) ship alongside the RSS / Atom source kind and the three GitHub kinds. Every existing dashboard keeps working byte-for-byte identically; new action types and source kinds slot in additively. See `Implementation status` below.
 
 ## What this skill does
 
@@ -96,19 +96,26 @@ Examples:
 
 ### 4. Products to flag (0–N)
 
-For each product:
+For each product, first ask its **action type** — what a flagged item should produce:
+
+- `claude-code` *(default)* — a ready-to-run Claude Code handoff prompt, with the Plan / Plan+Implement toggle and the upgrade-digest workflow. For a product backed by a code repo.
+- `summary` — a plain-prose summary of why the item matters and how it could fit. For a research / marketing / non-engineering product with no repo.
+- `task` — a tracker-ready item: a one-line title, the "why", and a checklist. For when the user works items through a task tracker rather than Claude Code.
+
+Then, for every product, collect:
 
 - `label` — display name (e.g. "CDK Insights", "Last Command")
-- `repo` — GitHub URL (so we can read CLAUDE.md / README to bootstrap context)
 - `badgeColor` — defaults to a contrast colour vs. the dashboard accent
+- `rules[]` — `{re, reason}` regex matchers, ordered by signal strength
+- `systemPrompt` — for brief generation (architecture / domain summary + JSON output schema)
 
-For each product's repo, **read CLAUDE.md and README.md via the GitHub MCP** (`mcp__<gh_server>__get_file_contents`). Use Haiku to extract:
+`rules[]` + `systemPrompt` power the brief panel for **every** action type — briefs are action-agnostic, so this part of the flow does not change per type.
 
-- A `rules[]` array of `{re, reason}` regex matchers, ordered by signal strength
-- A system prompt for brief generation (architecture summary + JSON output schema)
-- A repo-navigation block for the Claude Code prompt (key src paths, peer deps, conventions, code-style rules)
+**For `claude-code` products only**, also collect `repo` (a GitHub URL) and **read CLAUDE.md and README.md via the GitHub MCP** (`mcp__<gh_server>__get_file_contents`). Use Haiku to extract the `rules[]` + `systemPrompt` above, plus a repo-navigation block for the Claude Code prompt (key src paths, peer deps, conventions, code-style rules) — this becomes the product's `ccPromptBody`. Optionally collect a `contextRefresh` spec (the ↻ button).
 
-Show the user a preview of all three; let them accept or edit.
+**For `summary` / `task` products**, skip the repo entirely — no `repo`, no `ccPromptBody`, no `contextRefresh`. Derive `rules[]` + `systemPrompt` from a short description the user gives of the product and what's relevant to it. Their action is built generically at runtime by the `ACTION_TYPES` registry (`templates/products/actions.ts`); no per-product builder code is emitted.
+
+Set `actionType` on the `WizardProduct`; omit it (or set `'claude-code'`) for the default. Show the user a preview of the rules + prompt; let them accept or edit.
 
 If the user has zero products, skip the product-specific HTML and JS blocks entirely (brief-all bar, digest bar, context bars, PRODUCTS const, RULES arrays, PROMPTS, CC builders).
 
@@ -130,7 +137,7 @@ After the questions, the wizard:
 3. **Builds the populated HTML** by handing the fully-populated `WizardConfig` to `templates/wizard/build.ts` (see "Build step" below). The orchestrator's sentinel substitution turns each field into the matching HTML block.
 4. **Smoke-tests the boot block** by running it in Node with stubbed `window`, `document`, `localStorage`. Catches TDZ errors and missing functions.
 5. **Calls `mcp__cowork__create_artifact`** with the populated HTML.
-6. **Reports** the dashboard URL and suggests `/setup-cc` as the next step.
+6. **Reports** the dashboard URL. Suggest `/setup-cc` as the next step **only when the dashboard has at least one `claude-code` product** — the `/digest` slash-command workflow it installs is Claude-Code-specific. For a dashboard with only `summary` / `task` products (or no products), skip that suggestion.
 
 ### Haiku batch contract — what the wizard agent must produce
 
@@ -256,6 +263,10 @@ The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUC
 
 ## Implementation status
 
+### v0.6.0 — pluggable action types (Phase 10.5)
+
+Strictly additive. A `WizardProduct` can declare an `actionType` — `'claude-code'` (the default), `'summary'`, or `'task'`. The brief panel and the upgrade digest produce the matching artifact: `claude-code` keeps the Plan/Implement Claude Code prompt verbatim; `summary` emits plain prose; `task` emits a tracker-ready checklist. Briefs themselves are unchanged — every action type consumes the same Haiku-generated brief. A product with no `actionType` (every pre-Phase-10.5 dashboard) runs the existing claude-code code path unchanged. `summary` / `task` products carry no per-product builder — their action is built generically by the `ACTION_TYPES` registry in `templates/products/actions.ts`; only `claude-code` products need repo-nav extraction at wizard time. `/setup-cc` is Claude-Code-specific — suggest it only for dashboards with a `claude-code` product.
+
 ### v0.5.3 — RSS baked at build time (F5)
 
 Dogfooding surfaced that the artifact sandbox blocks cross-origin `window.fetch`, so the v0.3 live-RSS path never actually reached a feed in a built dashboard. RSS is now **baked at build time**: the wizard fetches + parses each feed and stores entries on `WizardSource.items`; `genLoadBody` emits them as a literal `renderRssItems(...)` call instead of a `fetchRss` call. `render/rss.ts` is unchanged — it renders the baked items. `mcp/fetch-rss.ts` is retained and still tested but no longer wired into built dashboards. RSS content refreshes on a `/refresh-dashboard` rebuild rather than on every open; GitHub sources (via the MCP bridge) are unaffected.
@@ -329,7 +340,7 @@ The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wi
 - `headerSourcesLinks` — pre-rendered HTML for the source links in the hero.
 - `sources: WizardSource[]` — mix of github coordinates (kind: releases | issues | pull_requests + owner/repo) and rss feeds (kind: rss + url). Optional section + args. For rss sources the wizard also fills `items` — the feed's parsed entries, baked into the dashboard at build time.
 - `spotlights: WizardSpotlight[]` — 6 entries; the spotlight generator's output.
-- `products: WizardProduct[]` — 0-N products (empty = no flagging machinery emitted).
+- `products: WizardProduct[]` — 0-N products (empty = no flagging machinery emitted). Each `WizardProduct` carries an optional `actionType` (`'claude-code'` default, `'summary'`, or `'task'`); omit it for `'claude-code'`. `ccPromptBody` + `contextRefresh` apply to `'claude-code'` products only.
 - `highlights: WizardHighlightCard[]` — 6 entries; output of the highlights Haiku batch. Empty array → "get started" placeholder card. Shape: `{tag, title, body, url, cta?}`.
 - `patterns: WizardPatternCard[]` — 6 entries; community / pattern cards. Same shape as `highlights`.
 - `tips: WizardTipCard[]` — 8 entries; advanced-tip cards. Shape: `{title, why?, body, code?}`.
@@ -413,7 +424,6 @@ What's deferred to v0.3+:
 - Per-block generator specs for SECTION_NAV, SECTION_MARKUP, SOURCES_CONST, LOAD_BODY, PRODUCT_CSS, PRODUCT_UI_BARS, PRODUCTS_CONFIG (5 sub-sentinels).
 - Per-product context-refresh as a wizard question (currently a Phase 6 module but not exposed in the wizard flow).
 - Additional source kinds: Reddit, HackerNews, YouTube channels, generic URL watch (Phase 10.2–4).
-- Pluggable per-product `actionType` for non-developer actions (Phase 10.5).
 
 ### Toolchain commands
 
