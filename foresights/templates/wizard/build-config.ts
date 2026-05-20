@@ -1,4 +1,4 @@
-import type { RssItem } from '../types';
+import type { ActionTypeId, RssItem } from '../types';
 import { escHtml } from '../util/escape';
 
 /**
@@ -166,6 +166,13 @@ export interface WizardProduct {
   readonly systemPrompt: string;
   /** Matcher rules, scanned in declaration order — first match wins. */
   readonly rules: readonly WizardProductRule[];
+  /**
+   * Which action this product's flagged items offer — `'claude-code'`
+   * (the default), `'summary'`, or `'task'`. Omit for `'claude-code'`.
+   * Only `'claude-code'` products use `ccPromptBody` + `contextRefresh`;
+   * the wizard skips repo-nav extraction for `'summary'` / `'task'`.
+   */
+  readonly actionType?: ActionTypeId;
   /**
    * Optional Claude Code prompt builder body. Receives `({ brief, meta, mode })`.
    * Emit just the function body (everything between `=> {` and `}`).
@@ -344,10 +351,17 @@ export const genProductsConst = (products: readonly WizardProduct[]): string => 
       const ruleLits = p.rules
         .map((r) => `  { re: ${regexLiteral(r.source, r.flags ?? '')}, reason: ${j(r.reason)} }`)
         .join(',\n      ');
+      // actionType is emitted ONLY for non-claude-code products, so a
+      // claude-code product literal is byte-identical to pre-Phase-10.5
+      // output (the runtime defaults an absent actionType to 'claude-code').
+      const actionTypeLine =
+        p.actionType && p.actionType !== 'claude-code'
+          ? `\n    actionType: ${j(p.actionType)},`
+          : '';
       return `  ${j(p.id)}: {
     id: ${j(p.id)},
     label: ${j(p.label)},
-    cssMod: ${j(p.cssMod)},
+    cssMod: ${j(p.cssMod)},${actionTypeLine}
     match: (text) => {
       const rules: ReadonlyArray<{ re: RegExp; reason: string }> = [
       ${ruleLits}
@@ -435,10 +449,14 @@ ${pathLits},
  * stringified at emit time so it stays safely quoted in the output.
  */
 export const genCcBuilders = (products: readonly WizardProduct[]): string => {
-  if (products.length === 0) {
+  // CC prompt builders are emitted ONLY for claude-code products (the
+  // default). summary / task products carry no per-product builder — their
+  // action is built generically by the ACTION_TYPES registry at runtime.
+  const ccProducts = products.filter((p) => !p.actionType || p.actionType === 'claude-code');
+  if (ccProducts.length === 0) {
     return '\nexport const CC_PROMPT_BUILDERS: Readonly<Record<string, CcPromptBuilder>> = {};\n';
   }
-  const entries = products
+  const entries = ccProducts
     .map((p) => {
       const safeLabel = escForBacktick(p.label);
       // Default body — emits a backtick template literal so biome's
