@@ -11,7 +11,7 @@
 
 import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
-import type { Deps, Product, Spotlight } from '../types';
+import type { Cadence, Deps, Product, Spotlight } from '../types';
 import { dayOfYear, todayLocalDate } from '../util/date';
 import { escHtml } from '../util/escape';
 
@@ -19,10 +19,13 @@ export interface SpotlightConfig {
   readonly spotlights: readonly Spotlight[];
   readonly topicSlug: string;
   readonly products: readonly Product[];
+  /** Spotlight rotation cadence. Absent → `'daily'` (the default). */
+  readonly cadence?: Cadence;
 }
 
 interface PersistedSpotlight {
   readonly index: number;
+  /** The rotation-period key in force when the index was persisted. */
   readonly date: string;
 }
 
@@ -35,20 +38,57 @@ const isValidPersisted = (v: unknown): v is PersistedSpotlight => {
   return Number.isInteger(obj.index) && typeof obj.date === 'string';
 };
 
+/** 0-based week-of-year, derived from the 1-indexed day-of-year. */
+const weekOfYear = (d: Date): number => Math.floor((dayOfYear(d) - 1) / 7);
+
+/**
+ * The rotation-period key persisted alongside the spotlight index. A
+ * persisted entry is honoured only while its key still matches the current
+ * period, so the auto-rotation rolls over when the key changes:
+ *   - `daily`     → the local calendar date (rolls at midnight)
+ *   - `weekly`    → year + week-of-year (rolls at the week boundary)
+ *   - `on-demand` → a constant (never rolls; the user's choice sticks)
+ *
+ * For `'daily'` this is exactly `todayLocalDate`, so a daily dashboard's
+ * persistence behaviour is identical to pre-cadence builds.
+ */
+export const rotationPeriodKey = (cadence: Cadence, now: () => Date): string => {
+  if (cadence === 'on-demand') return 'static';
+  if (cadence === 'weekly') {
+    const d = now();
+    return `${d.getFullYear()}-W${weekOfYear(d)}`;
+  }
+  return todayLocalDate(now);
+};
+
+/**
+ * The auto-rotation index for a cadence, used on first open before any user
+ * navigation. `daily` rotates by day-of-year, `weekly` by week-of-year, and
+ * `on-demand` always starts at the first spotlight.
+ */
+export const autoRotationIndex = (cadence: Cadence, now: () => Date, len: number): number => {
+  if (len === 0) return 0;
+  if (cadence === 'on-demand') return 0;
+  if (cadence === 'weekly') return weekOfYear(now()) % len;
+  return dayOfYear(now()) % len;
+};
+
 /**
  * Read the persisted spotlight index. Returns null if storage is empty,
  * the payload is malformed, or the persisted entry is from a previous
- * calendar day (so the spotlight rolls over at midnight).
+ * rotation period — daily rolls over at midnight, weekly at the week
+ * boundary; `on-demand` never rolls over.
  */
 export const hydrateSpotlightIndex = (
   deps: Pick<Deps, 'storage' | 'now'>,
   topicSlug: string,
+  cadence: Cadence = 'daily',
 ): number | null => {
   try {
     const raw = deps.storage.getItem(storageKey(topicSlug));
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    if (isValidPersisted(parsed) && parsed.date === todayLocalDate(deps.now)) {
+    if (isValidPersisted(parsed) && parsed.date === rotationPeriodKey(cadence, deps.now)) {
       return parsed.index;
     }
   } catch {
@@ -57,14 +97,15 @@ export const hydrateSpotlightIndex = (
   return null;
 };
 
-/** Persist the current spotlight index keyed by today's local date. */
+/** Persist the current spotlight index keyed by the cadence's rotation period. */
 export const persistSpotlightIndex = (
   deps: Pick<Deps, 'storage' | 'now'>,
   topicSlug: string,
   index: number,
+  cadence: Cadence = 'daily',
 ): void => {
   try {
-    const payload: PersistedSpotlight = { index, date: todayLocalDate(deps.now) };
+    const payload: PersistedSpotlight = { index, date: rotationPeriodKey(cadence, deps.now) };
     deps.storage.setItem(storageKey(topicSlug), JSON.stringify(payload));
   } catch {
     // Storage write error — non-fatal; user just loses persistence.
@@ -160,9 +201,11 @@ export const renderSpotlight = (
 export const initSpotlight = (deps: Deps, config: SpotlightConfig): void => {
   const { spotlights, topicSlug, products } = config;
   if (spotlights.length === 0) return;
+  const cadence: Cadence = config.cadence ?? 'daily';
 
   const initial =
-    hydrateSpotlightIndex(deps, topicSlug) ?? dayOfYear(deps.now()) % spotlights.length;
+    hydrateSpotlightIndex(deps, topicSlug, cadence) ??
+    autoRotationIndex(cadence, deps.now, spotlights.length);
   const state = { index: wrapIndex(initial, spotlights.length) };
 
   const renderAndPersist = (nextIndex: number): void => {
@@ -171,7 +214,7 @@ export const initSpotlight = (deps: Deps, config: SpotlightConfig): void => {
     const spotlight = spotlights[wrapped];
     if (!spotlight) return;
     renderSpotlight(deps, spotlight, wrapped, spotlights.length, products);
-    persistSpotlightIndex(deps, topicSlug, wrapped);
+    persistSpotlightIndex(deps, topicSlug, wrapped, cadence);
   };
 
   renderAndPersist(state.index);

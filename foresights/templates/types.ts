@@ -163,6 +163,14 @@ export interface Spotlight {
   readonly url: string;
 }
 
+/**
+ * Spotlight rotation cadence. `daily` (the default) rotates the spotlight by
+ * day-of-year; `weekly` by week-of-year; `on-demand` never auto-rotates — the
+ * spotlight stays where the user last left it. A dashboard with no cadence is
+ * treated as `daily`, so pre-Phase-10.6 builds behave exactly as before.
+ */
+export type Cadence = 'daily' | 'weekly' | 'on-demand';
+
 // ---------------------------------------------------------------------------
 // Briefs — the Haiku-generated "why relevant + how to integrate" panel.
 // ---------------------------------------------------------------------------
