@@ -1,3 +1,4 @@
+import type { RssItem } from '../types';
 import { escHtml } from '../util/escape';
 
 /**
@@ -31,6 +32,10 @@ import { escHtml } from '../util/escape';
  * same interface as optional fields rather than a discriminated union to
  * keep the JSON wizard config flat — the generators below dispatch on
  * `kind` and read the right field.
+ *
+ * For `rss`, the wizard also fills `items` with the feed's parsed entries
+ * (fetched at build time); `genLoadBody` bakes them into the dashboard,
+ * since the artifact sandbox blocks live cross-origin fetch.
  */
 export interface WizardSource {
   /** Short slug for chip rendering + IDs. */
@@ -44,6 +49,13 @@ export interface WizardSource {
   readonly repo?: string;
   /** Feed URL (required for rss). */
   readonly url?: string;
+  /**
+   * Baked RSS items for `kind: 'rss'` — the wizard fetches + parses the feed
+   * at build time and stores recent entries here. `genLoadBody` bakes them
+   * into the dashboard as a literal; the artifact sandbox blocks live
+   * cross-origin `window.fetch`, so this is how RSS reaches a built artifact.
+   */
+  readonly items?: readonly RssItem[];
   /** Which section to feed. Omit to merge into the default per-kind section. */
   readonly section?: string;
   readonly perPage?: number;
@@ -219,6 +231,16 @@ export interface WizardConfig {
 
 /** JSON.stringify with a fixed 2-space indent — used everywhere for diff stability. */
 const j = (v: unknown): string => JSON.stringify(v);
+
+/**
+ * Strip HTML tags + collapse whitespace. Keeps baked RSS text plain so it
+ * carries no markup into the `<script>` the compiled bundle is inlined into.
+ */
+const stripTags = (s: string): string =>
+  s
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 /** Stringify a JS RegExp literal. Empty flags → no trailing flag chars. */
 const regexLiteral = (source: string, flags = ''): string =>
@@ -520,9 +542,22 @@ export const genLoadBody = (
   for (const s of sources) {
     const section = s.section ?? s.kind.replace('_', '-');
     if (s.kind === 'rss') {
+      // RSS items are fetched + parsed at wizard time and baked in here as a
+      // literal. The artifact sandbox blocks cross-origin window.fetch, so a
+      // live fetch from the dashboard never succeeds — baking is how RSS
+      // content reaches a built artifact. /refresh-dashboard re-bakes it.
+      // title/description are tag-stripped so the baked literal stays plain
+      // text and carries no markup into the bundle's <script> host.
+      const bakedItems = (s.items ?? []).map((it) => ({
+        title: stripTags(it.title),
+        link: it.link,
+        description: stripTags(it.description).slice(0, 500),
+        pubDate: it.pubDate,
+        author: it.author,
+        guid: it.guid,
+      }));
       lines.push('try {');
-      lines.push(`  const items = await fetchRss(deps, ${j(s.url ?? '')});`);
-      lines.push(`  renderRssItems(deps, items, ${j(section)}, productsArr);`);
+      lines.push(`  renderRssItems(deps, ${j(bakedItems)}, ${j(section)}, productsArr);`);
       lines.push('} catch (err) {');
       lines.push(`  renderError(deps, ${j(section)}, err);`);
       lines.push('}');

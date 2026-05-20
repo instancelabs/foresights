@@ -38,7 +38,7 @@ User can override with a custom hex.
 
 ### 3. Data sources
 
-Multi-input. Two source families today: **GitHub** (releases / issues / pull requests via the user's GitHub MCP) and **RSS / Atom feeds** (any blog, newsroom, Substack, podcast, or service with a feed URL — fetched directly from the artifact via `window.fetch`).
+Multi-input. Two source families today: **GitHub** (releases / issues / pull requests via the user's GitHub MCP) and **RSS / Atom feeds** (any blog, newsroom, Substack, podcast, or service with a feed URL — fetched and parsed at build time, then baked into the dashboard).
 
 For each source:
 
@@ -51,12 +51,13 @@ For each source:
     - pull_requests: `perPage`, `state` (default closed), `sort` (default updated), `direction` (default desc)
 - **RSS kind** (`rss`):
   - `url` — full feed URL (required). Both RSS 2.0 (`<rss><channel><item>`) and Atom 1.0 (`<feed><entry>`) are supported.
-  - No `args` — RSS sources render up to 10 most-recent items per section.
+  - `items` — populated by the wizard, not the user: the wizard fetches the feed at build time and parses up to 10 recent entries into it (see "Wizard outputs"). The build bakes them into the dashboard.
+  - No `args` — RSS items are baked at build time, not fetched at runtime.
 - `section` — optional; explicit section ID this source feeds. If omitted, sources of the same `kind` get merged into a single auto-named section.
 
 **Validate `releases` sources before committing them.** Some repos never publish GitHub releases — rolling-release projects (Klipper is the common example) ship from `master` with no release tags, so a `releases` source on one renders a permanently-empty section. When the user assigns a repo to a `releases` source, probe it once with `list_releases` (`perPage: 1`) while confirming the source list. If it comes back empty, tell the user and offer to switch that source to `pull_requests` — recently-merged PRs are the closest proxy for a rolling-release project's activity.
 
-**CORS caveat for RSS sources:** the artifact fetches feeds directly with `window.fetch`. Most modern feed hosts (Substack, Medium, GitHub `/releases.atom`, podcast platforms) serve permissive CORS so this works. Some legacy WordPress or self-hosted feeds don't — the section renders an empty-state card and the rest of the dashboard continues to work. If the user reports a feed that doesn't load, suggest they use the GitHub `/releases.atom` mirror (if available) or a Substack equivalent.
+**RSS is baked at build time, not fetched live.** The artifact sandbox blocks all cross-origin network except a fixed CDN allowlist, so a built dashboard cannot `window.fetch` arbitrary feeds. Instead, the wizard fetches and parses each feed at build time and bakes up to 10 recent entries into the dashboard (see `WizardSource.items` and `genLoadBody`). RSS content is therefore as fresh as the last build — re-run `/refresh-dashboard` (which rebuilds) to pull newer entries. GitHub sources are unaffected: they fetch live through the MCP bridge on every open.
 
 Examples:
 
@@ -119,7 +120,7 @@ Ask for 2–3 example patterns the user thinks are cool in this domain. Minimum 
 
 After the questions, the wizard:
 
-1. **Fetches a sample of live data** from each configured source. GitHub sources go via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind); RSS sources fetch the feed XML directly (`window.fetch`).
+1. **Fetches a sample of live data** from each configured source. GitHub sources go via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind). For RSS sources the wizard fetches the feed XML, parses up to 10 recent entries into `RssItem` shape (`{title, link, description, pubDate, author, guid}` — strip HTML from `title`/`description`, ISO-8601 `pubDate`, `guid` falls back to `link`), and stores them on that source's `items` field so the build can bake them in.
 2. **Runs Haiku batches** (chunk size ≤10 to stay under the askClaude payload ceiling) to generate the curated content, then stashes each batch's output in the corresponding `WizardConfig` field before invoking the build orchestrator:
    - 6 `spotlights` from user seeds + live data → `WizardConfig.spotlights`
    - 6 `highlights` from live data → `WizardConfig.highlights`
@@ -255,6 +256,10 @@ The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUC
 
 ## Implementation status
 
+### v0.5.3 — RSS baked at build time (F5)
+
+Dogfooding surfaced that the artifact sandbox blocks cross-origin `window.fetch`, so the v0.3 live-RSS path never actually reached a feed in a built dashboard. RSS is now **baked at build time**: the wizard fetches + parses each feed and stores entries on `WizardSource.items`; `genLoadBody` emits them as a literal `renderRssItems(...)` call instead of a `fetchRss` call. `render/rss.ts` is unchanged — it renders the baked items. `mcp/fetch-rss.ts` is retained and still tested but no longer wired into built dashboards. RSS content refreshes on a `/refresh-dashboard` rebuild rather than on every open; GitHub sources (via the MCP bridge) are unaffected.
+
 ### v0.5 — embedded config block (refresh enablement)
 
 Strictly additive. The build now injects a `<script type="application/json"
@@ -322,7 +327,7 @@ The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wi
 - `footerNote`, `artifactName`, `artifactDescription` — metadata.
 - `ghServer` — the user's GitHub MCP server name (e.g. `mcp__github`).
 - `headerSourcesLinks` — pre-rendered HTML for the source links in the hero.
-- `sources: WizardSource[]` — mix of github coordinates (kind: releases | issues | pull_requests + owner/repo) and rss feeds (kind: rss + url). Optional section + args.
+- `sources: WizardSource[]` — mix of github coordinates (kind: releases | issues | pull_requests + owner/repo) and rss feeds (kind: rss + url). Optional section + args. For rss sources the wizard also fills `items` — the feed's parsed entries, baked into the dashboard at build time.
 - `spotlights: WizardSpotlight[]` — 6 entries; the spotlight generator's output.
 - `products: WizardProduct[]` — 0-N products (empty = no flagging machinery emitted).
 - `highlights: WizardHighlightCard[]` — 6 entries; output of the highlights Haiku batch. Empty array → "get started" placeholder card. Shape: `{tag, title, body, url, cta?}`.
@@ -383,8 +388,8 @@ The build wrote the final HTML to the `--out` path. Call
     `list_releases`, `list_issues`, and/or `list_pull_requests`;
   - add `${ghServer}__get_file_contents` and `${ghServer}__search_repositories`
     only when the dashboard has products (the context-refresh button uses them);
-  - RSS sources need no entry — they fetch the feed over the network, not
-    through the MCP bridge.
+  - RSS sources need no entry — their items are baked in at build time, not
+    fetched at runtime.
   A GitHub-releases-only dashboard with no products needs just
   `["${ghServer}__list_releases"]`.
 
