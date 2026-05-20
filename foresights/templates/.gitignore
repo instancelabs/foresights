@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+vitest.config.ts.timestamp-*.mjs
+_smoke.mjs
