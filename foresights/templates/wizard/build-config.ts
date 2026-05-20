@@ -160,6 +160,25 @@ export interface WizardProduct {
    * Default: a generic builder that interpolates brief.why + meta.title + mode.
    */
   readonly ccPromptBody?: string;
+  /**
+   * Optional context refresh spec — if set, the dashboard renders a ↻ button
+   * next to this product that re-fetches the listed paths from the repo via
+   * the GitHub MCP, bumps the brief-cache fingerprint, and stores a fresh
+   * layout map. Useful when the product's repo structure changes (new
+   * services, new src/rules subfolders) and existing baked rules would
+   * miss the new ground.
+   */
+  readonly contextRefresh?: {
+    readonly repoOwner: string;
+    readonly repoName: string;
+    readonly paths: readonly string[];
+    /**
+     * Human-readable unit shown in the context-bar status text. Default
+     * "paths indexed" — overridden per product to match the v0.1 phrasing
+     * (CDK Insights uses "service folders", Last Command uses "lc-* repos").
+     */
+    readonly unitLabel?: string;
+  };
 }
 
 /** The full wizard input. */
@@ -352,11 +371,39 @@ export const genRules = (products: readonly WizardProduct[]): string => {
 };
 
 /**
- * Emit `PRODUCTS_CONFIG:CONTEXT_REFRESH` — empty by default. Per-product
- * context refreshers ship in v0.3.
+ * Emit `PRODUCTS_CONFIG:CONTEXT_REFRESH` — one entry per product that opted
+ * into context refresh. The emitted Record maps productId → ContextRefreshSpec
+ * (the runtime shape consumed by initContextRefreshBar in
+ * products/context-refresh.ts). Products without `contextRefresh` config get
+ * no entry, which means no ↻ button is wired for them.
+ *
+ * Note: the type alias here intentionally inlines the shape (rather than
+ * importing ContextRefreshSpec from products/context-refresh.ts) because
+ * the sentinel sits in products/context-refresh.ts itself — making it
+ * import-cycle-free keeps the toolchain happy.
  */
-export const genContextRefresh = (_products: readonly WizardProduct[]): string =>
-  '\nexport const CONTEXT_REFRESHERS: Readonly<Record<string, ContextRefresher>> = {};\n';
+export const genContextRefresh = (products: readonly WizardProduct[]): string => {
+  const withRefresh = products.filter((p) => p.contextRefresh !== undefined);
+  if (withRefresh.length === 0) {
+    return '\nexport const CONTEXT_REFRESHERS: Readonly<Record<string, ContextRefreshSpec>> = {};\n';
+  }
+  const entries = withRefresh
+    .map((p) => {
+      // Narrowed inside the filter; non-null assertion below is safe.
+      const cr = p.contextRefresh as NonNullable<WizardProduct['contextRefresh']>;
+      const pathLits = cr.paths.map((path) => `      ${j(path)}`).join(',\n');
+      const unitLine = cr.unitLabel ? `\n    unitLabel: ${j(cr.unitLabel)},` : '';
+      return `  ${j(p.id)}: {
+    owner: ${j(cr.repoOwner)},
+    repo: ${j(cr.repoName)},
+    paths: [
+${pathLits},
+    ],${unitLine}
+  },`;
+    })
+    .join('\n');
+  return `\nexport const CONTEXT_REFRESHERS: Readonly<Record<string, ContextRefreshSpec>> = {\n${entries}\n};\n`;
+};
 
 /**
  * Emit `PRODUCTS_CONFIG:CC_BUILDERS` — Record<productId, CcPromptBuilder>.
@@ -397,14 +444,69 @@ export const genCcBuilders = (products: readonly WizardProduct[]): string => {
  */
 export const genLoadBody = (
   sources: readonly WizardSource[],
-  _products: readonly WizardProduct[],
+  products: readonly WizardProduct[],
   ghServer: string,
 ): string => {
   const lines: string[] = [];
+  // Materialise the configured products as an array. Used by every renderer
+  // call below so matchers fire against each item and badges get emitted.
+  // When the wizard has zero products, this is `[]` and renderers behave
+  // exactly as the no-flagging case.
+  lines.push('const productsArr = Object.values(PRODUCTS);');
+  lines.push('');
+  // Every init is wrapped in try/catch + console.error so a runtime error in
+  // one piece (e.g. a malformed product regex, a missing DOM element) doesn't
+  // cascade and block live data fetches below. Errors surface in DevTools
+  // console with a clear prefix so the user can diagnose.
   lines.push('// Spotlight carousel — pure DOM wiring; safe to call before live data fetches.');
+  lines.push('try {');
   lines.push(
-    'initSpotlight(deps, { spotlights: SPOTLIGHTS, topicSlug: TOPIC_SLUG, products: [] });',
+    '  initSpotlight(deps, { spotlights: SPOTLIGHTS, topicSlug: TOPIC_SLUG, products: productsArr });',
   );
+  lines.push('} catch (err) { console.error("Foresights: initSpotlight failed", err); }');
+  // Mount the brief panel + digest panel only when products are configured —
+  // they listen for clicks on `.insights-tag` badges and on `#digest-btn-*`
+  // buttons, neither of which exist in a no-products dashboard.
+  if (products.length > 0) {
+    lines.push('');
+    lines.push('try {');
+    lines.push('  initBriefPanel(deps, {');
+    lines.push('    products: productsArr,');
+    lines.push('    prompts: PROMPTS,');
+    lines.push('    ccBuilders: CC_PROMPT_BUILDERS,');
+    lines.push('    topicSlug: TOPIC_SLUG,');
+    lines.push('    fingerprintByProduct: (id) => effectiveFingerprint(deps, TOPIC_SLUG, id),');
+    lines.push('  });');
+    lines.push('} catch (err) { console.error("Foresights: initBriefPanel failed", err); }');
+    lines.push('try {');
+    lines.push('  initBriefAllBar(deps, {');
+    lines.push('    products: productsArr,');
+    lines.push('    prompts: PROMPTS,');
+    lines.push('    ccBuilders: CC_PROMPT_BUILDERS,');
+    lines.push('    topicSlug: TOPIC_SLUG,');
+    lines.push('    fingerprintByProduct: (id) => effectiveFingerprint(deps, TOPIC_SLUG, id),');
+    lines.push('  });');
+    lines.push('} catch (err) { console.error("Foresights: initBriefAllBar failed", err); }');
+    lines.push('try {');
+    lines.push('  const digestPanelHandle = initDigestPanel(deps);');
+    lines.push('  initDigestBar(deps, {');
+    lines.push('    products: productsArr,');
+    lines.push('    prompts: PROMPTS,');
+    lines.push('    ccBuilders: CC_PROMPT_BUILDERS,');
+    lines.push('    topicSlug: TOPIC_SLUG,');
+    lines.push('    fingerprintByProduct: (id) => effectiveFingerprint(deps, TOPIC_SLUG, id),');
+    lines.push('    panel: digestPanelHandle,');
+    lines.push('  });');
+    lines.push('} catch (err) { console.error("Foresights: initDigestPanel/Bar failed", err); }');
+    lines.push('try {');
+    lines.push('  initContextRefreshBar(deps, {');
+    lines.push('    products: productsArr,');
+    lines.push('    refreshers: CONTEXT_REFRESHERS,');
+    lines.push('    topicSlug: TOPIC_SLUG,');
+    lines.push(`    ghServer: ${j(ghServer)},`);
+    lines.push('  });');
+    lines.push('} catch (err) { console.error("Foresights: initContextRefreshBar failed", err); }');
+  }
   lines.push('');
   if (sources.length === 0) {
     lines.push('await Promise.resolve();');
@@ -413,13 +515,14 @@ export const genLoadBody = (
   // Per-source dispatch: each source becomes either a GitHub MCP fetch +
   // matching renderer, or (for kind: 'rss') a direct browser fetch + parse +
   // RSS renderer. Errors are caught + rendered as an error card; one bad
-  // source doesn't kill the whole dashboard.
+  // source doesn't kill the whole dashboard. productsArr is passed to each
+  // renderer so flagsForText can attach the right badges per item.
   for (const s of sources) {
     const section = s.section ?? s.kind.replace('_', '-');
     if (s.kind === 'rss') {
       lines.push('try {');
       lines.push(`  const items = await fetchRss(deps, ${j(s.url ?? '')});`);
-      lines.push(`  renderRssItems(deps, items, ${j(section)}, []);`);
+      lines.push(`  renderRssItems(deps, items, ${j(section)}, productsArr);`);
       lines.push('} catch (err) {');
       lines.push(`  renderError(deps, ${j(section)}, err);`);
       lines.push('}');
@@ -443,7 +546,7 @@ export const genLoadBody = (
           : 'readonly PullRequest[]';
     lines.push('try {');
     lines.push(`  const raw = await callTool(deps, ${j(toolName)}, ${args});`);
-    lines.push(`  ${renderFn}(deps, raw as ${typeCast}, ${j(section)}, []);`);
+    lines.push(`  ${renderFn}(deps, raw as ${typeCast}, ${j(section)}, productsArr);`);
     lines.push('} catch (err) {');
     lines.push(`  renderError(deps, ${j(section)}, err);`);
     lines.push('}');
@@ -616,30 +719,57 @@ export const genProductCss = (products: readonly WizardProduct[]): string => {
   return `\n${blocks.join('\n')}\n`;
 };
 
-/** Emit `PRODUCT_UI_BARS` — the brief-all bar + per-product digest button bar. */
+/** Emit `PRODUCT_UI_BARS` — the brief-all bar + digest bar + context-refresh bar. */
 export const genProductUiBars = (products: readonly WizardProduct[]): string => {
   if (products.length === 0) return '\n';
+  // Bars and per-product buttons are visible by default when products are
+  // configured. The v0.1 reference used an `updateBriefAllButton()` polling
+  // loop to hide bars when nothing was flagged yet; v0.3 simplifies — bars
+  // stay visible since the user explicitly opted into these products at
+  // wizard time. The digest-panel keeps its `hidden` class because that's
+  // an overlay panel that initDigestPanel toggles on/off itself.
   const briefBtns = products
     .map(
       (p) =>
-        `    <button id="brief-all-btn-${p.id}" class="brief-all-btn brief-all-btn-${p.cssMod || p.id} hidden" type="button" data-product-id="${p.id}">${p.label}</button>`,
+        `    <button id="brief-all-btn-${p.id}" class="brief-all-btn brief-all-btn-${p.cssMod || p.id}" type="button" data-product-id="${p.id}">${p.label}</button>`,
     )
     .join('\n');
   const digestBtns = products
     .map(
       (p) =>
-        `    <button id="digest-btn-${p.id}" class="digest-btn hidden" type="button" data-product-id="${p.id}">${p.label} digest</button>`,
+        `    <button id="digest-btn-${p.id}" class="digest-btn" type="button" data-product-id="${p.id}">${p.label} digest</button>`,
     )
     .join('\n');
+  // Context-refresh bars — one PER product that opted in (mirrors v0.1's
+  // per-product `<div class="context-bar">` shape). Each bar:
+  //   <span class="context-label">${label} context:</span>
+  //   <span class="context-status" id="context-status-${id}">…</span>
+  //   <button class="context-btn" id="context-refresh-btn-${id}">↻ Refresh from repo</button>
+  // The status text starts as "…" so the initial render in
+  // initContextRefreshBar's refreshStatus() can swap to either
+  // "Not refreshed yet" (no stored context) or "refreshed Xd ago · N units"
+  // (rehydrated from localStorage).
+  const contextBars = products
+    .filter((p) => p.contextRefresh !== undefined)
+    .map(
+      (p) =>
+        `  <div id="context-bar-${p.id}" class="context-bar">
+    <span class="context-label">${p.label} context:</span>
+    <span class="context-status" id="context-status-${p.id}">…</span>
+    <button class="context-btn" id="context-refresh-btn-${p.id}" type="button" data-product-id="${p.id}">↻ Refresh from repo</button>
+  </div>`,
+    )
+    .join('\n');
+  const contextBar = contextBars.length > 0 ? `\n${contextBars}` : '';
   return `
-  <div id="brief-all-bar" class="brief-all-bar hidden">
+  <div id="brief-all-bar" class="brief-all-bar">
     <span class="brief-all-label">Brief all flagged:</span>
 ${briefBtns}
   </div>
-  <div id="digest-bar" class="digest-bar hidden">
+  <div id="digest-bar" class="digest-bar">
     <span class="digest-bar-label">Generate upgrade digest:</span>
 ${digestBtns}
-  </div>
+  </div>${contextBar}
   <div id="digest-panel" class="digest-panel hidden">
     <div class="digest-panel-header">
       <div class="digest-panel-title" id="digest-panel-title">Upgrade digest</div>
