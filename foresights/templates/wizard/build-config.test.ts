@@ -812,3 +812,36 @@ describe('action types — additive guarantee', () => {
     expect(explicit).toEqual(omitted);
   });
 });
+
+describe('cadence — genLoadBody', () => {
+  it('omits cadence from the initSpotlight call when cadence is undefined', () => {
+    const out = genLoadBody([source()], [], 'mcp__github');
+    expect(out).toContain(
+      'initSpotlight(deps, { spotlights: SPOTLIGHTS, topicSlug: TOPIC_SLUG, products: productsArr })',
+    );
+    expect(out).not.toContain('cadence:');
+  });
+
+  it('omits cadence when it is explicitly daily (byte-identical to the default)', () => {
+    expect(genLoadBody([source()], [], 'mcp__github', 'daily')).not.toContain('cadence:');
+  });
+
+  it('emits cadence in the initSpotlight call for weekly', () => {
+    const out = genLoadBody([source()], [], 'mcp__github', 'weekly');
+    expect(out).toContain(
+      'initSpotlight(deps, { spotlights: SPOTLIGHTS, topicSlug: TOPIC_SLUG, products: productsArr, cadence: "weekly" })',
+    );
+  });
+
+  it('emits cadence for on-demand', () => {
+    expect(genLoadBody([source()], [], 'mcp__github', 'on-demand')).toContain(
+      'cadence: "on-demand"',
+    );
+  });
+
+  it('a config with no cadence and one with cadence: daily produce an identical LOAD_BODY', () => {
+    const omitted = deriveSentinelMap(config()).LOAD_BODY;
+    const explicit = deriveSentinelMap(config({ cadence: 'daily' })).LOAD_BODY;
+    expect(explicit).toBe(omitted);
+  });
+});
