@@ -18,10 +18,11 @@
  * an explicit `triaged: TriagedItem[]` array and joins by stableId.
  */
 
+import { ACTION_TYPES } from '../products/actions';
 import type { BriefItem } from '../products/brief';
 import type { CcPromptBuilder } from '../products/cc-prompts';
 import { appendRepoContext } from '../products/repo-context';
-import type { Brief, Flag, TriageBucket, TriagedItem } from '../types';
+import type { ActionTypeId, Brief, Flag, TriageBucket, TriagedItem } from '../types';
 
 /**
  * One row in the digest: the flag + the brief item the user clicked + the
@@ -53,6 +54,12 @@ export interface RenderDigestArgs {
    * prompts are emitted exactly as the builder produced them.
    */
   readonly repoContext?: string;
+  /**
+   * The product's action type — selects how each green/yellow item's action
+   * is embedded. Absent / `'claude-code'` → the verbatim `<details>` CC-prompt
+   * block. `summary` / `task` → the registry's `digestEmbed`.
+   */
+  readonly actionType?: ActionTypeId;
 }
 
 interface BucketRow {
@@ -96,12 +103,13 @@ const fenceFor = (text: string): string => {
   return '`'.repeat(Math.max(3, longest + 1));
 };
 
-/** Render one green/yellow item — full detail + embedded cc-prompt. */
+/** Render one green/yellow item — full detail + embedded action artifact. */
 const renderDetailed = (
   lines: string[],
   rows: readonly BucketRow[],
   ccBuilder: CcPromptBuilder | undefined,
   repoContext: string | undefined,
+  actionType: ActionTypeId,
 ): void => {
   rows.forEach(({ entry, triage }, idx) => {
     const titleText = cleanTitle(entry.item.text);
@@ -121,18 +129,34 @@ const renderDetailed = (
       });
     }
 
-    if (ccBuilder) {
-      const prompt = appendRepoContext(
-        ccBuilder({ brief: entry.brief, meta: entry.flag, mode: 'plan' }),
-        repoContext ?? '',
-      );
-      const fence = fenceFor(prompt);
+    // claude-code embeds the per-product CC prompt verbatim; summary / task
+    // embed the registry's `digestEmbed` output in the same <details> shell.
+    if (actionType === 'claude-code') {
+      if (ccBuilder) {
+        const prompt = appendRepoContext(
+          ccBuilder({ brief: entry.brief, meta: entry.flag, mode: 'plan' }),
+          repoContext ?? '',
+        );
+        const fence = fenceFor(prompt);
+        lines.push('');
+        lines.push('<details>');
+        lines.push('<summary>Claude Code prompt (click to expand)</summary>');
+        lines.push('');
+        lines.push(fence);
+        lines.push(prompt);
+        lines.push(fence);
+        lines.push('</details>');
+      }
+    } else {
+      const spec = ACTION_TYPES[actionType];
+      const embed = spec.digestEmbed({ brief: entry.brief, meta: entry.flag });
+      const fence = fenceFor(embed);
       lines.push('');
       lines.push('<details>');
-      lines.push('<summary>Claude Code prompt (click to expand)</summary>');
+      lines.push(`<summary>${spec.panelTitle} (click to expand)</summary>`);
       lines.push('');
       lines.push(fence);
-      lines.push(prompt);
+      lines.push(embed);
       lines.push(fence);
       lines.push('</details>');
     }
@@ -163,6 +187,7 @@ const renderRedOneLiners = (
  */
 export const renderDigestMarkdown = (args: RenderDigestArgs): string => {
   const { productLabel, productSlug, date, entries, triaged, ccBuilder, repoContext } = args;
+  const actionType: ActionTypeId = args.actionType ?? 'claude-code';
   const triageById = new Map<string, TriagedItem>(triaged.map((t) => [t.stableId, t]));
 
   const buckets: Record<TriageBucket, BucketRow[]> = { green: [], yellow: [], red: [] };
@@ -187,7 +212,7 @@ export const renderDigestMarkdown = (args: RenderDigestArgs): string => {
     lines.push('');
     lines.push(SECTION_INTRO[bucket]);
     lines.push('');
-    renderDetailed(lines, buckets[bucket], ccBuilder, repoContext);
+    renderDetailed(lines, buckets[bucket], ccBuilder, repoContext, actionType);
   }
 
   if (buckets.red.length > 0) {
