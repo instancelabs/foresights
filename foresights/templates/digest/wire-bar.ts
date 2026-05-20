@@ -16,6 +16,7 @@
 
 import { type BriefItem, fetchBrief } from '../products/brief';
 import type { CcPromptBuilder } from '../products/cc-prompts';
+import { formatRepoContext } from '../products/repo-context';
 import type { Deps, Flag, Product, TriageBucket, TriagedItem } from '../types';
 import { todayLocalDate } from '../util/date';
 import { type DigestEntry, type RenderDigestArgs, renderDigestMarkdown } from './markdown';
@@ -225,6 +226,9 @@ export const initDigestBar = (deps: Deps, opts: InitDigestBarOpts): DigestBarHan
 
       // Step 3 — render markdown + open panel.
       const date = dateFn();
+      // Refreshed repo-context block (empty unless the user clicked ↻ for
+      // this product) — appended to every embedded CC prompt in the digest.
+      const repoContext = formatRepoContext(deps, opts.topicSlug, product.id);
       const renderArgs: RenderDigestArgs = {
         productLabel: product.label,
         productSlug: product.cssMod || slugifyLabel(product.label),
@@ -232,6 +236,7 @@ export const initDigestBar = (deps: Deps, opts: InitDigestBarOpts): DigestBarHan
         entries,
         triaged,
         ...(ccBuilders[product.id] ? { ccBuilder: ccBuilders[product.id] } : {}),
+        ...(repoContext ? { repoContext } : {}),
       };
       const markdown = renderDigestMarkdown(renderArgs);
 
