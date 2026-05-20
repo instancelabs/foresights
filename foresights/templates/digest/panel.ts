@@ -85,10 +85,13 @@ export interface DigestPanelHandle {
 export const mdToHtml = (md: string): string => {
   let html = escHtml(md);
 
-  // Code blocks first so their content isn't double-processed.
+  // Code blocks first so their content isn't double-processed. The fence is
+  // matched as a run of 3+ backticks with a backreference for the close, so
+  // digest prompts wrapped in a longer fence (renderDigestMarkdown widens it
+  // when the embedded prompt itself contains ```) still parse correctly.
   html = html.replace(
-    /```(?:\w*)\n([\s\S]*?)```/g,
-    (_, code: string) => `<pre><code>${code}</code></pre>`,
+    /(`{3,})(?:\w*)\n([\s\S]*?)\1/g,
+    (_full, _fence: string, code: string) => `<pre><code>${code}</code></pre>`,
   );
 
   // Headings.

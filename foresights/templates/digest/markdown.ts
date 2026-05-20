@@ -83,6 +83,19 @@ const cleanTitle = (text: string): string =>
 /** Strip just the leading bracketed tag from the item text. */
 const stripTagPrefix = (text: string): string => text.replace(/^\[[^\]]+\]\s*/, '');
 
+/**
+ * Pick a code fence longer than any backtick run inside `text`. CommonMark
+ * requires the fence to exceed any inner run, otherwise an embedded ```
+ * closes the block early — which happens routinely now that repo-context.ts
+ * inlines real CLAUDE.md content (full of code fences) into the prompt.
+ * Minimum 3 backticks.
+ */
+const fenceFor = (text: string): string => {
+  let longest = 0;
+  for (const run of text.match(/`+/g) ?? []) longest = Math.max(longest, run.length);
+  return '`'.repeat(Math.max(3, longest + 1));
+};
+
 /** Render one green/yellow item — full detail + embedded cc-prompt. */
 const renderDetailed = (
   lines: string[],
@@ -113,13 +126,14 @@ const renderDetailed = (
         ccBuilder({ brief: entry.brief, meta: entry.flag, mode: 'plan' }),
         repoContext ?? '',
       );
+      const fence = fenceFor(prompt);
       lines.push('');
       lines.push('<details>');
       lines.push('<summary>Claude Code prompt (click to expand)</summary>');
       lines.push('');
-      lines.push('```');
+      lines.push(fence);
       lines.push(prompt);
-      lines.push('```');
+      lines.push(fence);
       lines.push('</details>');
     }
 

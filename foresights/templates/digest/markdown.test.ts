@@ -266,6 +266,29 @@ describe('renderDigestMarkdown — green/yellow detail block', () => {
   });
 });
 
+describe('renderDigestMarkdown — code fence', () => {
+  it('uses a plain 3-backtick fence when the prompt has no backticks', () => {
+    const md = renderDigestMarkdown({
+      ...BASE,
+      entries: [entry('a')],
+      triaged: [triaged('a', 'green')],
+      ccBuilder: () => 'plain prompt',
+    });
+    expect(md).toContain('\n```\nplain prompt\n```\n');
+  });
+
+  it('widens the fence past any backtick run in the prompt (inner ``` survives)', () => {
+    const md = renderDigestMarkdown({
+      ...BASE,
+      entries: [entry('a')],
+      triaged: [triaged('a', 'green')],
+      ccBuilder: () => 'see code:\n```\nconst x = 1;\n```',
+    });
+    // Outer fence widens to 4 backticks; the embedded ``` is preserved.
+    expect(md).toContain('````\nsee code:\n```\nconst x = 1;\n```\n````');
+  });
+});
+
 describe('renderDigestMarkdown — repoContext', () => {
   const ccBuilder: CcPromptBuilder = () => 'BUILT_PROMPT';
 
