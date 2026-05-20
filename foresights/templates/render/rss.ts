@@ -16,6 +16,7 @@ import { flagsForText } from '../products/matcher';
 import type { Deps, Product, RssItem } from '../types';
 import { relTime } from '../util/date';
 import { escHtml } from '../util/escape';
+import { appendToSection } from './section';
 
 /** Trim and collapse whitespace in a description for the card snippet. */
 const snippet = (description: string, maxLen = 220): string => {
@@ -47,16 +48,8 @@ export const renderRssItems = (
   section: string,
   products: readonly Product[],
 ): void => {
-  const targetId = `${section}-body`;
-  const root = deps.document.getElementById(targetId);
-  if (!root) return;
-  if (items.length === 0) {
-    root.innerHTML =
-      '<div class="err">Feed unreachable or empty. The feed host may not allow cross-origin requests from this dashboard.</div>';
-    return;
-  }
   const trimmed = items.slice(0, 10);
-  root.innerHTML = trimmed
+  const html = trimmed
     .map((item) => {
       const matchText = `${item.title} ${item.description}`;
       const flags = flagsForText(
@@ -91,4 +84,5 @@ export const renderRssItems = (
       </div>`;
     })
     .join('');
+  appendToSection(deps, section, html, 'No recent items in this feed.');
 };
