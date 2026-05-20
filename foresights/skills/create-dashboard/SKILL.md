@@ -1,6 +1,6 @@
 ---
 name: create-dashboard
-description: Wizard that builds a live news dashboard customised to the user's product. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, stay on top of an ecosystem, set up Foresights, or wants filtered ecosystem news for their stack. Asks 5-6 questions then ships a Cowork dashboard artifact.
+description: Wizard that builds a live news dashboard customised to the user's product. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, stay on top of an ecosystem, set up Foresights, or wants filtered ecosystem news for their stack. Asks 5 questions then ships a Cowork dashboard artifact.
 ---
 
 # Create Dashboard
@@ -9,7 +9,7 @@ description: Wizard that builds a live news dashboard customised to the user's p
 
 ## What this skill does
 
-Walks the user through 5–6 questions, then generates a fully-populated Cowork dashboard artifact: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder.
+Walks the user through 5 questions, then generates a fully-populated Cowork dashboard artifact: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder.
 
 The output follows the 5-layer architecture proven in `aws-cdk-news` and `aws-serverless-news`. See `reference/analysis.md` in this repo (gitignored) for the full structural breakdown.
 
@@ -53,6 +53,8 @@ For each source:
   - `url` — full feed URL (required). Both RSS 2.0 (`<rss><channel><item>`) and Atom 1.0 (`<feed><entry>`) are supported.
   - No `args` — RSS sources render up to 10 most-recent items per section.
 - `section` — optional; explicit section ID this source feeds. If omitted, sources of the same `kind` get merged into a single auto-named section.
+
+**Validate `releases` sources before committing them.** Some repos never publish GitHub releases — rolling-release projects (Klipper is the common example) ship from `master` with no release tags, so a `releases` source on one renders a permanently-empty section. When the user assigns a repo to a `releases` source, probe it once with `list_releases` (`perPage: 1`) while confirming the source list. If it comes back empty, tell the user and offer to switch that source to `pull_requests` — recently-merged PRs are the closest proxy for a rolling-release project's activity.
 
 **CORS caveat for RSS sources:** the artifact fetches feeds directly with `window.fetch`. Most modern feed hosts (Substack, Medium, GitHub `/releases.atom`, podcast platforms) serve permissive CORS so this works. Some legacy WordPress or self-hosted feeds don't — the section renders an empty-state card and the rest of the dashboard continues to work. If the user reports a feed that doesn't load, suggest they use the GitHub `/releases.atom` mirror (if available) or a Substack equivalent.
 
@@ -112,10 +114,6 @@ If the user has zero products, skip the product-specific HTML and JS blocks enti
 ### 5. Spotlight seeds
 
 Ask for 2–3 example patterns the user thinks are cool in this domain. Minimum shape: `{tag, title, why}`. The wizard expands these to 6 full entries (with `{trick, code, summary, url}`) by sending the seeds + the fetched live data to Haiku.
-
-### 6. Cadence
-
-`daily` (rotate by day-of-year) | `weekly` (rotate by week-number) | `on-demand` (no rotation; user uses ← → keys or refresh button).
 
 ## Wizard outputs
 
@@ -370,18 +368,25 @@ Pipe stdout into `jq` (or parse with `JSON.parse`) to pick up the `artifact.name
 
 ### Creating the artifact
 
-Read the final HTML and call `mcp__cowork__create_artifact`:
+The build wrote the final HTML to the `--out` path. Call
+`mcp__cowork__create_artifact` with:
 
-```bash
-HTML=$(cat /tmp/foresights-dashboard.html)
-# Then invoke mcp__cowork__create_artifact with:
-#   - name        = artifact.name (from the orchestrator stdout)
-#   - description = artifact.description
-#   - html_code   = $HTML
-#   - mcp_tools   = [ "${ghServer}__list_releases", "${ghServer}__list_issues",
-#                     "${ghServer}__list_pull_requests", "${ghServer}__get_file_contents",
-#                     "${ghServer}__search_repositories" ]
-```
+- `id` — kebab-case slug for the artifact, conventionally `<topicSlug>-news`
+  (e.g. `rust-async-news`).
+- `html_path` — absolute path to the built HTML file (the `--out` path passed
+  to `build.ts`). The tool reads the file itself; do not inline the HTML.
+- `description` — the `artifact.description` field from the orchestrator's
+  stdout summary.
+- `mcp_tools` — only the MCP tools the dashboard actually calls at runtime.
+  Derive this from the configured sources and products — do NOT hardcode it:
+  - one `${ghServer}__list_<kind>` per distinct GitHub source `kind` in use —
+    `list_releases`, `list_issues`, and/or `list_pull_requests`;
+  - add `${ghServer}__get_file_contents` and `${ghServer}__search_repositories`
+    only when the dashboard has products (the context-refresh button uses them);
+  - RSS sources need no entry — they fetch the feed over the network, not
+    through the MCP bridge.
+  A GitHub-releases-only dashboard with no products needs just
+  `["${ghServer}__list_releases"]`.
 
 ### Pipeline guarantees
 

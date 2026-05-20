@@ -18,25 +18,24 @@
   Architecture-of-record: skills/create-dashboard/references/v0.2-architecture.md.
   Read it before changing anything substantive.
 
-  Note: every documented placeholder name below is written with a space
-  inside the braces ({{ X }}) so the substitute regex — which only matches
-  braces with no inner whitespace — doesn't expand it inside this comment.
-  Phase 10.1-bugfix lesson: the bundle was being inlined three times via
-  the COMPILED_JS reference here. Now neutralised.
+  Placeholder names are listed brace-free below on purpose: the real
+  double-brace tokens exist only at their call sites in the markup, so a
+  built artifact never carries a stray brace-shaped token from this comment.
+  Authoritative list: the PlaceholderMap interface in wizard/build-config.ts.
 
   HTML placeholders (substituted by the wizard at real call sites):
-    {{ ARTIFACT_NAME }}        Cowork artifact metadata "name"
-    {{ ARTIFACT_DESCRIPTION }} Cowork artifact metadata "description"
-    {{ TOPIC }}                Display name (title + h1)
-    {{ TAGLINE_SUFFIX }}       e.g. "what's new & worth knowing"
-    {{ TAGLINE_SUB }}          Hero subtitle one-liner
-    {{ TOPIC_SLUG }}           Kebab-case slug for IDs/localStorage keys
-    {{ ACCENT }}               Main accent hex
-    {{ ACCENT_SOFT }}          Light-tint variant hex
-    {{ GH_SERVER }}            mcp__<uuid> prefix of the user's GitHub MCP
-    {{ HEADER_SOURCES_LINKS }} Comma-separated source links in the hero meta
-    {{ FOOTER_NOTE }}          One-line footer description
-    {{ COMPILED_JS }}          The esbuild IIFE bundle of templates/*.ts
+    ARTIFACT_NAME         Cowork artifact metadata "name"
+    ARTIFACT_DESCRIPTION  Cowork artifact metadata "description"
+    TOPIC                 Display name (title + h1)
+    TAGLINE_SUFFIX        e.g. "what's new & worth knowing"
+    TAGLINE_SUB           Hero subtitle one-liner
+    TOPIC_SLUG            Kebab-case slug for IDs/localStorage keys
+    ACCENT                Main accent hex
+    ACCENT_SOFT           Light-tint variant hex
+    GH_SERVER             mcp__<uuid> prefix of the user's GitHub MCP
+    HEADER_SOURCES_LINKS  Comma-separated source links in the hero meta
+    FOOTER_NOTE           One-line footer description
+    COMPILED_JS           The esbuild IIFE bundle of templates/*.ts
 
   Markup sentinels (wizard does between-sentinel string-replace):
     RESOURCES_MARKUP                       — link list inside <section id="resources">
