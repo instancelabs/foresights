@@ -19,6 +19,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
   type WizardConfig,
+  genForesightsConfigJson,
   genHighlightsMarkup,
   genPatternsMarkup,
   genResourcesMarkup,
@@ -26,27 +27,54 @@ import {
 } from './build-config';
 import { substituteSentinels } from './substitute';
 
+/** Opening tag of the artifact's embedded build-config block. */
+const CONFIG_BLOCK_OPEN = '<script type="application/json" id="foresights-config">';
+
+/**
+ * Rewrite the embedded `foresights-config` block so it matches the
+ * refreshed config.
+ *
+ * Without this, a splice would leave the artifact internally inconsistent:
+ * the visible cards updated, but the embedded snapshot still describing the
+ * old build — which the next refresh would then recover and treat as the
+ * "previous content" reference. Pre-v0.5.0 artifacts have no such block and
+ * are returned unchanged.
+ */
+const reembedConfig = (html: string, config: WizardConfig): string => {
+  const start = html.indexOf(CONFIG_BLOCK_OPEN);
+  if (start < 0) return html;
+  const bodyStart = start + CONFIG_BLOCK_OPEN.length;
+  const bodyEnd = html.indexOf('</script>', bodyStart);
+  if (bodyEnd < 0) return html;
+  return `${html.slice(0, bodyStart)}\n${genForesightsConfigJson(config)}\n${html.slice(bodyEnd)}`;
+};
+
 /**
  * Splice freshly-curated content into an already-built dashboard artifact.
  *
  * Pure function: given the current artifact HTML and a `WizardConfig` whose
  * `highlights` / `patterns` / `tips` / `resources` arrays hold the fresh
- * content, returns the updated HTML. Only those four sections change; the
- * sentinel comment markers themselves are preserved, so the result can be
- * spliced again on the next refresh.
+ * content, returns the updated HTML. Two things change — the four curated
+ * markup sections, and the embedded `foresights-config` block (kept in sync
+ * so the artifact stays self-describing for the next refresh). The sentinel
+ * markers and everything else — compiled bundle, spotlights, product
+ * machinery — are preserved byte-for-byte, so the result can be spliced
+ * again on the next refresh.
  *
  * Each generator reads exactly one config array — but passing the whole
- * recovered config keeps the call honest and avoids a partial-object cast.
- * A sentinel missing from the artifact is left unchanged (non-strict
- * substitution), so this is safe to run against older dashboards too.
+ * recovered config keeps the call honest and feeds the re-embedded block.
+ * A sentinel (or the config block) missing from the artifact is left
+ * unchanged, so this is safe to run against pre-v0.5.0 dashboards too.
  */
-export const spliceRefresh = (artifactHtml: string, config: WizardConfig): string =>
-  substituteSentinels(artifactHtml, {
+export const spliceRefresh = (artifactHtml: string, config: WizardConfig): string => {
+  const withSections = substituteSentinels(artifactHtml, {
     HIGHLIGHTS_MARKUP: genHighlightsMarkup(config),
     PATTERNS_MARKUP: genPatternsMarkup(config),
     TIPS_MARKUP: genTipsMarkup(config),
     RESOURCES_MARKUP: genResourcesMarkup(config),
   });
+  return reembedConfig(withSections, config);
+};
 
 // ---------------------------------------------------------------------------
 // CLI entry point

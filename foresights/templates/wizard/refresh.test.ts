@@ -73,3 +73,21 @@ describe('spliceRefresh', () => {
     expect(spliceRefresh(plain, config())).toBe(plain);
   });
 });
+
+describe('spliceRefresh — embedded foresights-config block', () => {
+  const CONFIG_OPEN = '<script type="application/json" id="foresights-config">';
+
+  it('rewrites the embedded config block to match the refreshed config', () => {
+    const withBlock = `${CONFIG_OPEN}\n${JSON.stringify(config())}\n</script>\n${ART}`;
+    const fresh = config({
+      highlights: [{ tag: 'T', title: 'fresh one', body: 'b', url: 'https://github.com/a/b' }],
+    });
+    const out = spliceRefresh(withBlock, fresh);
+    const body = out.slice(out.indexOf(CONFIG_OPEN) + CONFIG_OPEN.length, out.indexOf('</script>'));
+    expect(JSON.parse(body)).toEqual(fresh);
+  });
+
+  it('does not invent a config block when the artifact has none', () => {
+    expect(spliceRefresh(ART, config())).not.toContain('id="foresights-config"');
+  });
+});

@@ -102,8 +102,10 @@ fresh curation is grounded in.
    ```
 
    (`refresh.ts` reuses the same markup generators as the build, so the
-   spliced cards are shape-identical to a freshly-built dashboard. It only
-   reads the four array fields; the rest of the config is along for the ride.)
+   spliced cards are shape-identical to a freshly-built dashboard. It also
+   rewrites the embedded `foresights-config` block from the config you pass,
+   so the artifact stays self-describing and the next refresh recovers
+   accurate "previous content" — pass the whole updated config.)
    If `node_modules/` is missing, run `npm install` in that directory once
    first — same as `/create-dashboard`.
 
