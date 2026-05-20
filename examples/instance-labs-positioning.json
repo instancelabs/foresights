@@ -1,0 +1,130 @@
+{
+  "topic": "Instance Labs positioning",
+  "topicSlug": "instance-labs-positioning",
+  "taglineSuffix": "what affects how we ship + position",
+  "taglineSub": "AWS CDK shifts + industry signal — filtered for CDK Insights and Last Command.",
+  "accent": "#5c3bbb",
+  "accentSoft": "#efeaff",
+  "footerNote": "Mixed GitHub + RSS · refreshes each time you open this dashboard.",
+  "artifactName": "Instance Labs Positioning",
+  "artifactDescription": "Cross-source dashboard tracking AWS CDK ecosystem activity and broader cloud / dev-tool industry signal — flagged for CDK Insights and Last Command relevance.",
+  "ghServer": "mcp__51f2aac5-a1c6-479c-93f7-e6e690171545",
+  "headerSourcesLinks": "<a href=\"https://github.com/aws/aws-cdk\" target=\"_blank\" rel=\"noopener\">aws-cdk</a> · <a href=\"https://github.com/aws/aws-cdk-rfcs\" target=\"_blank\" rel=\"noopener\">aws-cdk-rfcs</a> · <a href=\"https://stratechery.com\" target=\"_blank\" rel=\"noopener\">Stratechery</a> · <a href=\"https://newsletter.pragmaticengineer.com\" target=\"_blank\" rel=\"noopener\">Pragmatic Engineer</a> · <a href=\"https://aws.amazon.com/blogs/aws/\" target=\"_blank\" rel=\"noopener\">AWS News Blog</a>",
+  "sources": [
+    {
+      "id": "cdk-core",
+      "label": "aws/aws-cdk",
+      "owner": "aws",
+      "repo": "aws-cdk",
+      "kind": "releases",
+      "section": "releases",
+      "perPage": 5
+    },
+    {
+      "id": "cdk-rfcs",
+      "label": "aws/aws-cdk-rfcs",
+      "owner": "aws",
+      "repo": "aws-cdk-rfcs",
+      "kind": "issues",
+      "section": "rfcs",
+      "perPage": 8,
+      "state": "OPEN",
+      "orderBy": "UPDATED_AT",
+      "direction": "DESC"
+    },
+    {
+      "id": "cdk-prs",
+      "label": "aws/aws-cdk (merged PRs)",
+      "owner": "aws",
+      "repo": "aws-cdk",
+      "kind": "pull_requests",
+      "section": "prs",
+      "perPage": 30,
+      "state": "closed",
+      "sort": "updated",
+      "direction": "desc"
+    },
+    {
+      "id": "stratechery",
+      "label": "Stratechery",
+      "kind": "rss",
+      "url": "https://stratechery.com/feed/",
+      "section": "industry"
+    },
+    {
+      "id": "pragmatic-engineer",
+      "label": "Pragmatic Engineer",
+      "kind": "rss",
+      "url": "https://newsletter.pragmaticengineer.com/feed",
+      "section": "industry"
+    },
+    {
+      "id": "aws-blog",
+      "label": "AWS News Blog",
+      "kind": "rss",
+      "url": "https://aws.amazon.com/blogs/aws/feed/",
+      "section": "industry"
+    }
+  ],
+  "products": [
+    {
+      "id": "cdki",
+      "label": "CDK Insights",
+      "cssMod": "cdki",
+      "badgeColor": "#0a6f7d",
+      "badgeColorSoft": "#e6f6f8",
+      "badgeBorderColor": "#88cdd6",
+      "systemPrompt": "You generate briefs for CDK Insights, an AI-powered static analysis CLI for AWS CDK stacks. CDK Insights has 100+ custom rules across 27 AWS services, integrates cdk-nag, uses AWS Bedrock for the Pro AI tier, and walks the construct tree + manifest trace to attribute findings back to user source. When briefing, focus on: (1) why this change affects CDK Insights' rule surface or static analysis logic, (2) which specific src paths or peer deps need updating, (3) whether new CDK constructs require new rules. Output JSON: { why: string, integrations: [{title, detail}] }",
+      "rules": [
+        { "source": "construct(s|-tree)?\\b", "flags": "i", "reason": "Construct-tree / manifest traversal is how findings get attributed back to user source — CDK Insights' core analysis path." },
+        { "source": "cdk-nag|cdk_nag", "flags": "i", "reason": "cdk-nag is a hard peer dependency; rule additions or breaking changes ripple into CDK Insights." },
+        { "source": "manifest|trace|cloud assembly|cloud-assembly", "flags": "i", "reason": "Cloud assembly + manifest changes affect how CDK Insights ingests synthesized stacks." },
+        { "source": "\\bSARIF|GitHub Code Scanning", "flags": "i", "reason": "SARIF output is the CI/CD upload format CDK Insights emits via cdk-insights-action." },
+        { "source": "\\bbedrock(agentcore)?\\b", "flags": "i", "reason": "Pro AI tier uses Bedrock; new model surfaces, pricing changes, or AgentCore evolution affect the Pro pipeline." },
+        { "source": "PromQL|promql", "flags": "i", "reason": "PromQL alarm L2 changes the CloudWatch construct surface — new rule opportunity for cdki." },
+        { "source": "\\bs3\\b|\\biam\\b|\\blambda\\b|\\brds\\b|\\bdynamodb\\b|\\bsqs\\b|\\bsns\\b|cloudfront|ecs|fargate|api.?gateway|cognito|\\bkms\\b|secrets.?manager|step.?functions|cloudtrail|eventbridge|\\bwaf\\b|cloudwatch|route53|elasticache|\\becr\\b|opensearch|\\bvpc\\b|\\beks\\b|appsync", "flags": "i", "reason": "Service-rule surface — any change to these services may require new CDK Insights rules." },
+        { "source": "L1 (resource|CloudFormation)|update L1", "flags": "i", "reason": "L1 schema regen affects every CDK Insights rule that traverses raw CFN properties." },
+        { "source": "weak (cross|reference)|cross-stack|cross-region|Fn::GetStackOutput", "flags": "i", "reason": "Cross-stack reference changes affect how CDK Insights resolves construct identities across the synth boundary." },
+        { "source": "^BREAKING\\b|breaking change", "flags": "i", "reason": "Breaking changes to aws-cdk-lib often require updates to construct-tree traversal." },
+        { "source": "static analysis|linter|linting|code scanning|IaC security", "flags": "i", "reason": "Industry signal — competitive/adjacent IaC analysis tools. Worth tracking." },
+        { "source": "AI (coding|review|assistant|agent|copilot)|coding (agent|assistant|copilot)|claude (code|coding)|cursor|windsurf|codex", "flags": "i", "reason": "AI coding tools market — adjacent space to CDK Insights' Pro tier. Pricing or capability shifts move the goalposts." }
+      ],
+      "contextRefresh": {
+        "repoOwner": "instancelabs",
+        "repoName": "cdk-insights",
+        "paths": ["CLAUDE.md", "README.md", "src/rules"]
+      }
+    },
+    {
+      "id": "lc",
+      "label": "Last Command",
+      "cssMod": "lc",
+      "badgeColor": "#c43c8e",
+      "badgeColorSoft": "#fce7f3",
+      "badgeBorderColor": "#f0a3d0",
+      "systemPrompt": "You generate briefs for Last Command, a multi-tenant SaaS for Last War: Survival mobile-game alliances. Stack: Next.js 15 on Amplify Hosting, ~7 microservices (Lambda + API Gateway + DynamoDB + EventBridge + Cognito + AppSync + Stripe), eu-west-2. When briefing, focus on: (1) which specific microservice surface the change touches, (2) whether new CDK constructs simplify the Last Command IaC, (3) any pricing / capability shift in the AWS services Last Command depends on. Output JSON: { why: string, integrations: [{title, detail}] }",
+      "rules": [
+        { "source": "amplify|Next\\.js|nextjs|next-15|app router", "flags": "i", "reason": "Last Command's web tier is Next.js 15 on Amplify Hosting — any Amplify or Next changes hit the deploy/runtime surface directly." },
+        { "source": "appsync|graphql|subscriptions", "flags": "i", "reason": "AppSync is the realtime sync layer for alliance state — schema or pricing shifts ripple through Last Command." },
+        { "source": "cognito|user pool|identity", "flags": "i", "reason": "Cognito handles alliance member auth — feature changes (passkeys, MFA, social login) are roadmap-relevant." },
+        { "source": "dynamodb|DynamoDB|on-demand|provisioned", "flags": "i", "reason": "DynamoDB is the per-alliance datastore — pricing, throughput, or capability changes affect every alliance Last Command serves." },
+        { "source": "eventbridge|event bus|scheduled (rule|event)", "flags": "i", "reason": "EventBridge drives the per-alliance scheduled tasks (raid timers, season rollovers). New routing or scheduler features matter." },
+        { "source": "stripe|subscription billing|metered billing", "flags": "i", "reason": "Stripe handles alliance subscriptions — billing model changes affect the Last Command monetisation." },
+        { "source": "api gateway|api-gateway|websocket api|http api", "flags": "i", "reason": "API Gateway fronts the ~7 microservices — feature changes (WebSocket throughput, JWT auth) affect realtime alliance state." },
+        { "source": "lambda (snap|cold ?start|response streaming|web adapter)|provisioned concurrency|SnapStart", "flags": "i", "reason": "Lambda cold-start / SnapStart / response-streaming directly affects Last Command's per-request latency." },
+        { "source": "mobile game|gaming|free-to-play|gacha|battle pass", "flags": "i", "reason": "Industry signal — mobile game economy / engagement shifts affect alliance retention." },
+        { "source": "multi-tenant|tenant isolation|per-tenant", "flags": "i", "reason": "Multi-tenancy patterns directly inform the Last Command architecture." }
+      ],
+      "contextRefresh": {
+        "repoOwner": "instancelabs",
+        "repoName": "lc-web",
+        "paths": ["CLAUDE.md", "README.md"]
+      }
+    }
+  ],
+  "spotlights": [],
+  "highlights": [],
+  "patterns": [],
+  "tips": [],
+  "resources": []
+}
