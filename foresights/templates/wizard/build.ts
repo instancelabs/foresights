@@ -97,11 +97,22 @@ const stageTemplates = async (templatesDir: string): Promise<string> => {
   // staged toolchain's `npx biome/tsc/esbuild` calls resolve against the
   // host's installed deps. dist/ stays excluded entirely — esbuild emits a
   // fresh dist/ in the staged dir.
+  //
+  // Gitignored scratch/build cruft is excluded too — `_smoke.mjs`, vitest
+  // `*.timestamp-*.mjs` scratch files, `coverage/`, and `*.tsbuildinfo`.
+  // Staging them would copy them into the work dir where `biome check` and
+  // `tsc` would see them; harmless today, but a latent way for a stray
+  // scratch file to fail a wizard build for every user. These are the same
+  // patterns scripts/build-plugin.sh drops from the packaged plugin.
   await cp(templatesDir, work, {
     recursive: true,
     filter: (src) => {
       if (src.includes(`${templatesDir}/node_modules`)) return false;
       if (src.includes(`${templatesDir}/dist`)) return false;
+      if (src.includes(`${templatesDir}/coverage`)) return false;
+      if (src.endsWith('/_smoke.mjs')) return false;
+      if (src.endsWith('.tsbuildinfo')) return false;
+      if (/\.timestamp-.*\.mjs$/.test(src)) return false;
       return true;
     },
   });
