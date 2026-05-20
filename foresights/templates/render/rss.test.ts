@@ -38,11 +38,12 @@ describe('renderRssItems', () => {
     expect(root?.querySelectorAll('.pr-item').length).toBe(10);
   });
 
-  it('renders an empty-state message when items is empty', () => {
+  it('renders an empty-state placeholder when items is empty', () => {
     const deps = buildDeps();
     renderRssItems(deps, [], 'updates', []);
     const root = deps.document.getElementById('updates-body');
-    expect(root?.innerHTML).toContain('Feed unreachable or empty');
+    expect(root?.innerHTML).toContain('No recent items in this feed');
+    expect(root?.innerHTML).toContain('section-empty');
   });
 
   it('does nothing when the target container is missing', () => {
