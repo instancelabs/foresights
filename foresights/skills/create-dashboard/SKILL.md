@@ -1,15 +1,15 @@
 ---
 name: create-dashboard
-description: Wizard that builds a live, product-customised news dashboard. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, or set up Foresights — and also whenever they describe wanting to keep up with, stay on top of, stay current on, follow what's new in, or stop falling behind on a technology, library, framework, tool, or ecosystem. Asks 5 questions, then ships a Cowork dashboard artifact.
+description: Wizard that builds a live, product-customised news dashboard. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, or set up Foresights — and also whenever they describe wanting to keep up with, stay on top of, stay current on, follow what's new in, or stop falling behind on a technology, library, framework, tool, or ecosystem. Asks 6 questions, then ships a Cowork dashboard artifact.
 ---
 
 # Create Dashboard
 
-> **Status:** v0.6.0 (Phase 10.5 landed) — pluggable per-product action types (`claude-code` default, `summary`, `task`) ship alongside the RSS / Atom source kind and the three GitHub kinds. Every existing dashboard keeps working byte-for-byte identically; new action types and source kinds slot in additively. See `Implementation status` below.
+> **Status:** v0.7.0 (Phase 10.6 landed) — selectable spotlight cadence (`daily` default, `weekly`, `on-demand`) joins the pluggable per-product action types (`claude-code` default, `summary`, `task`) and the RSS / Atom + three GitHub source kinds. Every existing dashboard keeps working byte-for-byte identically; new options slot in additively. See `Implementation status` below.
 
 ## What this skill does
 
-Walks the user through 5 questions, then generates a fully-populated Cowork dashboard artifact: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder.
+Walks the user through 6 questions, then generates a fully-populated Cowork dashboard artifact: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder.
 
 The output follows the 5-layer architecture proven in `aws-cdk-news` and `aws-serverless-news`. See `reference/analysis.md` in this repo (gitignored) for the full structural breakdown.
 
@@ -122,6 +122,16 @@ If the user has zero products, skip the product-specific HTML and JS blocks enti
 ### 5. Spotlight seeds
 
 Ask for 2–3 example patterns the user thinks are cool in this domain. Minimum shape: `{tag, title, why}`. The wizard expands these to 6 full entries (with `{trick, code, summary, url}`) by sending the seeds + the fetched live data to Haiku.
+
+### 6. Cadence
+
+Ask how the spotlight card should rotate:
+
+- `daily` *(default)* — a different spotlight each day, by day-of-year. The proven behaviour.
+- `weekly` — one spotlight per week, by week-of-year; steadier for a slower-moving topic.
+- `on-demand` — never auto-rotates; the spotlight stays where the user last left it via the ‹ › controls.
+
+Set `cadence` on the `WizardConfig` only when the user picks `weekly` or `on-demand` — omit it for `daily` so a daily dashboard's build output stays byte-identical to pre-cadence dashboards. In all three cases the user can still page through every spotlight manually with the ‹ › buttons and ←/→ keys; cadence only changes the *automatic* rotation.
 
 ## Wizard outputs
 
@@ -263,6 +273,10 @@ The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUC
 
 ## Implementation status
 
+### v0.7.0 — selectable spotlight cadence (Phase 10.6)
+
+Strictly additive. `WizardConfig` gains an optional `cadence` — `'daily'` (the default), `'weekly'`, or `'on-demand'`. The spotlight carousel's auto-rotation branches on it: `daily` rotates by day-of-year (the proven behaviour), `weekly` by week-of-year, `on-demand` never auto-rotates and starts at the first spotlight. The persisted index is keyed by the cadence's rotation period, so a user's manual choice sticks until that period rolls over (`on-demand` never rolls over). `genLoadBody` emits the `cadence` option into the `initSpotlight(...)` call only for non-daily dashboards, so a daily build's `LOAD_BODY` is byte-identical to pre-cadence output. Re-adds the wizard's cadence question (F2 removed it because nothing read the answer; now `WizardConfig.cadence` does).
+
 ### v0.6.0 — pluggable action types (Phase 10.5)
 
 Strictly additive. A `WizardProduct` can declare an `actionType` — `'claude-code'` (the default), `'summary'`, or `'task'`. The brief panel and the upgrade digest produce the matching artifact: `claude-code` keeps the Plan/Implement Claude Code prompt verbatim; `summary` emits plain prose; `task` emits a tracker-ready checklist. Briefs themselves are unchanged — every action type consumes the same Haiku-generated brief. A product with no `actionType` (every pre-Phase-10.5 dashboard) runs the existing claude-code code path unchanged. `summary` / `task` products carry no per-product builder — their action is built generically by the `ACTION_TYPES` registry in `templates/products/actions.ts`; only `claude-code` products need repo-nav extraction at wizard time. `/setup-cc` is Claude-Code-specific — suggest it only for dashboards with a `claude-code` product.
@@ -340,6 +354,7 @@ The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wi
 - `headerSourcesLinks` — pre-rendered HTML for the source links in the hero.
 - `sources: WizardSource[]` — mix of github coordinates (kind: releases | issues | pull_requests + owner/repo) and rss feeds (kind: rss + url). Optional section + args. For rss sources the wizard also fills `items` — the feed's parsed entries, baked into the dashboard at build time.
 - `spotlights: WizardSpotlight[]` — 6 entries; the spotlight generator's output.
+- `cadence?: Cadence` — optional spotlight rotation cadence (`'daily'` default, `'weekly'`, `'on-demand'`). Omit for `'daily'`.
 - `products: WizardProduct[]` — 0-N products (empty = no flagging machinery emitted). Each `WizardProduct` carries an optional `actionType` (`'claude-code'` default, `'summary'`, or `'task'`); omit it for `'claude-code'`. `ccPromptBody` + `contextRefresh` apply to `'claude-code'` products only.
 - `highlights: WizardHighlightCard[]` — 6 entries; output of the highlights Haiku batch. Empty array → "get started" placeholder card. Shape: `{tag, title, body, url, cta?}`.
 - `patterns: WizardPatternCard[]` — 6 entries; community / pattern cards. Same shape as `highlights`.
