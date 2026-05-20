@@ -18,8 +18,18 @@
  */
 
 import { TOPIC_SLUG } from './config';
+import { initDigestPanel } from './digest/panel';
+import { initDigestBar } from './digest/wire-bar';
 import { callTool } from './mcp/call-tool';
 import { fetchRss } from './mcp/fetch-rss';
+import { initBriefAllBar } from './products/brief-all';
+import { CC_PROMPT_BUILDERS } from './products/cc-prompts';
+import { PRODUCTS } from './products/config';
+import { initContextRefreshBar } from './products/context-refresh';
+import { CONTEXT_REFRESHERS } from './products/context-refresh-config';
+import { effectiveFingerprint } from './products/context-store';
+import { initBriefPanel } from './products/panel';
+import { PROMPTS } from './products/prompts';
 import { renderError } from './render/error';
 import { renderRfcs } from './render/issues';
 import { renderPrs } from './render/prs';
@@ -41,6 +51,16 @@ const _LOAD_BODY_IMPORTS_HOLD: ReadonlyArray<unknown> = [
   renderPrs,
   renderReleases,
   renderRssItems,
+  initBriefPanel,
+  initBriefAllBar,
+  initContextRefreshBar,
+  CONTEXT_REFRESHERS,
+  effectiveFingerprint,
+  initDigestBar,
+  initDigestPanel,
+  PRODUCTS,
+  PROMPTS,
+  CC_PROMPT_BUILDERS,
   null as unknown as Issue,
   null as unknown as PullRequest,
   null as unknown as Release,
