@@ -260,11 +260,12 @@ describe('genLoadBody', () => {
     expect(genLoadBody([], [], 'mcp__github')).toContain('await Promise.resolve()');
   });
 
-  it('emits one try/catch per source', () => {
+  it('emits one try/catch per source (plus 1 for the spotlight init)', () => {
     const sources = [source({ id: 's1' }), source({ id: 's2', kind: 'issues', section: 'rfcs' })];
     const out = genLoadBody(sources, [], 'mcp__github');
     const tryCount = (out.match(/try \{/g) ?? []).length;
-    expect(tryCount).toBe(2);
+    // 1 init try (initSpotlight) + 2 source tries = 3.
+    expect(tryCount).toBe(3);
   });
 
   it('routes each kind to the matching renderer', () => {
@@ -313,7 +314,7 @@ describe('genLoadBody', () => {
       'mcp__github',
     );
     expect(out).toContain('fetchRss(deps, "https://example.substack.com/feed")');
-    expect(out).toContain('renderRssItems(deps, items, "updates", [])');
+    expect(out).toContain('renderRssItems(deps, items, "updates", productsArr)');
     // No GitHub tool name for rss sources.
     expect(out).not.toContain('mcp__github__list_rss');
   });
@@ -334,9 +335,68 @@ describe('genLoadBody', () => {
       'mcp__github',
     );
     const tryCount = (out.match(/try \{/g) ?? []).length;
-    expect(tryCount).toBe(2);
+    // 1 init try (initSpotlight) + 2 source tries (github + rss) = 3.
+    expect(tryCount).toBe(3);
     expect(out).toContain('callTool(deps');
     expect(out).toContain('fetchRss(deps');
+  });
+
+  it('always declares productsArr from PRODUCTS and passes it to every renderer', () => {
+    const out = genLoadBody(
+      [
+        source({ id: 'gh', section: 'releases' }),
+        {
+          id: 'rss',
+          label: 'Feed',
+          kind: 'rss',
+          url: 'https://example.com/feed',
+          section: 'updates',
+        },
+      ],
+      [],
+      'mcp__github',
+    );
+    expect(out).toContain('const productsArr = Object.values(PRODUCTS)');
+    // Renderers receive productsArr, NOT [] anymore.
+    expect(out).toContain(
+      'renderReleases(deps, raw as readonly Release[], "releases", productsArr)',
+    );
+    expect(out).toContain('renderRssItems(deps, items, "updates", productsArr)');
+    expect(out).not.toMatch(/renderReleases\([^)]*\[\]\)/);
+    expect(out).not.toMatch(/renderRssItems\([^)]*\[\]\)/);
+  });
+
+  it('passes productsArr to initSpotlight (was [] in v0.2.x)', () => {
+    const out = genLoadBody([source()], [], 'mcp__github');
+    expect(out).toContain(
+      'initSpotlight(deps, { spotlights: SPOTLIGHTS, topicSlug: TOPIC_SLUG, products: productsArr }',
+    );
+  });
+
+  it('mounts initBriefPanel + initDigestPanel when products.length > 0', () => {
+    const out = genLoadBody(
+      [source()],
+      [
+        product({
+          id: 'cdki',
+          systemPrompt: 'sp',
+          rules: [{ source: 'cdk', reason: 'cdk' }],
+        }),
+      ],
+      'mcp__github',
+    );
+    expect(out).toContain('initBriefPanel(deps');
+    expect(out).toContain('products: productsArr');
+    expect(out).toContain('prompts: PROMPTS');
+    expect(out).toContain('ccBuilders: CC_PROMPT_BUILDERS');
+    expect(out).toContain('topicSlug: TOPIC_SLUG');
+    expect(out).toContain('initDigestPanel(deps)');
+  });
+
+  it('omits initBriefPanel + initDigestPanel when products is empty', () => {
+    const out = genLoadBody([source()], [], 'mcp__github');
+    expect(out).not.toContain('initBriefPanel(');
+    expect(out).not.toContain('initDigestPanel(');
   });
 });
 
