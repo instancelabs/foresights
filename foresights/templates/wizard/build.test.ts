@@ -145,6 +145,26 @@ describe('build (skipPreflight) — end-to-end substitution + injection', () => 
     expect(html).not.toContain('{{COMPILED_JS}}');
   });
 
+  it('embeds the foresights-config block recoverable by /refresh-dashboard', async () => {
+    const outFile = resolve(TEST_OUT_PREFIX, 'dashboard.html');
+    await build({
+      config: minimalConfig,
+      templatesDir: TEMPLATES_DIR,
+      outFile,
+      skipPreflight: true,
+    });
+    const { readFile } = await import('node:fs/promises');
+    const html = await readFile(outFile, 'utf8');
+    expect(html).not.toContain('{{FORESIGHTS_CONFIG_JSON}}');
+    const open = '<script type="application/json" id="foresights-config">';
+    const start = html.indexOf(open);
+    expect(start).toBeGreaterThan(-1);
+    const after = html.slice(start + open.length);
+    const parsed = JSON.parse(after.slice(0, after.indexOf('</script>'))) as WizardConfig;
+    expect(parsed.topic).toBe('AWS CDK');
+    expect(parsed.sources[0]?.repo).toBe('aws-cdk');
+  });
+
   it('leaves the original templates/ directory untouched', async () => {
     const { readFile } = await import('node:fs/promises');
     const beforeSources = await readFile(resolve(TEMPLATES_DIR, 'sources.ts'), 'utf8');

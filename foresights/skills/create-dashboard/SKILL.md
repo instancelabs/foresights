@@ -166,6 +166,7 @@ Placeholders in `templates/dashboard.html`:
 | `{{GH_SERVER}}` | `mcp__<uuid>` prefix; detect from the user's available tools by pattern-matching `__list_releases` |
 | `{{HEADER_SOURCES_LINKS}}` | Comma-separated `<a>` tags pointing at the configured sources |
 | `{{FOOTER_NOTE}}` | One-line footer description |
+| `{{FORESIGHTS_CONFIG_JSON}}` | Auto-injected by the build — the full `WizardConfig` serialised into the `<script type="application/json" id="foresights-config">` block. Not a wizard input: `genForesightsConfigJson` derives it so `/refresh-dashboard` can recover topic + sources + products losslessly. |
 
 The 12 complex content blocks (see `Block generators (v0.2 sentinels)` below) are wrapped with `<!-- FORESIGHTS_START:NAME --> ... <!-- FORESIGHTS_END:NAME -->` sentinels. The wizard string-replaces between each sentinel pair with the output of the matching generator.
 
@@ -255,6 +256,18 @@ The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUC
 **Critical:** the `code` field uses backslash-escaped single quotes (`<span class="s">\'github.com/...\'</span>`) because each line is a JS string literal. The generator must escape `'` inside string-class spans before emitting.
 
 ## Implementation status
+
+### v0.5 — embedded config block (refresh enablement)
+
+Strictly additive. The build now injects a `<script type="application/json"
+id="foresights-config">` block carrying the full `WizardConfig` (see
+`genForesightsConfigJson` in `wizard/build-config.ts`, placeholder
+`{{FORESIGHTS_CONFIG_JSON}}`). The block is inert — it doesn't execute or
+render — and dashboards built before this change are unaffected. It exists
+so the `/refresh-dashboard` skill can recover the exact build inputs
+(topic, sources, products, branding) losslessly instead of scraping
+rendered HTML. `<` characters are escaped inside the JSON so the payload
+can't break out of the surrounding `<script>` element.
 
 ### v0.3 — RSS source kind (Phase 10.1)
 
