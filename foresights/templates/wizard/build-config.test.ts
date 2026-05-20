@@ -6,6 +6,7 @@ import {
   derivePlaceholderMap,
   deriveSentinelMap,
   genCcBuilders,
+  genForesightsConfigJson,
   genHighlightsMarkup,
   genLoadBody,
   genPatternsMarkup,
@@ -675,6 +676,23 @@ describe('genProductUiBars', () => {
   });
 });
 
+describe('genForesightsConfigJson', () => {
+  it('round-trips the full config through JSON.parse', () => {
+    const c = config({ products: [product()] });
+    expect(JSON.parse(genForesightsConfigJson(c))).toEqual(c);
+  });
+
+  it('escapes < so the payload cannot break out of the <script> element', () => {
+    const json = genForesightsConfigJson(
+      config({ artifactDescription: 'A </script> here must stay inert.' }),
+    );
+    expect(json).not.toContain('<');
+    expect((JSON.parse(json) as WizardConfig).artifactDescription).toBe(
+      'A </script> here must stay inert.',
+    );
+  });
+});
+
 describe('deriveSentinelMap', () => {
   it('covers every sentinel the dashboard template references', () => {
     const map = deriveSentinelMap(config());
@@ -719,6 +737,7 @@ describe('derivePlaceholderMap', () => {
       'GH_SERVER',
       'HEADER_SOURCES_LINKS',
       'COMPILED_JS',
+      'FORESIGHTS_CONFIG_JSON',
     ];
     for (const name of expected) {
       expect(map).toHaveProperty(name);

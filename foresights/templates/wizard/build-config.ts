@@ -785,6 +785,28 @@ ${digestBtns}
 };
 
 // ---------------------------------------------------------------------------
+// Config-embed generator
+// ---------------------------------------------------------------------------
+
+/**
+ * Serialise the full `WizardConfig` for the artifact's
+ * `<script type="application/json" id="foresights-config">` block.
+ *
+ * `/refresh-dashboard` reads this block to recover the exact inputs that
+ * built the dashboard — topic, sources, products, branding — so a refresh
+ * is lossless rather than scraped from rendered HTML. The whole config is
+ * embedded (not a hand-picked subset) so the snapshot stays faithful and
+ * the generator never drifts from the `WizardConfig` interface.
+ *
+ * `<` is escaped to its `\\u003c` JSON unicode escape so the payload
+ * cannot break out of the surrounding `<script>` element — a value
+ * containing `</script>` would otherwise close the tag early. The result
+ * stays valid JSON: `\\u003c` decodes back to `<` under `JSON.parse`.
+ */
+export const genForesightsConfigJson = (config: WizardConfig): string =>
+  JSON.stringify(config).replace(/</g, '\\u003c');
+
+// ---------------------------------------------------------------------------
 // Composite maps
 // ---------------------------------------------------------------------------
 
@@ -832,6 +854,7 @@ export interface PlaceholderMap {
   readonly GH_SERVER: string;
   readonly HEADER_SOURCES_LINKS: string;
   readonly COMPILED_JS: string;
+  readonly FORESIGHTS_CONFIG_JSON: string;
 }
 
 /** Build the full sentinel-content map from a wizard config. */
@@ -874,4 +897,5 @@ export const derivePlaceholderMap = (config: WizardConfig, compiledJs: string): 
   GH_SERVER: config.ghServer,
   HEADER_SOURCES_LINKS: config.headerSourcesLinks,
   COMPILED_JS: compiledJs,
+  FORESIGHTS_CONFIG_JSON: genForesightsConfigJson(config),
 });
