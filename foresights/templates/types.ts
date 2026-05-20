@@ -117,6 +117,12 @@ export interface Product {
   readonly cssMod: string;
   /** Match a text against this product's rules. Returns reason or null. */
   readonly match: (text: string) => string | null;
+  /**
+   * Which action a flagged item offers for this product. Absent → treated
+   * as `'claude-code'`, so a Product literal emitted before this field
+   * existed (every pre-Phase-10.5 dashboard) behaves exactly as before.
+   */
+  readonly actionType?: ActionTypeId;
 }
 
 export interface FlagMeta {
@@ -183,6 +189,66 @@ export interface BuildCcPromptArgs {
   readonly brief: Brief;
   readonly meta: FlagMeta;
   readonly mode: CcPromptMode;
+}
+
+// ---------------------------------------------------------------------------
+// Action types — the pluggable per-product action (Phase 10.5).
+//
+// Today every flagged item's action is "generate a Claude Code prompt". A
+// product can instead declare an `actionType`; the brief panel + digest then
+// produce the matching artifact. `claude-code` is the default — a product
+// with no `actionType` runs the existing code path verbatim.
+// ---------------------------------------------------------------------------
+
+/**
+ * The action a flagged item offers. `claude-code` (the default) produces a
+ * Claude Code handoff prompt; `summary` produces plain prose; `task`
+ * produces a tracker-ready checklist item.
+ */
+export type ActionTypeId = 'claude-code' | 'summary' | 'task';
+
+/** Copy-button formats a brief panel can offer. */
+export type ActionCopyFormat = 'prompt' | 'task';
+
+/**
+ * Args for an action builder. Generalises `BuildCcPromptArgs` — `mode` is
+ * optional and read only by `claude-code`.
+ */
+export interface BuildActionArgs {
+  readonly brief: Brief;
+  readonly meta: FlagMeta;
+  readonly mode?: CcPromptMode;
+}
+
+/**
+ * Describes one action type. The `ACTION_TYPES` registry (products/actions.ts)
+ * holds one spec per id; the brief panel + digest read these to render the
+ * right button label, controls, and per-item embed.
+ *
+ * Note: the `claude-code` spec's `build`/`digestEmbed` are a generic fallback
+ * only. The panel and digest special-case `claude-code` to the per-product
+ * `CC_PROMPT_BUILDERS` path (with repo context + mode), so the registry's own
+ * claude-code builders are never reached on that path — they exist for
+ * registry uniformity and so every spec has a working builder.
+ */
+export interface ActionTypeSpec {
+  readonly id: ActionTypeId;
+  /** Brief-panel button text — e.g. "Generate Claude Code prompt". */
+  readonly actionLabel: string;
+  /** Button text while the panel is open — e.g. "Hide prompt". */
+  readonly hideLabel: string;
+  /** `<strong>` heading inside the open panel — e.g. "Claude Code prompt". */
+  readonly panelTitle: string;
+  /** Does it have the Plan / Plan+Implement toggle? (`claude-code` only.) */
+  readonly hasMode: boolean;
+  /** Does the refreshed repo-context block apply? (`claude-code` only.) */
+  readonly usesRepoContext: boolean;
+  /** Which copy buttons to render. */
+  readonly copyFormats: readonly ActionCopyFormat[];
+  /** Produce the artifact text from a brief. */
+  readonly build: (args: BuildActionArgs) => string;
+  /** Produce the per-item embed body for a digest detail block. */
+  readonly digestEmbed: (args: BuildActionArgs) => string;
 }
 
 // ---------------------------------------------------------------------------
