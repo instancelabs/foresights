@@ -70,7 +70,7 @@ export interface ContextRefreshBarHandle {
 }
 
 /** Compact serialised entry per fetched path. Used to compute the fingerprint. */
-interface FetchedEntry {
+export interface FetchedEntry {
   readonly path: string;
   /** 'file' | 'dir' | 'error' — what the MCP returned. */
   readonly type: string;
@@ -78,6 +78,13 @@ interface FetchedEntry {
   readonly hash: string;
   /** For dirs: child count. For files: byte length. Used in status text. */
   readonly size: number;
+  /**
+   * For files only: the (possibly capped) text content, surfaced into
+   * Claude Code prompts by products/repo-context.ts. Omitted for dirs and
+   * errors. The `hash` above always reflects the FULL content even when
+   * `content` here is truncated, so the fingerprint stays change-accurate.
+   */
+  readonly content?: string;
 }
 
 interface FetchResultRaw {
@@ -88,8 +95,22 @@ interface FetchResultRaw {
   readonly size?: unknown;
 }
 
+/**
+ * Max file content kept in the layoutMap (and inlined into CC prompts).
+ * A typical CLAUDE.md / README is 2–10KB so they land whole; only
+ * pathologically large files get truncated. Keeps localStorage small and
+ * CC prompts readable without losing the high-value grounding doc.
+ */
+export const FILE_CONTENT_CAP = 16 * 1024;
+
+/** Cap file content for storage; append a marker when truncated. */
+const capContent = (content: string): string =>
+  content.length > FILE_CONTENT_CAP
+    ? `${content.slice(0, FILE_CONTENT_CAP)}\n…(truncated at ${FILE_CONTENT_CAP / 1024}KB)`
+    : content;
+
 /** Coerce an MCP `get_file_contents` response into a FetchedEntry. */
-const normaliseResponse = (path: string, raw: unknown): FetchedEntry => {
+export const normaliseResponse = (path: string, raw: unknown): FetchedEntry => {
   if (raw === null || typeof raw !== 'object') {
     return { path, type: 'error', hash: fingerprintOf('null'), size: 0 };
   }
@@ -110,8 +131,11 @@ const normaliseResponse = (path: string, raw: unknown): FetchedEntry => {
     return {
       path,
       type: 'file',
+      // hash over the FULL content so the fingerprint catches any change;
+      // content is the capped slice actually persisted + inlined.
       hash: fingerprintOf(obj.content),
       size: obj.content.length,
+      content: capContent(obj.content),
     };
   }
   if (Array.isArray(obj.entries)) {

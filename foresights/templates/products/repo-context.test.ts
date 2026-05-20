@@ -76,6 +76,72 @@ describe('formatRepoContext', () => {
   });
 });
 
+describe('formatRepoContext — file content sections', () => {
+  it('appends a verbatim content section for a file entry that carries content', () => {
+    const deps = buildDeps();
+    setStoredContext(deps, 'topic', 'p', {
+      layoutMap: {
+        paths: [
+          {
+            path: 'CLAUDE.md',
+            type: 'file',
+            hash: 'h',
+            size: 22,
+            content: '# Conventions\nUse tabs.',
+          },
+        ],
+      },
+      fingerprint: 'x',
+      fetchedAt: '2026-05-20T10:00:00Z',
+    });
+    const out = formatRepoContext(deps, 'topic', 'p');
+    expect(out).toContain('- `CLAUDE.md` — file, 22 bytes');
+    expect(out).toContain('### `CLAUDE.md`');
+    expect(out).toContain('# Conventions\nUse tabs.');
+  });
+
+  it('emits one section per file with content, in path order', () => {
+    const deps = buildDeps();
+    setStoredContext(deps, 'topic', 'p', {
+      layoutMap: {
+        paths: [
+          { path: 'CLAUDE.md', type: 'file', hash: 'h1', size: 5, content: 'AAA' },
+          { path: 'README.md', type: 'file', hash: 'h2', size: 5, content: 'BBB' },
+        ],
+      },
+      fingerprint: 'x',
+      fetchedAt: '2026-05-20T10:00:00Z',
+    });
+    const out = formatRepoContext(deps, 'topic', 'p');
+    expect((out.match(/^### /gm) ?? []).length).toBe(2);
+    expect(out.indexOf('### `CLAUDE.md`')).toBeLessThan(out.indexOf('### `README.md`'));
+  });
+
+  it('does not emit a content section for directory entries', () => {
+    const deps = buildDeps();
+    setStoredContext(deps, 'topic', 'p', {
+      layoutMap: { paths: [{ path: 'src/rules', type: 'dir', hash: 'h', size: 31 }] },
+      fingerprint: 'x',
+      fetchedAt: '2026-05-20T10:00:00Z',
+    });
+    const out = formatRepoContext(deps, 'topic', 'p');
+    expect(out).toContain('- `src/rules` — directory, 31 entries');
+    expect(out).not.toContain('### ');
+  });
+
+  it('omits the section for a file entry with no content (pre-v0.4.1 layout)', () => {
+    const deps = buildDeps();
+    setStoredContext(deps, 'topic', 'p', {
+      layoutMap: { paths: [{ path: 'CLAUDE.md', type: 'file', hash: 'h', size: 100 }] },
+      fingerprint: 'x',
+      fetchedAt: '2026-05-20T10:00:00Z',
+    });
+    const out = formatRepoContext(deps, 'topic', 'p');
+    expect(out).toContain('- `CLAUDE.md` — file, 100 bytes');
+    expect(out).not.toContain('### ');
+  });
+});
+
 describe('appendRepoContext', () => {
   it('returns the prompt unchanged when the block is empty', () => {
     expect(appendRepoContext('PROMPT', '')).toBe('PROMPT');

@@ -12,11 +12,12 @@
  * prompt is emitted unchanged — behaviour is byte-identical to pre-context-
  * loop builds for any dashboard whose user hasn't clicked ↻.
  *
- * Scope note: the v0.4.0 context-refresh layoutMap stores per-path type +
- * size + a content hash, NOT the file content itself (keeps localStorage
- * small). So this block is a structural signal — "src/rules/ has 31
- * entries" — not the literal CLAUDE.md text. A future refresh kind that
- * stores small-file content would extend formatRepoContext to surface it.
+ * The block has two parts: a structural overview (one bullet per fetched
+ * path, with type + size) and — for file entries that carried content —
+ * a verbatim content section per file. Directory entries contribute only
+ * the structural bullet. v0.4.1+ context-refresh captures file content
+ * (capped, see context-refresh.ts FILE_CONTENT_CAP); a pre-v0.4.1 stored
+ * layout with no `content` fields degrades gracefully to overview-only.
  */
 
 import type { Deps } from '../types';
@@ -27,6 +28,8 @@ interface LayoutEntry {
   readonly path: string;
   readonly type: string;
   readonly size: number;
+  /** File content (capped at fetch time). Present only for `type: 'file'`. */
+  readonly content?: string;
 }
 
 /**
@@ -41,12 +44,13 @@ const readPaths = (layoutMap: unknown): readonly LayoutEntry[] | null => {
   const entries: LayoutEntry[] = [];
   for (const raw of candidate) {
     if (!raw || typeof raw !== 'object') continue;
-    const e = raw as { path?: unknown; type?: unknown; size?: unknown };
+    const e = raw as { path?: unknown; type?: unknown; size?: unknown; content?: unknown };
     if (typeof e.path !== 'string') continue;
     entries.push({
       path: e.path,
       type: typeof e.type === 'string' ? e.type : 'unknown',
       size: typeof e.size === 'number' ? e.size : 0,
+      ...(typeof e.content === 'string' ? { content: e.content } : {}),
     });
   }
   return entries;
@@ -79,10 +83,17 @@ export const formatRepoContext = (
   const lines = [
     `## Repo context (refreshed ${refreshedOn})`,
     '',
-    'The Foresights dashboard last pulled this layout from the product repo. Treat it as the current repo structure when planning — if a path here differs from what the prompt above assumes, the repo changed since that context was baked.',
+    'The Foresights dashboard last pulled this from the product repo. Treat it as the current repo state when planning — if anything here differs from what the prompt above assumes, the repo changed since that context was baked.',
     '',
     ...paths.map((e) => `- ${describeEntry(e)}`),
   ];
+  // Verbatim content section per file entry that carried content. Directory
+  // and error entries contribute only the structural bullet above.
+  for (const e of paths) {
+    if (e.type === 'file' && e.content) {
+      lines.push('', `### \`${e.path}\``, '', e.content);
+    }
+  }
   return lines.join('\n');
 };
 
