@@ -1,4 +1,4 @@
-import type { ActionTypeId, RssItem } from '../types';
+import type { ActionTypeId, Cadence, RssItem } from '../types';
 import { escHtml } from '../util/escape';
 
 /**
@@ -217,6 +217,12 @@ export interface WizardConfig {
   readonly headerSourcesLinks: string;
   readonly sources: readonly WizardSource[];
   readonly spotlights: readonly WizardSpotlight[];
+  /**
+   * Spotlight rotation cadence — `'daily'` (the default), `'weekly'`, or
+   * `'on-demand'`. Omit for `'daily'` so a daily dashboard's LOAD_BODY stays
+   * byte-identical to pre-cadence output.
+   */
+  readonly cadence?: Cadence;
   readonly products: readonly WizardProduct[];
   /**
    * Curated highlight cards baked at wizard time (Haiku batch). Empty array
@@ -486,6 +492,7 @@ export const genLoadBody = (
   sources: readonly WizardSource[],
   products: readonly WizardProduct[],
   ghServer: string,
+  cadence?: Cadence,
 ): string => {
   const lines: string[] = [];
   // Materialise the configured products as an array. Used by every renderer
@@ -500,8 +507,11 @@ export const genLoadBody = (
   // console with a clear prefix so the user can diagnose.
   lines.push('// Spotlight carousel — pure DOM wiring; safe to call before live data fetches.');
   lines.push('try {');
+  // cadence is emitted only for non-daily dashboards, so a daily build's
+  // LOAD_BODY stays byte-identical to pre-cadence output.
+  const cadenceOpt = cadence && cadence !== 'daily' ? `, cadence: ${j(cadence)}` : '';
   lines.push(
-    '  initSpotlight(deps, { spotlights: SPOTLIGHTS, topicSlug: TOPIC_SLUG, products: productsArr });',
+    `  initSpotlight(deps, { spotlights: SPOTLIGHTS, topicSlug: TOPIC_SLUG, products: productsArr${cadenceOpt} });`,
   );
   lines.push('} catch (err) { console.error("Foresights: initSpotlight failed", err); }');
   // Mount the brief panel + digest panel only when products are configured —
@@ -915,7 +925,7 @@ export const deriveSentinelMap = (config: WizardConfig): SentinelMap => ({
   // TS sentinels
   SOURCES_CONST: genSourcesConst(config.sources),
   SPOTLIGHTS_CONST: genSpotlightsConst(config.spotlights),
-  LOAD_BODY: genLoadBody(config.sources, config.products, config.ghServer),
+  LOAD_BODY: genLoadBody(config.sources, config.products, config.ghServer, config.cadence),
   'PRODUCTS_CONFIG:PRODUCTS_CONST': genProductsConst(config.products),
   'PRODUCTS_CONFIG:PROMPTS': genPrompts(config.products),
   'PRODUCTS_CONFIG:RULES': genRules(config.products),
