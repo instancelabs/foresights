@@ -277,7 +277,7 @@ const stripTags = (s: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** Stringify a JS RegExp literal. Empty flags — no trailing flag chars. */
+/** Stringify a JS RegExp literal. Empty flags → no trailing flag chars. */
 const regexLiteral = (source: string, flags = ''): string =>
   `new RegExp(${j(source)}${flags ? `, ${j(flags)}` : ''})`;
 
