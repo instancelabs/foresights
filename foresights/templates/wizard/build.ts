@@ -9,7 +9,11 @@
  *      and to `dashboard.html`. Apply placeholder substitution to
  *      `config.ts`'s typed-stub constants (TOPIC / TOPIC_SLUG / GH_SERVER).
  *   4. Run the toolchain in the working copy: biome → tsc → esbuild
- *      (→ vitest, if `--with-tests` is passed).
+ *      (→ vitest, if `--with-tests` is passed). `--fast` runs esbuild only —
+ *      esbuild still parses, so syntax errors in generated code still fail.
+ *
+ * The CLI entry additionally hydrates RSS sources (fetch + parse feeds in
+ * Node) before the build — see `main()`.
  *   5. Read the compiled bundle (`dist/dashboard.js`) and inject it into
  *      `dashboard.html` at `{{COMPILED_JS}}`. Substitute remaining
  *      placeholders (TOPIC, ACCENT, etc.).
@@ -32,6 +36,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { type WizardConfig, derivePlaceholderMap, deriveSentinelMap } from './build-config';
+import { hydrateRssSources } from './fetch-feeds';
 import { substituteAll } from './substitute';
 
 const execFileAsync = promisify(execFile);
@@ -70,6 +75,14 @@ export interface BuildOpts {
   readonly skipPreflight?: boolean;
   /** Also run `npm run test` after typecheck. Slower; off by default. */
   readonly withTests?: boolean;
+  /**
+   * Fast path: skip biome + tsc, run esbuild only. esbuild still parses the
+   * substituted TS, so a syntax error in generated code still fails the
+   * build — what's skipped is lint + strict type-checking of a tree the
+   * templates' own preflight already covers. The `/create-dashboard` wizard
+   * passes this; drop it to run the full gate when debugging a build.
+   */
+  readonly fast?: boolean;
 }
 
 export interface BuildResult {
@@ -175,12 +188,20 @@ const runStep = async (cmd: string, args: readonly string[], cwd: string): Promi
 };
 
 /** Run the toolchain in the staged working dir. */
-const runToolchain = async (workDir: string, withTests: boolean): Promise<void> => {
+const runToolchain = async (workDir: string, withTests: boolean, fast: boolean): Promise<void> => {
   // biome auto-fixes after substitution because generated TS often has
   // trailing whitespace or formatter-disagreed line wraps. --no-errors-on-unmatched
   // is omitted because we WANT failures here surfaced.
-  await runStep('npx', ['biome', 'check', '--write', '.'], workDir);
-  await runStep('npx', ['tsc', '--noEmit'], workDir);
+  //
+  // `fast` skips biome + tsc: the substituted tree is the templates' own
+  // (preflight-green) source with generated data spliced into sentinel
+  // regions, and the esbuild step below still parses every file — so a
+  // malformed generated literal still fails loudly. What `fast` trades away
+  // is lint + strict type-checking, which the templates' preflight covers.
+  if (!fast) {
+    await runStep('npx', ['biome', 'check', '--write', '.'], workDir);
+    await runStep('npx', ['tsc', '--noEmit'], workDir);
+  }
   await runStep(
     'npx',
     [
@@ -243,7 +264,7 @@ export const build = async (opts: BuildOpts): Promise<BuildResult> => {
   // Run the toolchain (unless skipped — tests skip this for speed).
   let compiledJs = '// preflight skipped — substitution-layer test only';
   if (!opts.skipPreflight) {
-    await runToolchain(work, opts.withTests === true);
+    await runToolchain(work, opts.withTests === true, opts.fast === true);
     compiledJs = await readFile(join(work, 'dist/dashboard.js'), 'utf8');
   }
 
@@ -276,6 +297,7 @@ interface CliArgs {
   readonly templatesDir: string;
   readonly skipPreflight: boolean;
   readonly withTests: boolean;
+  readonly fast: boolean;
 }
 
 const parseArgs = (argv: readonly string[]): CliArgs => {
@@ -284,6 +306,7 @@ const parseArgs = (argv: readonly string[]): CliArgs => {
   let templatesDir = '';
   let skipPreflight = false;
   let withTests = false;
+  let fast = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--config') configPath = argv[++i] ?? '';
@@ -291,10 +314,11 @@ const parseArgs = (argv: readonly string[]): CliArgs => {
     else if (a === '--templates') templatesDir = argv[++i] ?? '';
     else if (a === '--skip-preflight') skipPreflight = true;
     else if (a === '--with-tests') withTests = true;
+    else if (a === '--fast') fast = true;
   }
   if (!configPath || !outFile) {
     throw new Error(
-      'Usage: node wizard/build.ts --config <path> --out <path> [--templates <dir>] [--skip-preflight] [--with-tests]',
+      'Usage: node wizard/build.ts --config <path> --out <path> [--templates <dir>] [--fast] [--skip-preflight] [--with-tests]',
     );
   }
   // Default templates dir = the directory of this file's parent.
@@ -305,19 +329,30 @@ const parseArgs = (argv: readonly string[]): CliArgs => {
     templatesDir: resolve(templatesDir || defaultTemplates),
     skipPreflight,
     withTests,
+    fast,
   };
 };
 
 const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2));
   const configRaw = await readFile(args.configPath, 'utf8');
-  const config = JSON.parse(configRaw) as WizardConfig;
+  const rawConfig = JSON.parse(configRaw) as WizardConfig;
+  // Fetch + bake RSS feeds here, in Node, before the build. The artifact
+  // sandbox blocks cross-origin fetch, and the wizard agent's web-fetch tool
+  // only resolves URLs already in the conversation — so RSS hydration belongs
+  // in the orchestrator, not the agent. GitHub-only configs are untouched;
+  // rss sources that already carry `items` are left as-is.
+  const config: WizardConfig = {
+    ...rawConfig,
+    sources: await hydrateRssSources(rawConfig.sources),
+  };
   const result = await build({
     config,
     templatesDir: args.templatesDir,
     outFile: args.outFile,
     skipPreflight: args.skipPreflight,
     withTests: args.withTests,
+    fast: args.fast,
   });
   // One-line JSON summary for the SKILL.md caller to consume.
   process.stdout.write(`${JSON.stringify(result)}\n`);
