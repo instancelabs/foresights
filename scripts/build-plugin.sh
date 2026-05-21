@@ -7,7 +7,7 @@
 # under skills/create-dashboard/templates/ to match the SKILL.md install path
 # (`${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates/`). This script
 # stages a clean copy with the templates/ relocation applied, drops every
-# known cruft pattern, and zips the result.
+# known cruft pattern, verifies the tree is import-complete, and zips it.
 #
 # Usage:
 #   bash scripts/build-plugin.sh           # uses version from plugin.json
@@ -74,6 +74,37 @@ find "$STAGE" -name .DS_Store -delete
 find "$STAGE" -name '*.tsbuildinfo' -delete
 find "$STAGE" -name 'vitest.config.ts.timestamp-*' -delete
 find "$STAGE" -name 'tmp-wizard-test' -type d -exec rm -rf {} + 2>/dev/null || true
+
+# --- Completeness guard ----------------------------------------------------
+# v0.7.0 shipped with 14 source modules missing from templates/: the staged
+# tree imported them, but they were never in the bundle, so every wizard build
+# died with ERR_MODULE_NOT_FOUND before biome/tsc/esbuild ever ran. A dropped
+# module is invisible until a user hits it. Scan every staged templates/*.ts
+# for relative imports and confirm each resolves to a file that is actually in
+# the bundle; abort the build if any does not.
+echo "-> Verifying templates/ tree is import-complete"
+import_misses=0
+while IFS= read -r tsfile; do
+  tsdir="$(dirname "$tsfile")"
+  while IFS= read -r spec; do
+    [[ -z "$spec" ]] && continue
+    b="$tsdir/$spec"
+    if [[ -f "$b.ts" || -f "$b.tsx" || -f "$b/index.ts" || -f "$b" || -f "${b%.js}.ts" ]]; then
+      continue
+    fi
+    echo "   !! ${tsfile#"$STAGE"/}  ->  '$spec'  unresolved" >&2
+    import_misses=$((import_misses + 1))
+  done < <(grep -vE '^[[:space:]]*//' "$tsfile" \
+             | grep -oE "(from|import)[[:space:]]+['\"]\.[^'\"]+['\"]" \
+             | grep -oE "\.[^'\"]+" || true)
+done < <(find "$TPL" -name '*.ts' -not -path '*/node_modules/*')
+if [[ "$import_misses" -gt 0 ]]; then
+  echo "!! $import_misses unresolved relative import(s) — the bundle is missing" >&2
+  echo "   source modules. Aborting before a broken .plugin can ship." >&2
+  exit 1
+fi
+echo "   import-complete ✓"
+echo
 
 OUT="$REPO_ROOT/foresights-$VERSION.plugin"
 rm -f "$OUT"
