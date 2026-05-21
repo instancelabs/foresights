@@ -5,7 +5,7 @@ description: Wizard that builds a live, product-customised news dashboard. Use w
 
 # Create Dashboard
 
-> **Status:** v0.7.0 (Phase 10.6 landed) — selectable spotlight cadence (`daily` default, `weekly`, `on-demand`) joins the pluggable per-product action types (`claude-code` default, `summary`, `task`) and the RSS / Atom + three GitHub source kinds. Every existing dashboard keeps working byte-for-byte identically; new options slot in additively. See `Implementation status` below.
+> **Status:** v0.7.2 — wizard build speed-ups: the orchestrator (`wizard/build.ts`) fetches RSS feeds itself in Node (no wizard-agent round-trips), and a new `--fast` flag runs esbuild only. v0.7.1 restored 14 template modules that were missing from the v0.7.0 package. The feature set — selectable spotlight cadence (`daily` default, `weekly`, `on-demand`), pluggable per-product action types (`claude-code` default, `summary`, `task`), RSS / Atom + three GitHub source kinds — is unchanged, and every existing dashboard keeps building byte-for-byte identically. See `Implementation status` below.
 
 ## What this skill does
 
@@ -51,13 +51,13 @@ For each source:
     - pull_requests: `perPage`, `state` (default closed), `sort` (default updated), `direction` (default desc)
 - **RSS kind** (`rss`):
   - `url` — full feed URL (required). Both RSS 2.0 (`<rss><channel><item>`) and Atom 1.0 (`<feed><entry>`) are supported.
-  - `items` — populated by the wizard, not the user: the wizard fetches the feed at build time and parses up to 10 recent entries into it (see "Wizard outputs"). The build bakes them into the dashboard.
+  - `items` — you don't set this, and neither does the wizard agent. The build orchestrator (`wizard/build.ts`) fetches each feed in Node and parses up to 10 recent entries into it, then bakes them into the dashboard. Just give the `url`.
   - No `args` — RSS items are baked at build time, not fetched at runtime.
 - `section` — optional; explicit section ID this source feeds. If omitted, sources of the same `kind` get merged into a single auto-named section.
 
 **Validate `releases` sources before committing them.** Some repos never publish GitHub releases — rolling-release projects (Klipper is the common example) ship from `master` with no release tags, so a `releases` source on one renders a permanently-empty section. When the user assigns a repo to a `releases` source, probe it once with `list_releases` (`perPage: 1`) while confirming the source list. If it comes back empty, tell the user and offer to switch that source to `pull_requests` — recently-merged PRs are the closest proxy for a rolling-release project's activity.
 
-**RSS is baked at build time, not fetched live.** The artifact sandbox blocks all cross-origin network except a fixed CDN allowlist, so a built dashboard cannot `window.fetch` arbitrary feeds. Instead, the wizard fetches and parses each feed at build time and bakes up to 10 recent entries into the dashboard (see `WizardSource.items` and `genLoadBody`). RSS content is therefore as fresh as the last build — re-run `/refresh-dashboard` (which rebuilds) to pull newer entries. GitHub sources are unaffected: they fetch live through the MCP bridge on every open.
+**RSS is baked at build time, not fetched live.** The artifact sandbox blocks all cross-origin network except a fixed CDN allowlist, so a built dashboard cannot `window.fetch` arbitrary feeds. Instead, the build orchestrator (`wizard/build.ts`, via `wizard/fetch-feeds.ts`) fetches and parses each feed **in Node at build time** and bakes up to 10 recent entries into the dashboard (see `WizardSource.items` and `genLoadBody`). The wizard agent does **not** fetch feeds itself — `build.ts` does, all feeds in parallel, with zero agent tool calls. RSS content is therefore as fresh as the last build — re-run `/refresh-dashboard` (which rebuilds) to pull newer entries. GitHub sources are unaffected: they fetch live through the MCP bridge on every open.
 
 Examples:
 
@@ -137,7 +137,7 @@ Set `cadence` on the `WizardConfig` only when the user picks `weekly` or `on-dem
 
 After the questions, the wizard:
 
-1. **Fetches a sample of live data** from each configured source. GitHub sources go via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind). For RSS sources the wizard fetches the feed XML, parses up to 10 recent entries into `RssItem` shape (`{title, link, description, pubDate, author, guid}` — strip HTML from `title`/`description`, ISO-8601 `pubDate`, `guid` falls back to `link`), and stores them on that source's `items` field so the build can bake them in.
+1. **Fetches a sample of live data** from each GitHub source via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind) — this sample seeds the Haiku curation batches below. **RSS sources need no wizard fetching**: leave each rss source's `items` unset and just pass its `url`. The build orchestrator (`wizard/build.ts`) fetches + parses every feed itself, in Node, in parallel. Do not call `web_fetch` on feed URLs — that tool only resolves URLs already in the conversation, so it fails on feeds and wastes round-trips; `build.ts` owns RSS end-to-end.
 2. **Runs Haiku batches** (chunk size ≤10 to stay under the askClaude payload ceiling) to generate the curated content, then stashes each batch's output in the corresponding `WizardConfig` field before invoking the build orchestrator:
    - 6 `spotlights` from user seeds + live data → `WizardConfig.spotlights`
    - 6 `highlights` from live data → `WizardConfig.highlights`
@@ -273,6 +273,17 @@ The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUC
 
 ## Implementation status
 
+### v0.7.2 — wizard build speed-ups
+
+Strictly additive — build *output* is unchanged for every existing dashboard. Two changes to the build path:
+
+- **RSS fetched by the orchestrator.** `wizard/build.ts`'s CLI entry hydrates every `kind: 'rss'` source before the build: a new `wizard/fetch-feeds.ts` fetches each feed with Node's `fetch` and parses it via the existing `util/rss-parser.ts` (jsdom-backed `DOMParser`), all feeds in parallel. The wizard agent no longer fetches feeds — the old flow burned failed `web_fetch` calls (that tool only resolves in-conversation URLs) then fell back to web searches. A source that already carries `items` is left untouched, so `/refresh-dashboard` and test fixtures are unaffected.
+- **`--fast` build flag.** Skips biome + tsc, runs esbuild only (~2s vs ~3.5s). esbuild still parses every file, so malformed generated code still fails the build. The full biome + tsc + esbuild pipeline stays the default and is what dev / preflight runs.
+
+### v0.7.1 — restored missing template modules
+
+Packaging fix. The v0.7.0 release shipped — and the repo itself carried — an incomplete `templates/` tree: 14 source modules absent, 61 broken relative imports, so `wizard/build.ts` crashed on a missing-module import before building anything. v0.7.1 restores the 14 modules + their tests and adds an import-completeness guard to `scripts/build-plugin.sh` so an incomplete tree can never ship again. No behaviour change beyond "the build works".
+
 ### v0.7.0 — selectable spotlight cadence (Phase 10.6)
 
 Strictly additive. `WizardConfig` gains an optional `cadence` — `'daily'` (the default), `'weekly'`, or `'on-demand'`. The spotlight carousel's auto-rotation branches on it: `daily` rotates by day-of-year (the proven behaviour), `weekly` by week-of-year, `on-demand` never auto-rotates and starts at the first spotlight. The persisted index is keyed by the cadence's rotation period, so a user's manual choice sticks until that period rolls over (`on-demand` never rolls over). `genLoadBody` emits the `cadence` option into the `initSpotlight(...)` call only for non-daily dashboards, so a daily build's `LOAD_BODY` is byte-identical to pre-cadence output. Re-adds the wizard's cadence question (F2 removed it because nothing read the answer; now `WizardConfig.cadence` does).
@@ -283,7 +294,7 @@ Strictly additive. A `WizardProduct` can declare an `actionType` — `'claude-co
 
 ### v0.5.3 — RSS baked at build time (F5)
 
-Dogfooding surfaced that the artifact sandbox blocks cross-origin `window.fetch`, so the v0.3 live-RSS path never actually reached a feed in a built dashboard. RSS is now **baked at build time**: the wizard fetches + parses each feed and stores entries on `WizardSource.items`; `genLoadBody` emits them as a literal `renderRssItems(...)` call instead of a `fetchRss` call. `render/rss.ts` is unchanged — it renders the baked items. `mcp/fetch-rss.ts` is retained and still tested but no longer wired into built dashboards. RSS content refreshes on a `/refresh-dashboard` rebuild rather than on every open; GitHub sources (via the MCP bridge) are unaffected.
+Dogfooding surfaced that the artifact sandbox blocks cross-origin `window.fetch`, so the v0.3 live-RSS path never actually reached a feed in a built dashboard. RSS is now **baked at build time**: each feed is fetched + parsed and its entries stored on `WizardSource.items`; `genLoadBody` emits them as a literal `renderRssItems(...)` call instead of a `fetchRss` call. (As of v0.7.2 the fetching is done by `wizard/build.ts`, not the wizard agent — see below.) `render/rss.ts` is unchanged — it renders the baked items. `mcp/fetch-rss.ts` is retained and still tested but no longer wired into built dashboards. RSS content refreshes on a `/refresh-dashboard` rebuild rather than on every open; GitHub sources (via the MCP bridge) are unaffected.
 
 ### v0.5 — embedded config block (refresh enablement)
 
@@ -363,27 +374,40 @@ The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wi
 
 ### Invoking the orchestrator
 
-The orchestrator lives at `${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates/wizard/build.ts` after install. On first use the templates directory needs `npm install` — Claude should run that once if `node_modules/` is missing, then re-use it on subsequent dashboards.
+The orchestrator lives at `${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates/wizard/build.ts`. The plugin directory is **read-only**, so `npm install` cannot run in place — stage a writable copy to `/tmp` once per session, then reuse it for every dashboard.
 
 ```bash
-# One-time setup (skip if templates/node_modules already exists):
-cd "${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates" && npm install
+# One-time per session: stage the templates to a writable dir, then install.
+# The plugin dir is READ-ONLY — npm install cannot run in place. Copy it to
+# /tmp, make it writable, and install SYNCHRONOUSLY: each shell call is its
+# own process, so a backgrounded `npm install &` does NOT survive the call.
+FORESIGHTS_TPL=/tmp/foresights-templates
+if [ ! -d "$FORESIGHTS_TPL/node_modules" ]; then
+  rm -rf "$FORESIGHTS_TPL"
+  cp -R "${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates" "$FORESIGHTS_TPL"
+  chmod -R u+w "$FORESIGHTS_TPL"
+  ( cd "$FORESIGHTS_TPL" && npm install --prefer-offline --no-audit --no-fund )
+fi
 
-# Then for each dashboard:
+# Then for each dashboard — ~2s on the esbuild-only --fast path:
 echo "$WIZARD_CONFIG_JSON" > /tmp/foresights-config.json
-cd "${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates" && npx tsx wizard/build.ts \
+cd "$FORESIGHTS_TPL" && npx tsx wizard/build.ts \
   --config /tmp/foresights-config.json \
-  --out    /tmp/foresights-dashboard.html
+  --out    /tmp/foresights-dashboard.html \
+  --fast
 ```
 
 Flags:
 
 - `--config <path>` — path to the WizardConfig JSON. **Required.**
 - `--out <path>`    — where to write the final dashboard HTML. **Required.**
+- `--fast` — skip biome + tsc, run esbuild only (~2s vs ~3.5s). esbuild still parses the substituted TS, so a syntax error in generated code still fails the build. **Recommended for wizard runs** — the templates ship preflight-green and the wizard only splices data into them. Drop `--fast` to run the full biome + tsc gate if a build misbehaves.
 - `--templates <dir>` — override the templates source directory (default: parent of `wizard/`).
-- `--with-tests` — also run `npm run test` (vitest) on the substituted tree. Slower but thorough.
+- `--with-tests` — also run `npm run test` (vitest) on the substituted tree. Slow; debugging only.
 
-> Note: do NOT pass other flags. There's an internal `--skip-preflight` switch the test suite uses to bypass biome/tsc/esbuild, but passing it from the skill produces an HTML file with a stub bundle instead of a real one. Always run the full pipeline.
+> RSS: `build.ts` fetches and bakes every `kind: 'rss'` source's feed itself, in Node, before the build runs. Don't pre-fetch feeds or set `items` in the WizardConfig — just pass each rss source's `url`.
+>
+> Do NOT pass `--skip-preflight`: it's an internal test switch that bypasses biome/tsc/esbuild entirely and emits a *stub* bundle, not a real one. `--fast` is the supported speed switch; `--skip-preflight` is not.
 
 ### Verifying the output
 
@@ -425,8 +449,8 @@ The orchestrator runs these steps in order inside a temp working directory; fail
 
 1. **Stage** — `cp` `templates/` (minus `node_modules` + `dist`) into the temp dir.
 2. **Substitute** — apply sentinel substitution (three-form matcher: HTML / TS / CSS) to every `.ts` file with sentinels + to `dashboard.html`. Apply placeholder substitution to `config.ts`'s `TOPIC` / `TOPIC_SLUG` / `GH_SERVER` constants.
-3. **biome** — `npx biome check --write .` (auto-fixes formatter quirks introduced by generated TS).
-4. **tsc** — `npx tsc --noEmit` (strict type-check).
+3. **biome** — `npx biome check --write .` (auto-fixes formatter quirks introduced by generated TS). *Skipped under `--fast`.*
+4. **tsc** — `npx tsc --noEmit` (strict type-check). *Skipped under `--fast`.*
 5. **esbuild** — `npx esbuild dashboard.ts --bundle --format=iife --target=es2022 --sourcemap=inline --outfile=dist/dashboard.js`.
 6. **vitest** *(optional, `--with-tests`)* — `npx vitest run`.
 7. **Inject + final substitute** — read `dist/dashboard.js`, substitute it into `dashboard.html` at `{{COMPILED_JS}}`, expand remaining placeholders (`{{TOPIC}}`, `{{ACCENT}}`, etc.).
