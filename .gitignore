@@ -1,2 +1,5 @@
 .DS_Store
 reference/
+
+# Build artifacts (scripts/build-plugin.sh output) — distributed via GitHub Releases
+*.plugin
