@@ -277,7 +277,7 @@ const stripTags = (s: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** Stringify a JS RegExp literal. Empty flags → no trailing flag chars. */
+/** Stringify a JS RegExp literal. Empty flags — no trailing flag chars. */
 const regexLiteral = (source: string, flags = ''): string =>
   `new RegExp(${j(source)}${flags ? `, ${j(flags)}` : ''})`;
 
@@ -322,9 +322,22 @@ export const genSourcesConst = (sources: readonly WizardSource[]): string => {
     // repo: "") keep the emitted shape unambiguous; the runtime
     // `genLoadBody` dispatch reads only the right field per kind.
     if (s.kind === 'rss') {
-      return `  {\n    id: ${j(s.id)},\n    label: ${j(s.label)},\n    kind: ${j(s.kind)},\n    url: ${j(s.url ?? '')},${sectionLine}\n    args: ${argsLit},\n  },`;
+      return `  {
+    id: ${j(s.id)},
+    label: ${j(s.label)},
+    kind: ${j(s.kind)},
+    url: ${j(s.url ?? '')},${sectionLine}
+    args: ${argsLit},
+  },`;
     }
-    return `  {\n    id: ${j(s.id)},\n    label: ${j(s.label)},\n    owner: ${j(s.owner ?? '')},\n    repo: ${j(s.repo ?? '')},\n    kind: ${j(s.kind)},${sectionLine}\n    args: ${argsLit},\n  },`;
+    return `  {
+    id: ${j(s.id)},
+    label: ${j(s.label)},
+    owner: ${j(s.owner ?? '')},
+    repo: ${j(s.repo ?? '')},
+    kind: ${j(s.kind)},${sectionLine}
+    args: ${argsLit},
+  },`;
   });
   return `\nexport const SOURCES: readonly Source[] = [\n${entries.join('\n')}\n];\n`;
 };
@@ -338,7 +351,15 @@ export const genSpotlightsConst = (spotlights: readonly WizardSpotlight[]): stri
   }
   const entries = spotlights
     .map(
-      (sp) => `  {\n    tag: ${j(sp.tag)},\n    title: ${j(sp.title)},\n    summary: ${j(sp.summary)},\n    trick: ${j(sp.trick)},\n    code: ${j(sp.code)},\n    why: ${j(sp.why)},\n    url: ${j(sp.url)},\n  },`,
+      (sp) => `  {
+    tag: ${j(sp.tag)},
+    title: ${j(sp.title)},
+    summary: ${j(sp.summary)},
+    trick: ${j(sp.trick)},
+    code: ${j(sp.code)},
+    why: ${j(sp.why)},
+    url: ${j(sp.url)},
+  },`,
     )
     .join('\n');
   return `\nexport const SPOTLIGHTS: readonly Spotlight[] = [\n${entries}\n];\n`;
@@ -365,7 +386,20 @@ export const genProductsConst = (products: readonly WizardProduct[]): string => 
         p.actionType && p.actionType !== 'claude-code'
           ? `\n    actionType: ${j(p.actionType)},`
           : '';
-      return `  ${j(p.id)}: {\n    id: ${j(p.id)},\n    label: ${j(p.label)},\n    cssMod: ${j(p.cssMod)},${actionTypeLine}\n    match: (text) => {\n      const rules: ReadonlyArray<{ re: RegExp; reason: string }> = [\n      ${ruleLits}\n      ];\n      for (const r of rules) {\n        if (r.re.test(text)) return r.reason;\n      }\n      return null;\n    },\n  },`;
+      return `  ${j(p.id)}: {
+    id: ${j(p.id)},
+    label: ${j(p.label)},
+    cssMod: ${j(p.cssMod)},${actionTypeLine}
+    match: (text) => {
+      const rules: ReadonlyArray<{ re: RegExp; reason: string }> = [
+      ${ruleLits}
+      ];
+      for (const r of rules) {
+        if (r.re.test(text)) return r.reason;
+      }
+      return null;
+    },
+  },`;
     })
     .join('\n');
   return `\nexport const PRODUCTS: Readonly<Record<string, Product>> = {\n${entries}\n};\n`;
@@ -423,7 +457,13 @@ export const genContextRefresh = (products: readonly WizardProduct[]): string =>
       const cr = p.contextRefresh as NonNullable<WizardProduct['contextRefresh']>;
       const pathLits = cr.paths.map((path) => `      ${j(path)}`).join(',\n');
       const unitLine = cr.unitLabel ? `\n    unitLabel: ${j(cr.unitLabel)},` : '';
-      return `  ${j(p.id)}: {\n    owner: ${j(cr.repoOwner)},\n    repo: ${j(cr.repoName)},\n    paths: [\n${pathLits},\n    ],${unitLine}\n  },`;
+      return `  ${j(p.id)}: {
+    owner: ${j(cr.repoOwner)},
+    repo: ${j(cr.repoName)},
+    paths: [
+${pathLits},
+    ],${unitLine}
+  },`;
     })
     .join('\n');
   return `\nexport const CONTEXT_REFRESHERS: Readonly<Record<string, ContextRefreshSpec>> = {\n${entries}\n};\n`;
@@ -662,7 +702,14 @@ export const genSectionMarkupAboveHighlights = (sources: readonly WizardSource[]
   const sections = distinctSections(sources);
   if (sections.length === 0) return '\n';
   const blocks = sections.map(
-    (id) => `  <section id="${id}" class="data-section">\n    <div class="section-header">\n      <h2>${titleCase(id)}</h2>\n    </div>\n    <div class="section-body skeleton" id="${id}-body">\n      <div class="card skeleton-card">Loading…</div>\n    </div>\n  </section>`,
+    (id) => `  <section id="${id}" class="data-section">
+    <div class="section-header">
+      <h2>${titleCase(id)}</h2>
+    </div>
+    <div class="section-body skeleton" id="${id}-body">
+      <div class="card skeleton-card">Loading…</div>
+    </div>
+  </section>`,
   );
   return `\n${blocks.join('\n')}\n`;
 };
@@ -700,7 +747,12 @@ const defaultCta = (url: string): string => {
 /** Emit one `<div class="hl-card">` for a highlight or pattern card. */
 const hlCardHtml = (c: WizardHighlightCard | WizardPatternCard): string => {
   const cta = c.cta ?? defaultCta(c.url);
-  return `      <div class="hl-card">\n        <span class="tag">${escHtml(c.tag)}</span>\n        <h3>${escAllowCode(c.title)}</h3>\n        <p>${escAllowCode(c.body)}</p>\n        <a class="more" href="${escHtml(c.url)}" target="_blank" rel="noopener">${escHtml(cta)} →</a>\n      </div>`;
+  return `      <div class="hl-card">
+        <span class="tag">${escHtml(c.tag)}</span>
+        <h3>${escAllowCode(c.title)}</h3>
+        <p>${escAllowCode(c.body)}</p>
+        <a class="more" href="${escHtml(c.url)}" target="_blank" rel="noopener">${escHtml(cta)} →</a>
+      </div>`;
 };
 
 /**
@@ -737,7 +789,10 @@ export const genTipsMarkup = (config: WizardConfig): string => {
   const cards = config.tips.map((t) => {
     const why = t.why ? ` <span class="why">— ${escAllowCode(t.why)}</span>` : '';
     const code = t.code ? `\n      <pre class="code-block">${t.code}</pre>` : '';
-    return `    <div class="tip">\n      <h3>${escAllowCode(t.title)}${why}</h3>\n      <p>${escAllowCode(t.body)}</p>${code}\n    </div>`;
+    return `    <div class="tip">
+      <h3>${escAllowCode(t.title)}${why}</h3>
+      <p>${escAllowCode(t.body)}</p>${code}
+    </div>`;
   });
   return `\n${cards.join('\n')}\n    `;
 };
@@ -763,7 +818,12 @@ export const genProductCss = (products: readonly WizardProduct[]): string => {
   const blocks = products
     .filter((p) => p.cssMod.length > 0)
     .map(
-      (p) => `  .insights-tag.${p.cssMod} {\n    background: ${p.badgeColorSoft};\n    color: ${p.badgeColor};\n    border-color: ${p.badgeBorderColor};\n  }\n  .insights-tag.${p.cssMod}.expandable:hover { background: ${p.badgeColorSoft}; border-color: ${p.badgeColor}; }`,
+      (p) => `  .insights-tag.${p.cssMod} {
+    background: ${p.badgeColorSoft};
+    color: ${p.badgeColor};
+    border-color: ${p.badgeBorderColor};
+  }
+  .insights-tag.${p.cssMod}.expandable:hover { background: ${p.badgeColorSoft}; border-color: ${p.badgeColor}; }`,
     );
   return `\n${blocks.join('\n')}\n`;
 };
@@ -802,11 +862,35 @@ export const genProductUiBars = (products: readonly WizardProduct[]): string => 
     .filter((p) => p.contextRefresh !== undefined)
     .map(
       (p) =>
-        `  <div id="context-bar-${p.id}" class="context-bar">\n    <span class="context-label">${p.label} context:</span>\n    <span class="context-status" id="context-status-${p.id}">…</span>\n    <button class="context-btn" id="context-refresh-btn-${p.id}" type="button" data-product-id="${p.id}">↻ Refresh from repo</button>\n  </div>`,
+        `  <div id="context-bar-${p.id}" class="context-bar">
+    <span class="context-label">${p.label} context:</span>
+    <span class="context-status" id="context-status-${p.id}">…</span>
+    <button class="context-btn" id="context-refresh-btn-${p.id}" type="button" data-product-id="${p.id}">↻ Refresh from repo</button>
+  </div>`,
     )
     .join('\n');
   const contextBar = contextBars.length > 0 ? `\n${contextBars}` : '';
-  return `\n  <div id="brief-all-bar" class="brief-all-bar">\n    <span class="brief-all-label">Brief all flagged:</span>\n${briefBtns}\n  </div>\n  <div id="digest-bar" class="digest-bar">\n    <span class="digest-bar-label">Generate upgrade digest:</span>\n${digestBtns}\n  </div>${contextBar}\n  <div id="digest-panel" class="digest-panel hidden">\n    <div class="digest-panel-header">\n      <div class="digest-panel-title" id="digest-panel-title">Upgrade digest</div>\n      <div class="digest-panel-controls">\n        <button id="digest-copy-btn" type="button">Copy markdown</button>\n        <button id="digest-download-btn" type="button">Download .md</button>\n        <button id="digest-close-btn" type="button">Close</button>\n      </div>\n    </div>\n    <div class="digest-panel-body" id="digest-panel-body"></div>\n  </div>\n`;
+  return `
+  <div id="brief-all-bar" class="brief-all-bar">
+    <span class="brief-all-label">Brief all flagged:</span>
+${briefBtns}
+  </div>
+  <div id="digest-bar" class="digest-bar">
+    <span class="digest-bar-label">Generate upgrade digest:</span>
+${digestBtns}
+  </div>${contextBar}
+  <div id="digest-panel" class="digest-panel hidden">
+    <div class="digest-panel-header">
+      <div class="digest-panel-title" id="digest-panel-title">Upgrade digest</div>
+      <div class="digest-panel-controls">
+        <button id="digest-copy-btn" type="button">Copy markdown</button>
+        <button id="digest-download-btn" type="button">Download .md</button>
+        <button id="digest-close-btn" type="button">Close</button>
+      </div>
+    </div>
+    <div class="digest-panel-body" id="digest-panel-body"></div>
+  </div>
+`;
 };
 
 // ---------------------------------------------------------------------------
