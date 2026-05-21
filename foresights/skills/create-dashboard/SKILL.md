@@ -135,13 +135,13 @@ Set `cadence` on the `WizardConfig` only when the user picks `weekly` or `on-dem
 
 ### 7. Output mode
 
-Most dashboards are live Cowork artifacts — the default; don't ask about it. Choose `outputMode: 'static'` instead when the user says their environment has no live-artifacts feature, or asks for a portable / downloadable dashboard. A `'static'` dashboard is a standalone HTML file — GitHub data baked at build time, runs with no `window.cowork`, and live-refreshes where a Cowork runtime *is* present. A `'static'` build also requires fetching each GitHub source's full data into `WizardSource.baked` (see "Wizard outputs"). Omit `outputMode` for the default `'artifact'`.
+Most dashboards are live Cowork artifacts — the default; don't ask about it. Choose `outputMode: 'static'` instead when the user says their environment has no live-artifacts feature, or asks for a portable / downloadable dashboard. A `'static'` dashboard is a standalone HTML file — GitHub data baked at build time, runs with no `window.cowork`. A `'static'` build also requires fetching each GitHub source's full data into `WizardSource.baked` (see "Wizard outputs"). Omit `outputMode` for the default `'artifact'`.
 
 ## Wizard outputs
 
 After the questions, the wizard:
 
-1. **Fetches a sample of live data** from each GitHub source via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind) — this sample seeds the Haiku curation batches below. **RSS sources need no wizard fetching**: leave each rss source's `items` unset and just pass its `url`. The build orchestrator (`wizard/build.ts`) fetches + parses every feed itself, in Node, in parallel. Do not call `web_fetch` on feed URLs — that tool only resolves URLs already in the conversation, so it fails on feeds and wastes round-trips; `build.ts` owns RSS end-to-end. **In `outputMode: 'static'`** also fetch each GitHub source's full `list_<kind>` result via the MCP and store the array on that source's `baked` field — `build.ts` bakes it in so the static dashboard renders the snapshot when no live runtime is available.
+1. **Fetches a sample of live data** from each GitHub source via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind) — this sample seeds the Haiku curation batches below. **RSS sources need no wizard fetching**: leave each rss source's `items` unset and just pass its `url`. The build orchestrator (`wizard/build.ts`) fetches + parses every feed itself, in Node, in parallel. Do not call `web_fetch` on feed URLs — that tool only resolves URLs already in the conversation, so it fails on feeds and wastes round-trips; `build.ts` owns RSS end-to-end. **In `outputMode: 'static'`** also fetch each GitHub source's full `list_<kind>` result via the MCP and store the array on that source's `baked` field — `build.ts` bakes it in so the static dashboard renders with no live fetch.
 2. **Runs Haiku batches** (chunk size ≤10 to stay under the askClaude payload ceiling) to generate the curated content, then stashes each batch's output in the corresponding `WizardConfig` field before invoking the build orchestrator:
    - 6 `spotlights` from user seeds + live data → `WizardConfig.spotlights`
    - 6 `highlights` from live data → `WizardConfig.highlights`
@@ -371,7 +371,7 @@ The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wi
 - `footerNote`, `artifactName`, `artifactDescription` — metadata.
 - `ghServer` — the user's GitHub MCP server name (e.g. `mcp__github`).
 - `headerSourcesLinks` — pre-rendered HTML for the source links in the hero.
-- `sources: WizardSource[]` — mix of github coordinates (kind: releases | issues | pull_requests + owner/repo) and rss feeds (kind: rss + url). Optional section + args. For rss sources the wizard also fills `items` — the feed's parsed entries, baked at build time. In `outputMode: 'static'` the wizard also fills each GitHub source's `baked` — the agent-fetched `list_<kind>` array — so the dashboard renders the snapshot when no live runtime is available.
+- `sources: WizardSource[]` — mix of github coordinates (kind: releases | issues | pull_requests + owner/repo) and rss feeds (kind: rss + url). Optional section + args. For rss sources the wizard also fills `items` — the feed's parsed entries, baked at build time. In `outputMode: 'static'` the wizard also fills each GitHub source's `baked` — the agent-fetched `list_<kind>` array — so the dashboard renders with no live fetch.
 - `spotlights: WizardSpotlight[]` — 6 entries; the spotlight generator's output.
 - `cadence?: Cadence` — optional spotlight rotation cadence (`'daily'` default, `'weekly'`, `'on-demand'`). Omit for `'daily'`.
 - `outputMode?: 'artifact' | 'static'` — `'artifact'` (the default — omit it) builds the live Cowork-artifact dashboard. `'static'` builds a standalone HTML file: it runs with no `window.cowork`, rendering each GitHub source from that source's baked snapshot — and *if* a Cowork runtime is present (the file opened as an artifact) it refreshes that data live. The skill writes the file instead of calling `create_artifact`.
@@ -456,10 +456,7 @@ The build wrote the final HTML to the `--out` path. Call
 `create_artifact` — the dashboard is a standalone file. Instead, write the
 built HTML (the `--out` file) into the user's working folder and present it.
 It opens in any browser; `/refresh-dashboard` rebuilds it. This is the path
-for environments with no Cowork artifacts feature. Note that a static
-dashboard still upgrades itself: opened where a Cowork runtime *is* present,
-its GitHub sections fetch live and only fall back to the baked snapshot on
-failure (Phase 2 progressive refresh).
+for environments with no Cowork artifacts feature.
 
 ### Pipeline guarantees
 
