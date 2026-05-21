@@ -1,6 +1,9 @@
 import type { ActionTypeId, Cadence, RssItem } from '../types';
 import { escHtml } from '../util/escape';
 
+/** Dashboard output mode — see `WizardConfig.outputMode`. */
+export type OutputMode = 'artifact' | 'static';
+
 /**
  * Wizard input → substitution maps.
  *
@@ -56,6 +59,16 @@ export interface WizardSource {
    * cross-origin `window.fetch`, so this is how RSS reaches a built artifact.
    */
   readonly items?: readonly RssItem[];
+  /**
+   * Baked GitHub data for the GitHub kinds — in `outputMode: 'static'` the
+   * wizard agent fetches the source's items via the GitHub MCP and stores the
+   * normalised array here. `genLoadBody` bakes it into the dashboard as a
+   * literal instead of emitting a live `callTool`. Ignored in `'artifact'`
+   * mode (live fetch on open). Element type is `unknown` because it varies by
+   * kind (Release / Issue / PullRequest); the renderer `as` cast in
+   * `genLoadBody` narrows it.
+   */
+  readonly baked?: readonly unknown[];
   /** Which section to feed. Omit to merge into the default per-kind section. */
   readonly section?: string;
   readonly perPage?: number;
@@ -223,6 +236,15 @@ export interface WizardConfig {
    * byte-identical to pre-cadence output.
    */
   readonly cadence?: Cadence;
+  /**
+   * Output mode. `'artifact'` (the default) emits the live Cowork-artifact
+   * dashboard — GitHub sources fetch on open via `window.cowork`. `'static'`
+   * bakes GitHub data (from `WizardSource.baked`) into the HTML so the
+   * dashboard runs as a standalone file with no artifact runtime. Omit for
+   * `'artifact'` so an artifact build's `LOAD_BODY` stays byte-identical to
+   * pre-v0.8.0 output.
+   */
+  readonly outputMode?: OutputMode;
   readonly products: readonly WizardProduct[];
   /**
    * Curated highlight cards baked at wizard time (Haiku batch). Empty array
@@ -493,6 +515,7 @@ export const genLoadBody = (
   products: readonly WizardProduct[],
   ghServer: string,
   cadence?: Cadence,
+  outputMode?: OutputMode,
 ): string => {
   const lines: string[] = [];
   // Materialise the configured products as an array. Used by every renderer
@@ -591,14 +614,6 @@ export const genLoadBody = (
       lines.push('}');
       continue;
     }
-    const toolName = `${ghServer}__list_${s.kind}`;
-    const argFields: string[] = [`owner: ${j(s.owner ?? '')}`, `repo: ${j(s.repo ?? '')}`];
-    if (s.perPage !== undefined) argFields.push(`perPage: ${s.perPage}`);
-    if (s.state) argFields.push(`state: ${j(s.state)}`);
-    if (s.orderBy) argFields.push(`orderBy: ${j(s.orderBy)}`);
-    if (s.direction) argFields.push(`direction: ${j(s.direction)}`);
-    if (s.sort) argFields.push(`sort: ${j(s.sort)}`);
-    const args = `{ ${argFields.join(', ')} }`;
     const renderFn =
       s.kind === 'releases' ? 'renderReleases' : s.kind === 'issues' ? 'renderRfcs' : 'renderPrs';
     const typeCast =
@@ -607,6 +622,30 @@ export const genLoadBody = (
         : s.kind === 'issues'
           ? 'readonly Issue[]'
           : 'readonly PullRequest[]';
+    if (outputMode === 'static') {
+      // Static mode: the wizard agent fetched this source's items via the
+      // GitHub MCP and stored the normalised array on `s.baked`. Bake it as a
+      // literal so the dashboard renders with no live fetch and no
+      // `window.cowork` — the same shape the rss branch above uses.
+      // `/refresh-dashboard` re-bakes. The `as unknown as` cast mirrors the
+      // live path's `raw as` (raw is `unknown` there; the baked literal is not).
+      lines.push('try {');
+      lines.push(
+        `  ${renderFn}(deps, ${j(s.baked ?? [])} as unknown as ${typeCast}, ${j(section)}, productsArr);`,
+      );
+      lines.push('} catch (err) {');
+      lines.push(`  renderError(deps, ${j(section)}, err);`);
+      lines.push('}');
+      continue;
+    }
+    const toolName = `${ghServer}__list_${s.kind}`;
+    const argFields: string[] = [`owner: ${j(s.owner ?? '')}`, `repo: ${j(s.repo ?? '')}`];
+    if (s.perPage !== undefined) argFields.push(`perPage: ${s.perPage}`);
+    if (s.state) argFields.push(`state: ${j(s.state)}`);
+    if (s.orderBy) argFields.push(`orderBy: ${j(s.orderBy)}`);
+    if (s.direction) argFields.push(`direction: ${j(s.direction)}`);
+    if (s.sort) argFields.push(`sort: ${j(s.sort)}`);
+    const args = `{ ${argFields.join(', ')} }`;
     lines.push('try {');
     lines.push(`  const raw = await callTool(deps, ${j(toolName)}, ${args});`);
     lines.push(`  ${renderFn}(deps, raw as ${typeCast}, ${j(section)}, productsArr);`);
@@ -925,7 +964,13 @@ export const deriveSentinelMap = (config: WizardConfig): SentinelMap => ({
   // TS sentinels
   SOURCES_CONST: genSourcesConst(config.sources),
   SPOTLIGHTS_CONST: genSpotlightsConst(config.spotlights),
-  LOAD_BODY: genLoadBody(config.sources, config.products, config.ghServer, config.cadence),
+  LOAD_BODY: genLoadBody(
+    config.sources,
+    config.products,
+    config.ghServer,
+    config.cadence,
+    config.outputMode,
+  ),
   'PRODUCTS_CONFIG:PRODUCTS_CONST': genProductsConst(config.products),
   'PRODUCTS_CONFIG:PROMPTS': genPrompts(config.products),
   'PRODUCTS_CONFIG:RULES': genRules(config.products),
