@@ -5,7 +5,7 @@ description: Wizard that builds a live, product-customised news dashboard. Use w
 
 # Create Dashboard
 
-> **Status:** v0.7.2 — wizard build speed-ups: the orchestrator (`wizard/build.ts`) fetches RSS feeds itself in Node (no wizard-agent round-trips), and a new `--fast` flag runs esbuild only. v0.7.1 restored 14 template modules that were missing from the v0.7.0 package. The feature set — selectable spotlight cadence (`daily` default, `weekly`, `on-demand`), pluggable per-product action types (`claude-code` default, `summary`, `task`), RSS / Atom + three GitHub source kinds — is unchanged, and every existing dashboard keeps building byte-for-byte identically. See `Implementation status` below.
+> **Status:** v0.8.0 (Phase 1) — a new `outputMode: 'static'` builds a dashboard that runs as a standalone HTML file with **no Cowork artifact runtime**: GitHub data is baked in at build time and the `window.cowork` guard is softened. `'artifact'` (the default — omit it) is unchanged, and every artifact-mode dashboard keeps building byte-for-byte identically. v0.7.2 moved RSS fetching into `build.ts` + added `--fast`; v0.7.1 restored the template modules missing from the v0.7.0 package. Selectable cadence, pluggable action types, RSS / Atom + three GitHub source kinds — all unchanged. See `Implementation status` below.
 
 ## What this skill does
 
@@ -133,11 +133,15 @@ Ask how the spotlight card should rotate:
 
 Set `cadence` on the `WizardConfig` only when the user picks `weekly` or `on-demand` — omit it for `daily` so a daily dashboard's build output stays byte-identical to pre-cadence dashboards. In all three cases the user can still page through every spotlight manually with the ‹ › buttons and ←/→ keys; cadence only changes the *automatic* rotation.
 
+### 7. Output mode
+
+Most dashboards are live Cowork artifacts — the default; don't ask about it. Choose `outputMode: 'static'` instead when the user says their environment has no live-artifacts feature, or asks for a portable / downloadable dashboard. A `'static'` dashboard is a standalone HTML file — GitHub data baked at build time, runs with no `window.cowork`. A `'static'` build also requires fetching each GitHub source's full data into `WizardSource.baked` (see "Wizard outputs"). Omit `outputMode` for the default `'artifact'`.
+
 ## Wizard outputs
 
 After the questions, the wizard:
 
-1. **Fetches a sample of live data** from each GitHub source via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind) — this sample seeds the Haiku curation batches below. **RSS sources need no wizard fetching**: leave each rss source's `items` unset and just pass its `url`. The build orchestrator (`wizard/build.ts`) fetches + parses every feed itself, in Node, in parallel. Do not call `web_fetch` on feed URLs — that tool only resolves URLs already in the conversation, so it fails on feeds and wastes round-trips; `build.ts` owns RSS end-to-end.
+1. **Fetches a sample of live data** from each GitHub source via the GitHub MCP (`list_releases`, `list_issues`, or `list_pull_requests` per kind) — this sample seeds the Haiku curation batches below. **RSS sources need no wizard fetching**: leave each rss source's `items` unset and just pass its `url`. The build orchestrator (`wizard/build.ts`) fetches + parses every feed itself, in Node, in parallel. Do not call `web_fetch` on feed URLs — that tool only resolves URLs already in the conversation, so it fails on feeds and wastes round-trips; `build.ts` owns RSS end-to-end. **In `outputMode: 'static'`** also fetch each GitHub source's full `list_<kind>` result via the MCP and store the array on that source's `baked` field — `build.ts` bakes it in so the static dashboard renders with no live fetch.
 2. **Runs Haiku batches** (chunk size ≤10 to stay under the askClaude payload ceiling) to generate the curated content, then stashes each batch's output in the corresponding `WizardConfig` field before invoking the build orchestrator:
    - 6 `spotlights` from user seeds + live data → `WizardConfig.spotlights`
    - 6 `highlights` from live data → `WizardConfig.highlights`
@@ -146,7 +150,7 @@ After the questions, the wizard:
    - 4–8 `resources` (canonical sources + community hubs) → `WizardConfig.resources`
 3. **Builds the populated HTML** by handing the fully-populated `WizardConfig` to `templates/wizard/build.ts` (see "Build step" below). The orchestrator's sentinel substitution turns each field into the matching HTML block.
 4. **Smoke-tests the boot block** by running it in Node with stubbed `window`, `document`, `localStorage`. Catches TDZ errors and missing functions.
-5. **Calls `mcp__cowork__create_artifact`** with the populated HTML.
+5. **Ships the dashboard** — in `'artifact'` mode, calls `mcp__cowork__create_artifact` with the populated HTML; in `'static'` mode, writes the HTML into the user's folder as a file and presents it (no `create_artifact` — see "Creating the artifact").
 6. **Reports** the dashboard URL. Suggest `/setup-cc` as the next step **only when the dashboard has at least one `claude-code` product** — the `/digest` slash-command workflow it installs is Claude-Code-specific. For a dashboard with only `summary` / `task` products (or no products), skip that suggestion.
 
 ### Haiku batch contract — what the wizard agent must produce
@@ -273,6 +277,10 @@ The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUC
 
 ## Implementation status
 
+### v0.8.0 — static / offline output mode (Phase 1)
+
+Strictly additive. A new optional `WizardConfig.outputMode` — `'artifact'` (the default; omit it) or `'static'`. A `'static'` dashboard runs as a standalone HTML file with no Cowork artifact runtime: `genLoadBody` bakes each GitHub source's data (from `WizardSource.baked`, fetched by the wizard agent) into a literal `render*` call instead of a live `callTool` — exactly as RSS is baked — and `dashboard.ts`'s `buildDeps` no longer hard-throws on a missing `window.cowork`; it returns a static `Deps` with rejecting stubs. An `'artifact'` build's `LOAD_BODY` is byte-identical to pre-v0.8.0 output. Phase 1 ships the static floor (GitHub baking + softened guard + file output); product badges + flagging work offline, briefs degrade until the Phase 3 baked-brief work.
+
 ### v0.7.2 — wizard build speed-ups
 
 Strictly additive — build *output* is unchanged for every existing dashboard. Two changes to the build path:
@@ -363,9 +371,10 @@ The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wi
 - `footerNote`, `artifactName`, `artifactDescription` — metadata.
 - `ghServer` — the user's GitHub MCP server name (e.g. `mcp__github`).
 - `headerSourcesLinks` — pre-rendered HTML for the source links in the hero.
-- `sources: WizardSource[]` — mix of github coordinates (kind: releases | issues | pull_requests + owner/repo) and rss feeds (kind: rss + url). Optional section + args. For rss sources the wizard also fills `items` — the feed's parsed entries, baked into the dashboard at build time.
+- `sources: WizardSource[]` — mix of github coordinates (kind: releases | issues | pull_requests + owner/repo) and rss feeds (kind: rss + url). Optional section + args. For rss sources the wizard also fills `items` — the feed's parsed entries, baked at build time. In `outputMode: 'static'` the wizard also fills each GitHub source's `baked` — the agent-fetched `list_<kind>` array — so the dashboard renders with no live fetch.
 - `spotlights: WizardSpotlight[]` — 6 entries; the spotlight generator's output.
 - `cadence?: Cadence` — optional spotlight rotation cadence (`'daily'` default, `'weekly'`, `'on-demand'`). Omit for `'daily'`.
+- `outputMode?: 'artifact' | 'static'` — `'artifact'` (the default — omit it) builds the live Cowork-artifact dashboard. `'static'` builds a standalone HTML file: GitHub sources render from each source's `baked` field (no live fetch), the dashboard runs with no `window.cowork`, and the skill writes the file instead of calling `create_artifact`.
 - `products: WizardProduct[]` — 0-N products (empty = no flagging machinery emitted). Each `WizardProduct` carries an optional `actionType` (`'claude-code'` default, `'summary'`, or `'task'`); omit it for `'claude-code'`. `ccPromptBody` + `contextRefresh` apply to `'claude-code'` products only.
 - `highlights: WizardHighlightCard[]` — 6 entries; output of the highlights Haiku batch. Empty array → "get started" placeholder card. Shape: `{tag, title, body, url, cta?}`.
 - `patterns: WizardPatternCard[]` — 6 entries; community / pattern cards. Same shape as `highlights`.
@@ -442,6 +451,12 @@ The build wrote the final HTML to the `--out` path. Call
     fetched at runtime.
   A GitHub-releases-only dashboard with no products needs just
   `["${ghServer}__list_releases"]`.
+
+**Static mode.** When `outputMode` is `'static'`, do *not* call
+`create_artifact` — the dashboard is a standalone file. Instead, write the
+built HTML (the `--out` file) into the user's working folder and present it.
+It opens in any browser; `/refresh-dashboard` rebuilds it. This is the path
+for environments with no Cowork artifacts feature.
 
 ### Pipeline guarantees
 
