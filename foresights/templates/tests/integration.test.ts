@@ -82,10 +82,14 @@ describe('integration: compiled bundle boots into JSDOM', () => {
     expect(bundle).toMatch(/^\s*(?:"use strict"\s*;\s*)?\(\s*\(?\s*\)\s*=>/);
   });
 
-  it('throws the expected guard error when window.cowork is missing', () => {
-    const bundle = readFileSync(BUNDLE_PATH, 'utf8');
+  it('boots without throwing when window.cowork is missing (static-safe)', () => {
+    // v0.8.0: a static-mode dashboard runs with no Cowork artifact runtime.
+    // The entry point no longer hard-throws on a missing window.cowork — it
+    // builds a static Deps with rejecting stubs and boots normally.
+    document.body.innerHTML = SPOTLIGHT_DOM;
     (window as unknown as { cowork: unknown }).cowork = undefined;
-    expect(() => new Function(bundle).call(window)).toThrow(/window\.cowork is not available/);
+    const bundle = readFileSync(BUNDLE_PATH, 'utf8');
+    expect(() => new Function(bundle).call(window)).not.toThrow();
   });
 
   it('boots successfully when window.cowork is present (empty SPOTLIGHTS case)', () => {

@@ -23,17 +23,31 @@ interface CoworkWindow extends Window {
   };
 }
 
+/**
+ * Build the `Deps` from the browser runtime.
+ *
+ * Inside a Cowork artifact, `window.cowork` provides the live MCP / Haiku
+ * bridge. A `static`-mode dashboard (v0.8.0) runs as a plain HTML file with no
+ * artifact runtime: `window.cowork` is absent, the wizard bakes the data into
+ * `LOAD_BODY` instead of emitting live calls, and the dashboard renders from
+ * baked literals. So a missing `window.cowork` is no longer a hard error —
+ * `callTool` / `askClaude` / `runScheduledTask` become rejecting stubs. They
+ * are inert in a static build (nothing calls them); any stray call (e.g. a
+ * brief-panel click before the Phase 3 baked-brief work lands) rejects with a
+ * clear message and degrades, instead of crashing the page.
+ */
 const buildDeps = (win: CoworkWindow): Deps => {
-  if (!win.cowork) {
-    throw new Error(
-      'Foresights: window.cowork is not available. This dashboard must run inside a Cowork artifact.',
-    );
-  }
   const cw = win.cowork;
+  const needsRuntime = (): Promise<never> =>
+    Promise.reject(
+      new Error(
+        'Foresights: this feature needs the Cowork artifact runtime, which is not available here.',
+      ),
+    );
   return {
-    callTool: (name, args) => cw.callMcpTool(name, args),
-    askClaude: (prompt, data) => cw.askClaude(prompt, data),
-    runScheduledTask: (taskId) => cw.runScheduledTask(taskId),
+    callTool: cw ? (name, args) => cw.callMcpTool(name, args) : needsRuntime,
+    askClaude: cw ? (prompt, data) => cw.askClaude(prompt, data) : needsRuntime,
+    runScheduledTask: cw ? (taskId) => cw.runScheduledTask(taskId) : needsRuntime,
     storage: win.localStorage,
     now: () => new Date(),
     document: win.document,
