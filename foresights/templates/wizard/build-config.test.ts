@@ -845,3 +845,74 @@ describe('cadence — genLoadBody', () => {
     expect(explicit).toBe(omitted);
   });
 });
+
+describe('outputMode — genLoadBody', () => {
+  it('artifact mode (the default) emits a live callTool for github sources', () => {
+    const out = genLoadBody([source()], [], 'mcp__github');
+    expect(out).toContain('callTool(deps, "mcp__github__list_releases"');
+    expect(out).toContain('renderReleases(deps, raw as readonly Release[]');
+  });
+
+  it('static mode bakes github data into a literal render call — no callTool', () => {
+    const baked = [
+      {
+        tag_name: 'v1.2.0',
+        name: 'v1.2.0',
+        body: '',
+        html_url: 'https://example.com/r/v1.2.0',
+        published_at: '2026-05-01T00:00:00Z',
+      },
+    ];
+    const out = genLoadBody([source({ baked })], [], 'mcp__github', undefined, 'static');
+    expect(out).not.toContain('callTool');
+    expect(out).not.toContain('__list_releases');
+    expect(out).toContain('renderReleases(deps, [{');
+    expect(out).toContain('"v1.2.0"');
+    expect(out).toContain('as unknown as readonly Release[], "releases", productsArr)');
+  });
+
+  it('static mode with no baked data emits an empty literal', () => {
+    const out = genLoadBody([source()], [], 'mcp__github', undefined, 'static');
+    expect(out).toContain(
+      'renderReleases(deps, [] as unknown as readonly Release[], "releases", productsArr)',
+    );
+  });
+
+  it('static mode routes every github kind to its renderer + cast', () => {
+    const out = genLoadBody(
+      [
+        source({ id: 'r', kind: 'releases', section: 'releases' }),
+        source({ id: 'i', kind: 'issues', section: 'rfcs' }),
+        source({ id: 'p', kind: 'pull_requests', section: 'prs' }),
+      ],
+      [],
+      'mcp__github',
+      undefined,
+      'static',
+    );
+    expect(out).toContain('renderReleases(deps, [] as unknown as readonly Release[]');
+    expect(out).toContain('renderRfcs(deps, [] as unknown as readonly Issue[]');
+    expect(out).toContain('renderPrs(deps, [] as unknown as readonly PullRequest[]');
+    expect(out).not.toContain('callTool');
+  });
+
+  it('rss sources still bake regardless of outputMode', () => {
+    const rss: WizardSource = {
+      id: 'feed',
+      label: 'Feed',
+      kind: 'rss',
+      url: 'https://example.com/feed',
+      section: 'updates',
+    };
+    expect(genLoadBody([rss], [], 'mcp__github')).toContain('renderRssItems(deps');
+    expect(genLoadBody([rss], [], 'mcp__github', undefined, 'static')).toContain(
+      'renderRssItems(deps',
+    );
+  });
+
+  it('omitting outputMode is byte-identical to outputMode: artifact (additive guarantee)', () => {
+    const omitted = deriveSentinelMap(config()).LOAD_BODY;
+    const explicit = deriveSentinelMap(config({ outputMode: 'artifact' })).LOAD_BODY;
+    expect(explicit).toBe(omitted);
+  });
+});
