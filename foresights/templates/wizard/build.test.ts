@@ -222,3 +222,26 @@ describe('build — baked briefs (Phase 3b)', () => {
     expect(html).toContain(marker);
   }, 60000);
 });
+
+describe('build — baked digest triage (Phase 3c)', () => {
+  // Real esbuild compile so the whole chain is exercised: WizardConfig.triage
+  // → genBakedTriage → digest/triage.ts BAKED_TRIAGE sentinel → bundle → HTML.
+  it('bakes WizardConfig.triage through to the compiled dashboard HTML', async () => {
+    const outFile = resolve(TEST_OUT_PREFIX, 'dashboard.html');
+    const marker = 'BAKED-TRIAGE-E2E-MARKER: high-impact construct-tree change';
+    await build({
+      config: {
+        ...minimalConfig,
+        triage: {
+          cdki: { 'pr:1': { stableId: 'pr:1', bucket: 'green', reasoning: marker } },
+        },
+      },
+      templatesDir: TEMPLATES_DIR,
+      outFile,
+      fast: true,
+    });
+    const { readFile } = await import('node:fs/promises');
+    const html = await readFile(outFile, 'utf8');
+    expect(html).toContain(marker);
+  }, 60000);
+});
