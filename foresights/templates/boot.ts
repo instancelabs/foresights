@@ -17,7 +17,7 @@
  * sources, the un-used imports still tree-shake to nothing at bundle time.
  */
 
-import { TOPIC_SLUG } from './config';
+import { TOPIC, TOPIC_SLUG } from './config';
 import { initDigestPanel } from './digest/panel';
 import { initDigestBar } from './digest/wire-bar';
 import { callTool } from './mcp/call-tool';
@@ -30,6 +30,7 @@ import { CONTEXT_REFRESHERS } from './products/context-refresh-config';
 import { effectiveFingerprint } from './products/context-store';
 import { initBriefPanel } from './products/panel';
 import { PROMPTS } from './products/prompts';
+import { initRefreshButton } from './refresh-button';
 import { renderError } from './render/error';
 import { renderRfcs } from './render/issues';
 import { renderPrs } from './render/prs';
@@ -61,6 +62,8 @@ const _LOAD_BODY_IMPORTS_HOLD: ReadonlyArray<unknown> = [
   PRODUCTS,
   PROMPTS,
   CC_PROMPT_BUILDERS,
+  TOPIC,
+  initRefreshButton,
   null as unknown as Issue,
   null as unknown as PullRequest,
   null as unknown as Release,

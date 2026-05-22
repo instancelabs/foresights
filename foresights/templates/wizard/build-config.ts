@@ -607,6 +607,18 @@ export const genLoadBody = (
     `  initSpotlight(deps, { spotlights: SPOTLIGHTS, topicSlug: TOPIC_SLUG, products: productsArr${cadenceOpt} });`,
   );
   lines.push('} catch (err) { console.error("Foresights: initSpotlight failed", err); }');
+  // Static-mode refresh handoff. A standalone HTML dashboard has no Cowork
+  // runtime, so it can't re-fetch or re-curate itself — `/refresh-dashboard`
+  // is a skill that runs inside Claude. This button copies that instruction
+  // to the clipboard for the user to paste. Emitted only for static builds;
+  // an artifact build's LOAD_BODY stays byte-identical and the unused
+  // `initRefreshButton` import tree-shakes away.
+  if (outputMode === 'static') {
+    lines.push('');
+    lines.push('try {');
+    lines.push('  initRefreshButton(deps, { topic: TOPIC });');
+    lines.push('} catch (err) { console.error("Foresights: initRefreshButton failed", err); }');
+  }
   // Mount the brief panel + digest panel only when products are configured —
   // they listen for clicks on `.insights-tag` badges and on `#digest-btn-*`
   // buttons, neither of which exist in a no-products dashboard.
