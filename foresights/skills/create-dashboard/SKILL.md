@@ -5,7 +5,7 @@ description: Wizard that builds a live, product-customised news dashboard. Use w
 
 # Create Dashboard
 
-> **Status:** v0.8.1 (Phase 3b) — a new `outputMode: 'static'` builds a dashboard that runs as a standalone HTML file with **no Cowork artifact runtime**: GitHub data is baked in at build time (and refreshed live when a Cowork runtime *is* present), the `window.cowork` guard is softened, and (v0.8.1) every brief is pre-baked at build time so a static dashboard keeps full briefs offline. `'artifact'` (the default — omit it) is unchanged, and every artifact-mode dashboard keeps building byte-for-byte identically. v0.7.2 moved RSS fetching into `build.ts` + added `--fast`; v0.7.1 restored the template modules missing from the v0.7.0 package. Selectable cadence, pluggable action types, RSS / Atom + three GitHub source kinds — all unchanged. See `Implementation status` below.
+> **Status:** v0.8.2 (Phase 3c) — a new `outputMode: 'static'` builds a dashboard that runs as a standalone HTML file with **no Cowork artifact runtime**: GitHub data is baked in at build time (and refreshed live when a Cowork runtime *is* present), the `window.cowork` guard is softened, and every brief (v0.8.1) and upgrade-digest triage (v0.8.2) is pre-baked at build time so a static dashboard keeps full briefs + a fully-bucketed digest offline. `'artifact'` (the default — omit it) is unchanged, and every artifact-mode dashboard keeps building byte-for-byte identically. v0.7.2 moved RSS fetching into `build.ts` + added `--fast`; v0.7.1 restored the template modules missing from the v0.7.0 package. Selectable cadence, pluggable action types, RSS / Atom + three GitHub source kinds — all unchanged. See `Implementation status` below.
 
 ## What this skill does
 
@@ -148,12 +148,13 @@ After the questions, the wizard:
    - 6 community-library / pattern cards from live data → `WizardConfig.patterns`
    - 8 advanced tips from live data → `WizardConfig.tips`
    - 4–8 `resources` (canonical sources + community hubs) → `WizardConfig.resources`
-3. **Pre-bakes briefs — `outputMode: 'static'` only.** A static dashboard has no `window.cowork`, so a brief cannot be generated on a badge click — briefs are baked at build time. This is a **two-pass** flow:
+3. **Pre-bakes briefs + digest triage — `outputMode: 'static'` only.** A static dashboard has no `window.cowork`, so neither a brief (badge click) nor the digest triage can be generated at runtime — both are baked at build time. This is a **two-pass** flow:
    - **Pass 1 — emit the flag manifest.** Run `build.ts --emit-flags --config <config.json> --out <manifest.json>`. It runs the shared flag-unit enumerators + the product matcher over the `baked` GitHub data and RSS `items`, and writes a deterministic JSON array of `{productId, stableId, kind, text, title, url}` — one entry per flagged (product × item) pair. No dashboard is built on this pass.
    - **Generate a brief per entry.** For each manifest entry, generate a `Brief` (`{why, integrations}`) — a Haiku batch (chunk ≤10, exactly like the curated batches), using that entry's product `systemPrompt` as the system prompt and its `text` / `kind` / `url` as the ITEM. Collect the results into `WizardConfig.briefs`, keyed `productId → stableId → Brief`.
-   - **Pass 2 is the real build** (step 4) — `build.ts` embeds `WizardConfig.briefs` as the dashboard's `BAKED_BRIEFS` map; `fetchBrief` consults it first, so every flagged item has a full brief offline.
+   - **Triage each product's flagged items.** Per product, take that product's manifest entries and bucket each into 🟢 `green` / 🟡 `yellow` / 🔴 `red` — a Haiku batch following the criteria in `digest/triage.ts` `buildTriagePrompt` (be ruthless; most items are red). Use the entry's `text` plus the brief's `why` for context. Collect into `WizardConfig.triage`, keyed `productId → stableId → {stableId, bucket, reasoning}`.
+   - **Pass 2 is the real build** (step 4) — `build.ts` embeds `WizardConfig.briefs` as the dashboard's `BAKED_BRIEFS` map and `WizardConfig.triage` as its `BAKED_TRIAGE` map; `fetchBrief` and `triageItems` consult them first, so every flagged item has a full brief offline and the upgrade digest is fully bucketed offline.
 
-   Skip this step entirely for `'artifact'` dashboards — they generate briefs live via `askClaude` and leave `WizardConfig.briefs` unset.
+   Skip this step entirely for `'artifact'` dashboards — they generate briefs + triage live via `askClaude` and leave `WizardConfig.briefs` / `WizardConfig.triage` unset.
 4. **Builds the populated HTML** by handing the fully-populated `WizardConfig` to `templates/wizard/build.ts` (see "Build step" below). The orchestrator's sentinel substitution turns each field into the matching HTML block.
 5. **Smoke-tests the boot block** by running it in Node with stubbed `window`, `document`, `localStorage`. Catches TDZ errors and missing functions.
 6. **Ships the dashboard** — in `'artifact'` mode, calls `mcp__cowork__create_artifact` with the populated HTML; in `'static'` mode, writes the HTML into the user's folder as a file and presents it (no `create_artifact` — see "Creating the artifact").
@@ -283,6 +284,13 @@ The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUC
 
 ## Implementation status
 
+### v0.8.2 — pre-baked digest triage (static mode, Phase 3c)
+
+Strictly additive. In `outputMode: 'static'` the wizard now also pre-bakes the upgrade-digest triage at build time, so a static dashboard's digest is fully 🟢 / 🟡 / 🔴 bucketed offline — not defaulted to yellow.
+
+- **`BAKED_TRIAGE`** (`digest/triage.ts`). A new `productId → stableId → TriagedItem` map, emitted by `genBakedTriage` into a sentinel. `triageItems` consults it first (mirrors `fetchBrief`'s `BAKED_BRIEFS` tier) — an item with a baked verdict skips the Haiku batch; the rest triage live. `TriageOpts` gains an optional `productId` to key the lookup; the digest bar passes it. Empty `{}` in an `'artifact'` build — an inert no-op there, every item triaged live as before.
+- **Wizard flow.** The two-pass static flow (`build.ts --emit-flags` → generate per entry) now also triages each product's flagged items into `WizardConfig.triage` alongside `WizardConfig.briefs`. See "Wizard outputs" step 3. The digest panel + downloadable markdown read the baked triage transitively (triage → `renderDigestMarkdown` → panel).
+
 ### v0.8.1 — pre-baked briefs (static mode, Phase 3b)
 
 Strictly additive. In `outputMode: 'static'` the wizard now pre-bakes every brief at build time, so a static dashboard has full briefs offline — no `window.cowork`, no model access needed.
@@ -390,6 +398,7 @@ The full shape is in `templates/wizard/build-config.ts`. Top-level fields the wi
 - `cadence?: Cadence` — optional spotlight rotation cadence (`'daily'` default, `'weekly'`, `'on-demand'`). Omit for `'daily'`.
 - `outputMode?: 'artifact' | 'static'` — `'artifact'` (the default — omit it) builds the live Cowork-artifact dashboard. `'static'` builds a standalone HTML file: it runs with no `window.cowork`, rendering each GitHub source from that source's baked snapshot — and *if* a Cowork runtime is present (the file opened as an artifact) it refreshes that data live. The skill writes the file instead of calling `create_artifact`.
 - `briefs?: Record<productId, Record<stableId, Brief>>` — pre-baked briefs for `outputMode: 'static'`. The wizard fills this via the two-pass `--emit-flags` flow (see "Wizard outputs" step 3); `build.ts` embeds it as the dashboard's `BAKED_BRIEFS` map. Omit for `'artifact'` builds.
+- `triage?: Record<productId, Record<stableId, TriagedItem>>` — pre-baked digest triage for `outputMode: 'static'` (`TriagedItem` = `{stableId, bucket, reasoning}`). Filled in the same two-pass flow as `briefs`; `build.ts` embeds it as the dashboard's `BAKED_TRIAGE` map. Omit for `'artifact'` builds.
 - `products: WizardProduct[]` — 0-N products (empty = no flagging machinery emitted). Each `WizardProduct` carries an optional `actionType` (`'claude-code'` default, `'summary'`, or `'task'`); omit it for `'claude-code'`. `ccPromptBody` + `contextRefresh` apply to `'claude-code'` products only.
 - `highlights: WizardHighlightCard[]` — 6 entries; output of the highlights Haiku batch. Empty array → "get started" placeholder card. Shape: `{tag, title, body, url, cta?}`.
 - `patterns: WizardPatternCard[]` — 6 entries; community / pattern cards. Same shape as `highlights`.
@@ -434,7 +443,7 @@ Flags:
 >
 > Do NOT pass `--skip-preflight`: it's an internal test switch that bypasses biome/tsc/esbuild entirely and emits a *stub* bundle, not a real one. `--fast` is the supported speed switch; `--skip-preflight` is not.
 
-**Static mode is a two-pass build.** For `outputMode: 'static'`, run the manifest pass, generate one brief per entry, fold them into `WizardConfig.briefs`, then run the real build:
+**Static mode is a two-pass build.** For `outputMode: 'static'`, run the manifest pass, generate one brief per entry + per-product triage, fold both into the config, then run the real build:
 
 ```bash
 # Pass 1 — emit the flag manifest (no dashboard is built).
@@ -443,11 +452,13 @@ cd "$FORESIGHTS_TPL" && npx tsx wizard/build.ts \
   --out    /tmp/foresights-flags.json \
   --emit-flags
 # → generate a Brief per manifest entry (Haiku batch, ≤10/chunk), collect
-#   into WizardConfig.briefs keyed productId → stableId → {why, integrations}.
+#   into WizardConfig.briefs keyed productId → stableId → {why, integrations};
+# → triage each product's entries 🟢/🟡/🔴, collect into WizardConfig.triage
+#   keyed productId → stableId → {stableId, bucket, reasoning}.
 
-# Pass 2 — the real build, with briefs folded into the config.
+# Pass 2 — the real build, with briefs + triage folded into the config.
 cd "$FORESIGHTS_TPL" && npx tsx wizard/build.ts \
-  --config /tmp/foresights-config-with-briefs.json \
+  --config /tmp/foresights-config-with-briefs-and-triage.json \
   --out    /tmp/foresights-dashboard.html \
   --fast
 ```
