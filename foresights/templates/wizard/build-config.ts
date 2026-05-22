@@ -9,6 +9,7 @@ import type {
   PullRequest,
   Release,
   RssItem,
+  TriagedItem,
 } from '../types';
 import { escHtml } from '../util/escape';
 
@@ -265,6 +266,15 @@ export interface WizardConfig {
    * then emits the same empty `{}` the template ships.
    */
   readonly briefs?: Readonly<Record<string, Readonly<Record<string, Brief>>>>;
+  /**
+   * Pre-baked digest triage — `productId → stableId → TriagedItem`. In
+   * `outputMode: 'static'` the wizard pre-computes the 🟢 / 🟡 / 🔴 verdict
+   * for every flagged item (same `--emit-flags` manifest the briefs use) and
+   * places it here; `genBakedTriage` embeds it as `digest/triage.ts`'s
+   * `BAKED_TRIAGE` map, so the upgrade digest is fully bucketed offline. Omit
+   * for `'artifact'` builds — triage then runs live on the digest button.
+   */
+  readonly triage?: Readonly<Record<string, Readonly<Record<string, TriagedItem>>>>;
   readonly products: readonly WizardProduct[];
   /**
    * Curated highlight cards baked at wizard time (Haiku batch). Empty array
@@ -540,6 +550,25 @@ export const genBakedBriefs = (briefs?: WizardConfig['briefs']): string => {
     return `\n${decl} = {};\n`;
   }
   return `\n${decl} = ${JSON.stringify(briefs, null, 2)};\n`;
+};
+
+/**
+ * Emit the body of the `BAKED_TRIAGE` sentinel in `digest/triage.ts` — a
+ * `productId → stableId → TriagedItem` map of digest verdicts the wizard
+ * pre-computed at build time (`outputMode: 'static'`). `triageItems` consults
+ * it first, so the upgrade digest is fully bucketed with no Haiku call.
+ *
+ * Empty / omitted `triage` emits the exact `{}` declaration the template
+ * ships, so an `'artifact'` build's `digest/triage.ts` is semantically
+ * unchanged. Same `JSON.stringify` escaping + trust model as `genBakedBriefs`.
+ */
+export const genBakedTriage = (triage?: WizardConfig['triage']): string => {
+  const decl =
+    'const BAKED_TRIAGE: Readonly<Record<string, Readonly<Record<string, TriagedItem>>>>';
+  if (!triage || Object.keys(triage).length === 0) {
+    return `\n${decl} = {};\n`;
+  }
+  return `\n${decl} = ${JSON.stringify(triage, null, 2)};\n`;
 };
 
 /**
@@ -977,6 +1006,7 @@ export interface SentinelMap {
   readonly 'PRODUCTS_CONFIG:CONTEXT_REFRESH': string;
   readonly 'PRODUCTS_CONFIG:CC_BUILDERS': string;
   readonly BAKED_BRIEFS: string;
+  readonly BAKED_TRIAGE: string;
   readonly SECTION_NAV: string;
   readonly 'SECTION_MARKUP:ABOVE_HIGHLIGHTS': string;
   readonly 'SECTION_MARKUP:BELOW_HIGHLIGHTS': string;
@@ -1026,6 +1056,7 @@ export const deriveSentinelMap = (config: WizardConfig): SentinelMap => ({
   'PRODUCTS_CONFIG:CONTEXT_REFRESH': genContextRefresh(config.products),
   'PRODUCTS_CONFIG:CC_BUILDERS': genCcBuilders(config.products),
   BAKED_BRIEFS: genBakedBriefs(config.briefs),
+  BAKED_TRIAGE: genBakedTriage(config.triage),
 
   // HTML sentinels
   SECTION_NAV: genSectionNav(config.sources),
