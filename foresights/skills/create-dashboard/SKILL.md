@@ -5,7 +5,7 @@ description: Wizard that builds a live, product-customised news dashboard. Use w
 
 # Create Dashboard
 
-> **Status:** v0.8.2 (Phase 3c) — a new `outputMode: 'static'` builds a dashboard that runs as a standalone HTML file with **no Cowork artifact runtime**: GitHub data is baked in at build time (and refreshed live when a Cowork runtime *is* present), the `window.cowork` guard is softened, and every brief (v0.8.1) and upgrade-digest triage (v0.8.2) is pre-baked at build time so a static dashboard keeps full briefs + a fully-bucketed digest offline. `'artifact'` (the default — omit it) is unchanged, and every artifact-mode dashboard keeps building byte-for-byte identically. v0.7.2 moved RSS fetching into `build.ts` + added `--fast`; v0.7.1 restored the template modules missing from the v0.7.0 package. Selectable cadence, pluggable action types, RSS / Atom + three GitHub source kinds — all unchanged. See `Implementation status` below.
+> **Status:** v0.8.3 (Phase 3d) — a new `outputMode: 'static'` builds a dashboard that runs as a standalone HTML file with **no Cowork artifact runtime**: GitHub data is baked in at build time (and refreshed live when a Cowork runtime *is* present), the `window.cowork` guard is softened, and every brief (v0.8.1) and upgrade-digest triage (v0.8.2) is pre-baked at build time so a static dashboard keeps full briefs + a fully-bucketed digest offline. v0.8.3 adds a static-mode Refresh button that copies a `/refresh-dashboard for <topic>` instruction to the clipboard — the user pastes it to Claude to re-bake the file. `'artifact'` (the default — omit it) is unchanged, and every artifact-mode dashboard keeps building byte-for-byte identically. v0.7.2 moved RSS fetching into `build.ts` + added `--fast`; v0.7.1 restored the template modules missing from the v0.7.0 package. Selectable cadence, pluggable action types, RSS / Atom + three GitHub source kinds — all unchanged. See `Implementation status` below.
 
 ## What this skill does
 
@@ -283,6 +283,13 @@ The PRODUCTS_CONFIG block uses sub-sentinels (`PRODUCTS_CONFIG:PROMPTS`, `PRODUC
 **Critical:** the `code` field uses backslash-escaped single quotes (`<span class="s">\'github.com/...\'</span>`) because each line is a JS string literal. The generator must escape `'` inside string-class spans before emitting.
 
 ## Implementation status
+
+### v0.8.3 — static-mode refresh button (Phase 3d)
+
+Strictly additive. A `static` dashboard has no Cowork runtime, so it can't re-fetch or re-curate itself — refreshing it is the `/refresh-dashboard` skill, which runs inside Claude. v0.8.3 makes that one click: an `outputMode: 'static'` dashboard renders a **Refresh button** in the hero that copies `/refresh-dashboard for <topic>` to the clipboard for the user to paste into Claude.
+
+- **`refresh-button.ts`** — a new module exporting `initRefreshButton(deps, { topic })`. It injects the button, wires the click → clipboard copy, and is idempotent. Clipboard writes go through a new shared `util/clipboard.ts` (`writeToClipboard` — `navigator.clipboard` with an `execCommand` fallback, mirroring the private copy in `products/panel.ts`).
+- **Emission.** `genLoadBody` emits the `initRefreshButton(deps, { topic: TOPIC })` call **only** in its `static` branch; `boot.ts` imports the module. An `'artifact'` build never references it, so esbuild tree-shakes `refresh-button.ts` (and `util/clipboard.ts`) out of the bundle entirely — an artifact dashboard's HTML stays byte-identical. The wizard does nothing extra: the button is fully build-time machinery.
 
 ### v0.8.2 — pre-baked digest triage (static mode, Phase 3c)
 

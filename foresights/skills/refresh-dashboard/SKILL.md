@@ -56,6 +56,12 @@ and re-baking all of it:
    dashboard's file** — a static dashboard is a plain file, not a Cowork
    artifact, so there is no `update_artifact` to call.
 
+A static dashboard (v0.8.3+) renders a **Refresh button** in its hero that
+copies `/refresh-dashboard for <topic>` to the clipboard — that handoff is the
+intended way a user reaches this skill for a static dashboard. The button is
+build-time machinery; this skill needs no special handling for it, but expect
+the request to often arrive in exactly that `for <topic>` form.
+
 ## Step 1 — Identify the target dashboard
 
 Call `mcp__cowork__list_artifacts`. It returns each artifact's `id`, `name`,
