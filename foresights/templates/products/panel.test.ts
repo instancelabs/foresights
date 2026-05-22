@@ -246,7 +246,7 @@ describe('initBriefPanel — badge click flow', () => {
     expect(tag.classList.contains('expanded')).toBe(false);
   });
 
-  it('renders an error message when fetchBrief rejects', async () => {
+  it('falls back to the regex-reason brief when the model response is unusable', async () => {
     const deps = makeDeps(() => Promise.resolve('not JSON at all'));
     disposeHandle = initBriefPanel(deps, {
       products: [CDKI],
@@ -258,8 +258,10 @@ describe('initBriefPanel — badge click flow', () => {
     click(card.querySelector('.insights-tag') as Element);
     await flush();
     const panel = card.querySelector('.insights-brief');
-    expect(panel?.innerHTML).toContain("Couldn't generate brief");
-    expect(panel?.innerHTML).toContain('No JSON found');
+    // Phase 3a: an unusable model response (or no model at all) falls back to
+    // the non-model floor — the matcher's regex reason — not an error card.
+    expect(panel?.innerHTML).toContain('Why relevant to CDK Insights');
+    expect(panel?.innerHTML).not.toContain("Couldn't generate brief");
   });
 
   it('renders an error when no prompt is configured for the productId', async () => {
