@@ -7,6 +7,7 @@ import {
   derivePlaceholderMap,
   deriveSentinelMap,
   genBakedBriefs,
+  genBakedTriage,
   genCcBuilders,
   genForesightsConfigJson,
   genHighlightsMarkup,
@@ -721,6 +722,7 @@ describe('deriveSentinelMap', () => {
       'PRODUCTS_CONFIG:CONTEXT_REFRESH',
       'PRODUCTS_CONFIG:CC_BUILDERS',
       'BAKED_BRIEFS',
+      'BAKED_TRIAGE',
       'SECTION_NAV',
       'SECTION_MARKUP:ABOVE_HIGHLIGHTS',
       'SECTION_MARKUP:BELOW_HIGHLIGHTS',
@@ -974,6 +976,58 @@ describe('genBakedBriefs', () => {
     expect(baked).toContain('Relevant RFC.');
     // A config with no briefs leaves the sentinel as the shipped empty map.
     expect(deriveSentinelMap(config()).BAKED_BRIEFS).toBe(genBakedBriefs(undefined));
+  });
+});
+
+describe('genBakedTriage', () => {
+  it('emits an empty BAKED_TRIAGE map when triage is omitted', () => {
+    const out = genBakedTriage(undefined);
+    expect(out).toContain(
+      'const BAKED_TRIAGE: Readonly<Record<string, Readonly<Record<string, TriagedItem>>>> = {};',
+    );
+  });
+
+  it('emits the same empty map for an empty triage object (additive guarantee)', () => {
+    expect(genBakedTriage({})).toBe(genBakedTriage(undefined));
+  });
+
+  it('embeds each verdict keyed by product then stableId', () => {
+    const out = genBakedTriage({
+      cdki: {
+        'pr:42': { stableId: 'pr:42', bucket: 'green', reasoning: 'High-impact, low-risk.' },
+      },
+    });
+    expect(out).toContain('"cdki"');
+    expect(out).toContain('"pr:42"');
+    expect(out).toContain('"green"');
+    expect(out).toContain('High-impact, low-risk.');
+  });
+
+  it('escapes quotes / markup so the literal stays valid', () => {
+    const triage = {
+      lc: {
+        'release:v1:features:x': {
+          stableId: 'release:v1:features:x',
+          bucket: 'red' as const,
+          reasoning: 'Has "quotes" and a </script> tag — skip.',
+        },
+      },
+    };
+    const out = genBakedTriage(triage);
+    // The emitted object literal round-trips through JSON.parse unchanged.
+    const literal = out.slice(out.indexOf('= ') + 2, out.lastIndexOf(';'));
+    expect(JSON.parse(literal)).toEqual(triage);
+  });
+
+  it('deriveSentinelMap wires genBakedTriage into the BAKED_TRIAGE sentinel', () => {
+    const baked = deriveSentinelMap(
+      config({
+        triage: { cdki: { 'rfc:7': { stableId: 'rfc:7', bucket: 'yellow', reasoning: 'Maybe.' } } },
+      }),
+    ).BAKED_TRIAGE;
+    expect(baked).toContain('Maybe.');
+    // A config with no triage leaves the sentinel as the shipped empty map.
+    expect(deriveSentinelMap(config()).BAKED_TRIAGE).toBe(genBakedTriage(undefined));
   });
 });
 
