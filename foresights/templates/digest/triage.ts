@@ -19,6 +19,21 @@
 import { ASK_CLAUDE_BATCH_SIZE, askClaude } from '../mcp/ask-claude';
 import type { Deps, TriageBucket, TriagedItem } from '../types';
 
+/**
+ * Pre-baked digest triage — the `BAKED_TRIAGE` sentinel.
+ *
+ * Empty `{}` in an `outputMode: 'artifact'` build (so artifact dashboards run
+ * live Haiku triage exactly as before). In `outputMode: 'static'` the wizard
+ * pre-computes the 🟢 / 🟡 / 🔴 verdict for every (product × flagged-item)
+ * pair at build time and the build substitutes them here — keyed
+ * `productId → stableId → TriagedItem`. `triageItems` consults this map first,
+ * so a static dashboard's upgrade digest is fully bucketed offline — no
+ * `window.cowork`, no model access needed.
+ */
+// FORESIGHTS_START:BAKED_TRIAGE
+const BAKED_TRIAGE: Readonly<Record<string, Readonly<Record<string, TriagedItem>>>> = {};
+// FORESIGHTS_END:BAKED_TRIAGE
+
 /** Per-item triage payload. Field-name shape is contract — don't rename. */
 export interface TriageInput {
   /** Stable identifier — used to key the response back to the input. */
@@ -36,6 +51,12 @@ export interface TriageOpts {
   readonly productDescriptor: string;
   /** Items per Haiku call — defaults to ASK_CLAUDE_BATCH_SIZE (10). */
   readonly batchSize?: number;
+  /**
+   * Product id — keys the `BAKED_TRIAGE` lookup. Pass it (the digest bar
+   * does) to let a static dashboard use pre-baked verdicts; omit it and the
+   * baked tier is skipped and every item is triaged live.
+   */
+  readonly productId?: string;
 }
 
 const BUCKETS: ReadonlySet<TriageBucket> = new Set<TriageBucket>(['green', 'yellow', 'red']);
@@ -156,6 +177,12 @@ const parseTriageBatch = (text: string): Map<string, TriagedItem> => {
  * throws or its response is unparseable, the items in THAT batch default
  * to yellow + TRIAGE_FAIL_REASON. Items NOT returned by Haiku (e.g. model
  * dropped one) get the same default.
+ *
+ * Tiered (mirrors `fetchBrief`): an item with a build-time pre-baked verdict
+ * in `BAKED_TRIAGE[opts.productId]` skips the Haiku batch entirely. In an
+ * artifact build `BAKED_TRIAGE` is `{}`, so every item is triaged live as
+ * before; in `outputMode: 'static'` the wizard fills it and no Haiku call
+ * is made.
  */
 export const triageItems = async (
   deps: Pick<Deps, 'askClaude'>,
@@ -168,11 +195,18 @@ export const triageItems = async (
     throw new Error(`triageItems: batchSize must be positive, got ${batchSize}`);
   }
 
+  // Tier 1 — build-time pre-baked verdicts. `BAKED_TRIAGE` is `{}` in an
+  // artifact build, so `baked` is empty there and `needLive` === every item:
+  // identical behaviour to pre-3c. In static mode the wizard fills it.
+  const baked: Readonly<Record<string, TriagedItem>> =
+    (opts.productId ? BAKED_TRIAGE[opts.productId] : undefined) ?? {};
+  const needLive = items.filter((it) => baked[it.stableId] === undefined);
+
   const prompt = buildTriagePrompt(opts.productDescriptor);
   const triageById = new Map<string, TriagedItem>();
 
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
+  for (let i = 0; i < needLive.length; i += batchSize) {
+    const batch = needLive.slice(i, i + batchSize);
     const trimmed = batch.map(trimTriageItem);
     try {
       const raw = await askClaude(
@@ -204,6 +238,7 @@ export const triageItems = async (
 
   return items.map(
     (it) =>
+      baked[it.stableId] ??
       triageById.get(it.stableId) ?? {
         stableId: it.stableId,
         bucket: 'yellow' as TriageBucket,
