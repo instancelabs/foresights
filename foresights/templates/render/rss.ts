@@ -16,6 +16,7 @@ import { flagsForText } from '../products/matcher';
 import type { Deps, Product, RssItem } from '../types';
 import { relTime } from '../util/date';
 import { escHtml } from '../util/escape';
+import { rssUnits } from './flag-units';
 import { appendToSection } from './section';
 
 /** Trim and collapse whitespace in a description for the card snippet. */
@@ -29,13 +30,6 @@ const snippet = (description: string, maxLen = 220): string => {
   return `${stripped.slice(0, maxLen).trimEnd()}…`;
 };
 
-/** Sanitise a string for use as a stableId fragment. */
-const slugForId = (s: string): string =>
-  s
-    .replace(/[^\w]+/g, '-')
-    .toLowerCase()
-    .slice(0, 80);
-
 /**
  * Render up to 10 RSS / Atom items into a target container.
  *
@@ -48,17 +42,16 @@ export const renderRssItems = (
   section: string,
   products: readonly Product[],
 ): void => {
-  const trimmed = items.slice(0, 10);
-  const html = trimmed
-    .map((item) => {
-      const matchText = `${item.title} ${item.description}`;
+  const html = rssUnits(items)
+    .map((u) => {
+      const item = u.source;
       const flags = flagsForText(
-        matchText,
+        u.matchText,
         {
           section,
-          stableId: `rss:${slugForId(item.guid || item.link)}`,
-          title: item.title,
-          url: item.link,
+          stableId: u.stableId,
+          title: u.title,
+          url: u.url,
         },
         products,
       );
@@ -67,7 +60,7 @@ export const renderRssItems = (
           const product = products.find((p) => p.id === f.productId);
           const cssMod = product?.cssMod ?? '';
           const label = product?.label ?? f.productId;
-          return ` ${flagBadgeHtml(f, { kind: 'rss', text: matchText }, label, cssMod)}`;
+          return ` ${flagBadgeHtml(f, { kind: 'rss', text: u.matchText }, label, cssMod)}`;
         })
         .join('');
       const date = item.pubDate ? escHtml(relTime(item.pubDate, deps.now)) : '';
