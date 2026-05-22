@@ -1,4 +1,15 @@
-import type { ActionTypeId, Cadence, RssItem } from '../types';
+import { flagsForText } from '../products/matcher';
+import { type FlagUnit, issueUnits, prUnits, releaseUnits, rssUnits } from '../render/flag-units';
+import type {
+  ActionTypeId,
+  Brief,
+  Cadence,
+  Issue,
+  Product,
+  PullRequest,
+  Release,
+  RssItem,
+} from '../types';
 import { escHtml } from '../util/escape';
 
 /** Dashboard output mode — see `WizardConfig.outputMode`. */
@@ -245,6 +256,15 @@ export interface WizardConfig {
    * pre-v0.8.0 output.
    */
   readonly outputMode?: OutputMode;
+  /**
+   * Pre-baked briefs — `productId → stableId → Brief`. In `outputMode:
+   * 'static'` the wizard runs `build.ts --emit-flags` to enumerate every
+   * flagged unit, generates a `Brief` per entry via a Haiku batch, and places
+   * the result here; `genBakedBriefs` embeds it as `products/brief.ts`'s
+   * `BAKED_BRIEFS` map. Omit for `'artifact'` builds — `genBakedBriefs`
+   * then emits the same empty `{}` the template ships.
+   */
+  readonly briefs?: Readonly<Record<string, Readonly<Record<string, Brief>>>>;
   readonly products: readonly WizardProduct[];
   /**
    * Curated highlight cards baked at wizard time (Haiku batch). Empty array
@@ -499,6 +519,27 @@ export const genCcBuilders = (products: readonly WizardProduct[]): string => {
     })
     .join('\n');
   return `\nexport const CC_PROMPT_BUILDERS: Readonly<Record<string, CcPromptBuilder>> = {\n${entries}\n};\n`;
+};
+
+/**
+ * Emit the body of the `BAKED_BRIEFS` sentinel in `products/brief.ts` — a
+ * `productId → stableId → Brief` map of briefs the wizard pre-generated via
+ * Haiku at build time (`outputMode: 'static'`). `fetchBrief` consults it as
+ * tier 1, above the localStorage cache.
+ *
+ * Empty / omitted `briefs` emits the exact `{}` declaration the template
+ * ships, so an `'artifact'` build's `products/brief.ts` is semantically
+ * unchanged. Brief text is embedded with `JSON.stringify` — which escapes
+ * every quote / backslash / control char — so an arbitrary Haiku brief cannot
+ * break the emitted literal. (Same trust + escaping model as the spotlight /
+ * RSS baked-content generators; the bundle is then esbuild-compiled.)
+ */
+export const genBakedBriefs = (briefs?: WizardConfig['briefs']): string => {
+  const decl = 'const BAKED_BRIEFS: Readonly<Record<string, Readonly<Record<string, Brief>>>>';
+  if (!briefs || Object.keys(briefs).length === 0) {
+    return `\n${decl} = {};\n`;
+  }
+  return `\n${decl} = ${JSON.stringify(briefs, null, 2)};\n`;
 };
 
 /**
@@ -935,6 +976,7 @@ export interface SentinelMap {
   readonly 'PRODUCTS_CONFIG:RULES': string;
   readonly 'PRODUCTS_CONFIG:CONTEXT_REFRESH': string;
   readonly 'PRODUCTS_CONFIG:CC_BUILDERS': string;
+  readonly BAKED_BRIEFS: string;
   readonly SECTION_NAV: string;
   readonly 'SECTION_MARKUP:ABOVE_HIGHLIGHTS': string;
   readonly 'SECTION_MARKUP:BELOW_HIGHLIGHTS': string;
@@ -983,6 +1025,7 @@ export const deriveSentinelMap = (config: WizardConfig): SentinelMap => ({
   'PRODUCTS_CONFIG:RULES': genRules(config.products),
   'PRODUCTS_CONFIG:CONTEXT_REFRESH': genContextRefresh(config.products),
   'PRODUCTS_CONFIG:CC_BUILDERS': genCcBuilders(config.products),
+  BAKED_BRIEFS: genBakedBriefs(config.briefs),
 
   // HTML sentinels
   SECTION_NAV: genSectionNav(config.sources),
@@ -1014,3 +1057,94 @@ export const derivePlaceholderMap = (config: WizardConfig, compiledJs: string): 
   COMPILED_JS: compiledJs,
   FORESIGHTS_CONFIG_JSON: genForesightsConfigJson(config),
 });
+
+// ---------------------------------------------------------------------------
+// Flag manifest — the first pass of the two-pass static-mode wizard flow.
+//
+// `build.ts --emit-flags` writes this manifest; the `/create-dashboard` /
+// `/refresh-dashboard` agent then generates one Haiku brief per entry and
+// feeds them back as `WizardConfig.briefs` for the real build (see SKILL.md).
+// ---------------------------------------------------------------------------
+
+/** One flagged (product × item) pair — a brief the wizard must pre-generate. */
+export interface FlagManifestEntry {
+  /** The product whose matcher fired. */
+  readonly productId: string;
+  /** Stable id of the flagged item — the `BAKED_BRIEFS` lookup key. */
+  readonly stableId: string;
+  /** Item kind — `pr` / `rfc` / `rss` / `release-<bucket>`. */
+  readonly kind: string;
+  /** The text the matcher ran against — the brief's ITEM body. */
+  readonly text: string;
+  /** Item title. */
+  readonly title: string;
+  /** Canonical URL — best effort; empty string acceptable. */
+  readonly url: string;
+}
+
+/**
+ * Compile a `WizardProduct` into a runtime `Product`. The `match` function is
+ * byte-for-byte equivalent to the one `genProductsConst` emits into the
+ * dashboard — rules scanned in declaration order, `new RegExp(source, flags)`,
+ * first match wins — so the manifest flags exactly what the live dashboard
+ * flags.
+ */
+const compileProduct = (p: WizardProduct): Product => ({
+  id: p.id,
+  label: p.label,
+  cssMod: p.cssMod,
+  match: (text: string): string | null => {
+    for (const r of p.rules) {
+      if (new RegExp(r.source, r.flags ?? '').test(text)) return r.reason;
+    }
+    return null;
+  },
+});
+
+/**
+ * Enumerate every flagged (product × item) pair from a config's baked data.
+ *
+ * Pure + deterministic — it runs the shared `render/flag-units` enumerators
+ * and `products/matcher` over `source.baked` (GitHub) / `source.items` (RSS),
+ * so the manifest's stableIds are identical to the renderers' and to the
+ * `BAKED_BRIEFS` keys `fetchBrief` looks up. No staging / substitution is
+ * needed — the matcher derives purely from `config.products[].rules`, the same
+ * input `genProductsConst` compiles. Entries are ordered source → item →
+ * product. Empty when the config has no products.
+ */
+export const deriveFlagManifest = (config: WizardConfig): readonly FlagManifestEntry[] => {
+  const products = config.products.map(compileProduct);
+  if (products.length === 0) return [];
+  const entries: FlagManifestEntry[] = [];
+  const pushFlags = (unit: FlagUnit<unknown>, kind: string): void => {
+    const flags = flagsForText(
+      unit.matchText,
+      { section: '', stableId: unit.stableId, title: unit.title, url: unit.url },
+      products,
+    );
+    for (const f of flags) {
+      entries.push({
+        productId: f.productId,
+        stableId: unit.stableId,
+        kind,
+        text: unit.matchText,
+        title: unit.title,
+        url: unit.url,
+      });
+    }
+  };
+  for (const s of config.sources) {
+    if (s.kind === 'rss') {
+      for (const u of rssUnits(s.items ?? [])) pushFlags(u, 'rss');
+    } else if (s.kind === 'releases') {
+      for (const u of releaseUnits((s.baked ?? []) as readonly Release[])) {
+        pushFlags(u, `release-${u.source.bucket}`);
+      }
+    } else if (s.kind === 'issues') {
+      for (const u of issueUnits((s.baked ?? []) as readonly Issue[])) pushFlags(u, 'rfc');
+    } else {
+      for (const u of prUnits((s.baked ?? []) as readonly PullRequest[])) pushFlags(u, 'pr');
+    }
+  }
+  return entries;
+};
