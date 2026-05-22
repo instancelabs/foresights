@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Deps, Flag } from '../types';
 import { createInMemoryStorage } from '../util/storage';
-import { type BriefItem, briefCacheKey, fetchBrief, hashKey } from './brief';
+import { type BriefItem, briefCacheKey, briefFromReason, fetchBrief, hashKey } from './brief';
 
 const FLAG: Flag = {
   section: 'releases',
@@ -332,73 +332,60 @@ describe('fetchBrief — askClaude response normalisation', () => {
   });
 });
 
-describe('fetchBrief — JSON parsing failures', () => {
-  it('throws when the response contains no JSON object', async () => {
+describe('fetchBrief — unusable model responses fall back to the regex reason', () => {
+  const args = {
+    flag: FLAG,
+    prompt: PROMPT,
+    fingerprint: FINGERPRINT,
+    topicSlug: TOPIC_SLUG,
+    item: ITEM,
+  };
+
+  it('falls back to the flag reason when the response contains no JSON', async () => {
     const deps = makeDeps(vi.fn<AskClaude>().mockResolvedValue('Sorry, I cannot help.'));
-    await expect(
-      fetchBrief(deps, {
-        flag: FLAG,
-        prompt: PROMPT,
-        fingerprint: FINGERPRINT,
-        topicSlug: TOPIC_SLUG,
-        item: ITEM,
-      }),
-    ).rejects.toThrow(/No JSON found/);
+    expect(await fetchBrief(deps, args)).toEqual({ why: 'CDK area', integrations: [] });
   });
 
-  it('throws when the JSON inside the response is malformed', async () => {
+  it('falls back when the JSON inside the response is malformed', async () => {
     const deps = makeDeps(vi.fn<AskClaude>().mockResolvedValue('{ not: valid json }'));
-    await expect(
-      fetchBrief(deps, {
-        flag: FLAG,
-        prompt: PROMPT,
-        fingerprint: FINGERPRINT,
-        topicSlug: TOPIC_SLUG,
-        item: ITEM,
-      }),
-    ).rejects.toThrow(/malformed JSON/);
+    expect((await fetchBrief(deps, args)).why).toBe('CDK area');
   });
 
-  it('throws when the JSON object is missing the why field', async () => {
+  it('falls back when the response is missing the why field', async () => {
     const deps = makeDeps(
       vi.fn<AskClaude>().mockResolvedValue(JSON.stringify({ integrations: [] })),
     );
-    await expect(
-      fetchBrief(deps, {
-        flag: FLAG,
-        prompt: PROMPT,
-        fingerprint: FINGERPRINT,
-        topicSlug: TOPIC_SLUG,
-        item: ITEM,
-      }),
-    ).rejects.toThrow(/missing "why"/);
+    expect((await fetchBrief(deps, args)).why).toBe('CDK area');
   });
 
-  it('throws when why is empty string', async () => {
+  it('falls back when why is an empty string', async () => {
     const deps = makeDeps(
       vi.fn<AskClaude>().mockResolvedValue(JSON.stringify({ why: '', integrations: [] })),
     );
-    await expect(
-      fetchBrief(deps, {
-        flag: FLAG,
-        prompt: PROMPT,
-        fingerprint: FINGERPRINT,
-        topicSlug: TOPIC_SLUG,
-        item: ITEM,
-      }),
-    ).rejects.toThrow(/missing "why"/);
+    expect((await fetchBrief(deps, args)).why).toBe('CDK area');
+  });
+
+  it('falls back when askClaude itself rejects (no model / no window.cowork)', async () => {
+    const deps = makeDeps(vi.fn<AskClaude>().mockRejectedValue(new Error('no cowork runtime')));
+    expect(await fetchBrief(deps, args)).toEqual({ why: 'CDK area', integrations: [] });
+  });
+
+  it('does not cache the fallback brief — a later working model regenerates a real brief', async () => {
+    const storage = createInMemoryStorage();
+    await fetchBrief(
+      { storage, askClaude: vi.fn<AskClaude>().mockRejectedValue(new Error('down')) },
+      args,
+    );
+    const brief = await fetchBrief(
+      { storage, askClaude: vi.fn<AskClaude>().mockResolvedValue(validResponse) },
+      args,
+    );
+    expect(brief.why).toContain('Mixins change');
   });
 
   it('defaults integrations to [] when missing or non-array', async () => {
     const deps = makeDeps(vi.fn<AskClaude>().mockResolvedValue(JSON.stringify({ why: 'reason' })));
-    const brief = await fetchBrief(deps, {
-      flag: FLAG,
-      prompt: PROMPT,
-      fingerprint: FINGERPRINT,
-      topicSlug: TOPIC_SLUG,
-      item: ITEM,
-    });
-    expect(brief.integrations).toEqual([]);
+    expect((await fetchBrief(deps, args)).integrations).toEqual([]);
   });
 
   it('coerces malformed integration entries into {title:"", detail:""}', async () => {
@@ -412,17 +399,23 @@ describe('fetchBrief — JSON parsing failures', () => {
       ],
     });
     const deps = makeDeps(vi.fn<AskClaude>().mockResolvedValue(malformed));
-    const brief = await fetchBrief(deps, {
-      flag: FLAG,
-      prompt: PROMPT,
-      fingerprint: FINGERPRINT,
-      topicSlug: TOPIC_SLUG,
-      item: ITEM,
-    });
+    const brief = await fetchBrief(deps, args);
     // Two object entries → integrations length 2 (string + null filtered out).
     expect(brief.integrations).toHaveLength(2);
     expect(brief.integrations[0]).toEqual({ title: 'good', detail: 'g' });
     expect(brief.integrations[1]).toEqual({ title: '', detail: '' });
+  });
+});
+
+describe('briefFromReason', () => {
+  it('builds a minimal brief from the flag reason', () => {
+    expect(briefFromReason(FLAG, ITEM)).toEqual({ why: 'CDK area', integrations: [] });
+  });
+
+  it('falls back flag reason → item reason → a generic line', () => {
+    const noFlagReason: Flag = { ...FLAG, reason: '' };
+    expect(briefFromReason(noFlagReason, ITEM).why).toBe('CDK area');
+    expect(briefFromReason(noFlagReason, { ...ITEM, reason: '' }).why).toMatch(/relevant/i);
   });
 });
 
