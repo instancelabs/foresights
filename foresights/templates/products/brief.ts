@@ -195,10 +195,25 @@ const readCachedBrief = (storage: Storage, cacheKey: string): Brief | null => {
 };
 
 /**
- * Fetch a brief for one flagged item. Cache-first; falls back to Haiku.
+ * The non-model floor for a brief — a minimal `Brief` synthesised from the
+ * matcher's regex `reason`. Used by `fetchBrief` when `askClaude` is
+ * unavailable (a static dashboard with no `window.cowork`, or an org with no
+ * model access) or returns an unusable response. `flagsForText` computes
+ * `reason` with no model, so a flagged item always has *something* to show —
+ * why the rule matched — even with zero model access.
+ */
+export const briefFromReason = (flag: Flag, item: BriefItem): Brief => ({
+  why: flag.reason || item.reason || 'Flagged as relevant by a product rule.',
+  integrations: [],
+});
+
+/**
+ * Fetch a brief for one flagged item.
  *
- * Throws if Haiku returns malformed JSON or is missing the required `why`
- * field. Callers should catch and surface the error in the brief panel.
+ * Tiered: a cached brief → a fresh `askClaude` (Haiku) brief → and, if
+ * `askClaude` is unavailable (no `window.cowork` / no model access) or returns
+ * an unusable response, the non-model floor (`briefFromReason`). It does not
+ * throw for those cases — it always resolves to a `Brief`.
  */
 export const fetchBrief = async (
   deps: Pick<Deps, 'storage' | 'askClaude'>,
@@ -227,12 +242,20 @@ export const fetchBrief = async (
     ...(item.version ? { version: item.version } : {}),
   };
 
-  const raw = await deps.askClaude(`${prompt}\n\nITEM:\n${JSON.stringify(itemPayload, null, 2)}`, [
-    itemPayload,
-  ]);
-
-  const text = normalizeAskClaudeResult(raw);
-  const brief = parseBriefJson(text);
+  let brief: Brief;
+  try {
+    const raw = await deps.askClaude(
+      `${prompt}\n\nITEM:\n${JSON.stringify(itemPayload, null, 2)}`,
+      [itemPayload],
+    );
+    brief = parseBriefJson(normalizeAskClaudeResult(raw));
+  } catch {
+    // askClaude rejected (no window.cowork / no model access for this org) or
+    // returned an unusable response. Fall back to the non-model floor — a
+    // minimal brief from the matcher's regex reason. NOT cached: a later run
+    // with a working model regenerates a real brief.
+    return briefFromReason(flag, item);
+  }
 
   try {
     deps.storage.setItem(cacheKey, JSON.stringify(brief));
