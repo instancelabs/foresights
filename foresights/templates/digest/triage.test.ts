@@ -300,3 +300,21 @@ describe('triageItems — response shape normalisation', () => {
     expect(out[0]?.bucket).toBe('green');
   });
 });
+
+describe('triageItems — baked tier (BAKED_TRIAGE)', () => {
+  // BAKED_TRIAGE is the empty `{}` the template ships, so every test here
+  // exercises the artifact-mode path: the baked tier is a transparent no-op
+  // and every item is triaged live. The populated-map path is covered e2e in
+  // wizard/build.test.ts (a static build bakes verdicts through to the HTML).
+  it('passing productId is inert when BAKED_TRIAGE is empty — items still triage live', async () => {
+    const askClaude = vi
+      .fn<AskClaude>()
+      .mockResolvedValue(triageResponse([{ id: 'a', bucket: 'green', reason: 'big win' }]));
+    const out = await triageItems(makeDeps(askClaude), [item('a')], {
+      productDescriptor: PROD_DESCRIPTOR,
+      productId: 'cdki',
+    });
+    expect(askClaude).toHaveBeenCalledTimes(1);
+    expect(out).toEqual([{ stableId: 'a', bucket: 'green', reasoning: 'big win' }]);
+  });
+});
