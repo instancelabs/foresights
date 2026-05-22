@@ -220,8 +220,11 @@ export const initDigestBar = (deps: Deps, opts: InitDigestBarOpts): DigestBarHan
       // Step 2 — triage via Haiku.
       btn.textContent = `${product.label}: triaging ${entries.length}…`;
       const productDescriptor = `${product.label} — see system prompt`;
+      // `productId` keys the BAKED_TRIAGE lookup — a static dashboard uses
+      // the build-time verdicts; an artifact dashboard triages live.
       const triaged: readonly TriagedItem[] = await triageItems(deps, buildTriageInputs(entries), {
         productDescriptor,
+        productId: product.id,
       });
 
       // Step 3 — render markdown + open panel.
