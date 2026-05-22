@@ -26,6 +26,21 @@
 import type { Brief, BriefIntegration, Deps, Flag } from '../types';
 
 /**
+ * Pre-baked briefs — the `BAKED_BRIEFS` sentinel.
+ *
+ * Empty `{}` in an `outputMode: 'artifact'` build (so artifact dashboards are
+ * byte-for-byte unchanged at runtime). In `outputMode: 'static'` the wizard
+ * pre-generates a `Brief` for every (product × flagged-item) pair via Haiku at
+ * build time, and the build substitutes them here — keyed
+ * `productId → stableId → Brief`. `fetchBrief` consults this map as tier 1,
+ * above the localStorage cache, so a static dashboard renders full briefs with
+ * no `window.cowork` and no model access.
+ */
+// FORESIGHTS_START:BAKED_BRIEFS
+const BAKED_BRIEFS: Readonly<Record<string, Readonly<Record<string, Brief>>>> = {};
+// FORESIGHTS_END:BAKED_BRIEFS
+
+/**
  * Stable string hash for cache keys. DJB2 variant — same impl as v0.1, so
  * caches transfer cleanly when the topic-slug + fingerprint align.
  */
@@ -210,16 +225,25 @@ export const briefFromReason = (flag: Flag, item: BriefItem): Brief => ({
 /**
  * Fetch a brief for one flagged item.
  *
- * Tiered: a cached brief → a fresh `askClaude` (Haiku) brief → and, if
- * `askClaude` is unavailable (no `window.cowork` / no model access) or returns
- * an unusable response, the non-model floor (`briefFromReason`). It does not
- * throw for those cases — it always resolves to a `Brief`.
+ * Tiered: a build-time pre-baked brief (`BAKED_BRIEFS`, static mode) → a
+ * cached brief → a fresh `askClaude` (Haiku) brief → and, if `askClaude` is
+ * unavailable (no `window.cowork` / no model access) or returns an unusable
+ * response, the non-model floor (`briefFromReason`). It does not throw for
+ * those cases — it always resolves to a `Brief`.
  */
 export const fetchBrief = async (
   deps: Pick<Deps, 'storage' | 'askClaude'>,
   args: FetchBriefArgs,
 ): Promise<Brief> => {
   const { flag, prompt, fingerprint, topicSlug, item } = args;
+
+  // Tier 1 — a build-time pre-baked brief. `BAKED_BRIEFS` is `{}` in an
+  // artifact build, so this is an inert no-op there; the wizard fills it for
+  // `outputMode: 'static'`. Keyed productId → stableId — the same stableId the
+  // renderer stamped on the badge this fetch was triggered from.
+  const baked = BAKED_BRIEFS[flag.productId]?.[flag.stableId];
+  if (baked) return baked;
+
   const cacheKey = briefCacheKey(topicSlug, flag.productId, fingerprint, flag.stableId);
 
   const cached = readCachedBrief(deps.storage, cacheKey);
