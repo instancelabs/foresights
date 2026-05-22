@@ -51,6 +51,7 @@ export const TS_FILES_WITH_SENTINELS = [
   'sources.ts',
   'boot.ts',
   'spotlight/data.ts',
+  'digest/triage.ts',
   'products/brief.ts',
   'products/cc-prompts.ts',
   'products/config.ts',

@@ -43,15 +43,15 @@ sources or products**.
 A dashboard built with `outputMode: 'static'` (its embedded `foresights-config`
 block carries `"outputMode": "static"`) is **always a full rebuild** — never a
 section splice. A static dashboard bakes *everything* into the file: GitHub
-data, RSS items, **and briefs**. Refreshing it means re-fetching and re-baking
-all of it:
+data, RSS items, **briefs, and digest triage**. Refreshing it means re-fetching
+and re-baking all of it:
 
 1. Re-fetch each GitHub source's `list_<kind>` result into `WizardSource.baked`
    (the agent does this — `build.ts` re-bakes RSS itself).
-2. Re-bake the briefs via the two-pass `--emit-flags` flow — see
-   `create-dashboard/SKILL.md` → "Wizard outputs" step 3. The recovered
-   config's stale `briefs` are discarded; fresh briefs are generated against
-   the fresh `baked` data.
+2. Re-bake the briefs **and digest triage** via the two-pass `--emit-flags`
+   flow — see `create-dashboard/SKILL.md` → "Wizard outputs" step 3. The
+   recovered config's stale `briefs` / `triage` are discarded; fresh ones are
+   generated against the fresh `baked` data.
 3. Re-run `wizard/build.ts` and **write the rebuilt HTML back to the
    dashboard's file** — a static dashboard is a plain file, not a Cowork
    artifact, so there is no `update_artifact` to call.
