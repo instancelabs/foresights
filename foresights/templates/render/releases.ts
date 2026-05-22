@@ -1,16 +1,21 @@
 /**
  * Render the live releases section.
  *
- * Ports renderReleases + parseReleaseBody + renderReleaseItem from the v0.1
- * aws-cdk-news.html reference. Markdown release bodies (the format
- * release-please generates) get split into Breaking / Features / Bug fixes /
- * Alpha buckets; each bucket renders as a .release-section list inside a
- * .card with the version chip in the header.
+ * Ports renderReleases + renderReleaseItem from the v0.1 aws-cdk-news.html
+ * reference. Markdown release bodies (the format release-please generates) get
+ * split into Breaking / Features / Bug fixes / Alpha buckets; each bucket
+ * renders as a .release-section list inside a .card with the version chip in
+ * the header.
+ *
+ * The body parse (`parseReleaseBody`) and the per-bullet enumeration
+ * (`releaseUnitsFor`) live in render/flag-units.ts — so the bullets the
+ * renderer paints, and their stableIds, are byte-identical to the units the
+ * wizard's pre-baked-brief manifest enumerates. `parseReleaseBody` is
+ * re-exported here so existing importers (and releases.test.ts) are unchanged.
  *
  * Signature deviation from the Phase 2 stub: replaces the overloaded
  * `baseMeta: FlagMeta` with a `section: string` parameter, plus an explicit
- * `products` array. The per-item FlagMeta is built inline (each item has
- * its own stableId/title/url; only the section is shared per-call).
+ * `products` array. The per-bullet FlagMeta is sourced from the unit.
  */
 
 import { flagBadgeHtml } from '../products/badge';
@@ -18,102 +23,51 @@ import { flagsForText } from '../products/matcher';
 import type { Deps, Product, Release } from '../types';
 import { fmtDate } from '../util/date';
 import { escHtml } from '../util/escape';
+import {
+  type Bucket,
+  type FlagUnit,
+  type ReleaseUnitSource,
+  parseReleaseBody,
+  releaseUnitsFor,
+} from './flag-units';
 import { appendToSection } from './section';
 
-type Bucket = 'breaking' | 'features' | 'fixes' | 'alpha';
-
-interface ParsedBody {
-  readonly breaking: readonly string[];
-  readonly features: readonly string[];
-  readonly fixes: readonly string[];
-  readonly alpha: readonly string[];
-}
-
-/** Parse a release-please-shaped markdown body into per-bucket bullet arrays. */
-export const parseReleaseBody = (body: string | null | undefined): ParsedBody => {
-  const text = String(body ?? '');
-  const groups: Record<Bucket, string[]> = {
-    breaking: [],
-    features: [],
-    fixes: [],
-    alpha: [],
-  };
-  let bucket: Bucket | null = null;
-  let inAlpha = false;
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (/^---/.test(line)) continue;
-    if (/^##\s*Alpha modules/i.test(line)) {
-      inAlpha = true;
-      bucket = 'alpha';
-      continue;
-    }
-    if (/^###\s*⚠?\s*BREAKING/i.test(line)) {
-      bucket = 'breaking';
-      continue;
-    }
-    if (/^###\s*Features/i.test(line)) {
-      bucket = inAlpha ? 'alpha' : 'features';
-      continue;
-    }
-    if (/^###\s*Bug Fixes/i.test(line)) {
-      bucket = inAlpha ? 'alpha' : 'fixes';
-      continue;
-    }
-    if (/^###/.test(line)) {
-      bucket = null;
-      continue;
-    }
-    if (!bucket) continue;
-    const m = line.match(/^\*\s+(.*)/);
-    if (!m || m[1] === undefined) continue;
-    groups[bucket].push(m[1]);
-  }
-  return {
-    breaking: groups.breaking,
-    features: groups.features,
-    fixes: groups.fixes,
-    alpha: groups.alpha,
-  };
-};
-
-/** Sanitise a string for use as a stableId fragment. */
-const slug = (s: string): string =>
-  s
-    .replace(/[^\w]+/g, '-')
-    .toLowerCase()
-    .slice(0, 60);
+// flag-units.ts owns parseReleaseBody now; re-export it so existing importers
+// (and releases.test.ts's `import { parseReleaseBody } from './releases'`)
+// keep working unchanged.
+export { parseReleaseBody };
 
 /**
  * Render one bullet line from a release body. Returns the HTML for the bullet
  * with markdown links converted, bold "scope:" prefixes converted into
  * styled spans, and per-product flag badges appended.
+ *
+ * `unit` carries the bullet text, the release, the bucket, and the
+ * stableId / matchText / title / url — all enumerated by `releaseUnitsFor`.
  */
 const renderReleaseItem = (
-  item: string,
-  sectionKind: Bucket,
-  release: Release,
+  unit: FlagUnit<ReleaseUnitSource>,
   flagSection: string,
   products: readonly Product[],
 ): string => {
+  const { release, bucket, bullet } = unit.source;
   // Normalize bold scope: "**core:**" → <span class="scope">core</span>:
-  let html = escHtml(item).replace(/\*\*([^*]+):\*\*/g, '<span class="scope">$1</span>:');
+  let html = escHtml(bullet).replace(/\*\*([^*]+):\*\*/g, '<span class="scope">$1</span>:');
   // Convert markdown links [text](url) → <a>
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
     (_, t: string, u: string) =>
       `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(t)}</a>`,
   );
-  // Match against the raw item text (with a BREAKING prefix for breaking
-  // changes so the matcher fires on prefix-anchored rules).
-  const matchText = sectionKind === 'breaking' ? `BREAKING ${item}` : item;
+  // matchText carries the BREAKING prefix for breaking changes (so prefix-
+  // anchored matcher rules fire) — computed by releaseUnitsFor.
   const flags = flagsForText(
-    matchText,
+    unit.matchText,
     {
       section: flagSection,
-      stableId: `release:${release.tag_name || 'unknown'}:${sectionKind}:${slug(item)}`,
-      title: item,
-      url: release.html_url ?? '',
+      stableId: unit.stableId,
+      title: unit.title,
+      url: unit.url,
     },
     products,
   );
@@ -124,8 +78,8 @@ const renderReleaseItem = (
     html += ` ${flagBadgeHtml(
       f,
       {
-        kind: `release-${sectionKind}`,
-        text: matchText,
+        kind: `release-${bucket}`,
+        text: unit.matchText,
         ...(release.tag_name ? { version: release.tag_name } : {}),
       },
       label,
@@ -135,13 +89,6 @@ const renderReleaseItem = (
   return html;
 };
 
-const bucketCap: Record<Bucket, number> = {
-  breaking: 5,
-  features: 6,
-  fixes: 5,
-  alpha: 5,
-};
-
 const bucketHeading: Record<Bucket, string> = {
   breaking: '⚠ Breaking changes',
   features: 'Features',
@@ -149,19 +96,18 @@ const bucketHeading: Record<Bucket, string> = {
   alpha: 'Alpha modules',
 };
 
-const renderSection = (
-  items: readonly string[],
+/**
+ * Render one bucket's `.release-section`. `units` are already capped + ordered
+ * by `releaseUnitsFor`, so no re-slicing happens here.
+ */
+const renderBucket = (
+  units: ReadonlyArray<FlagUnit<ReleaseUnitSource>>,
   bucket: Bucket,
-  release: Release,
   flagSection: string,
   products: readonly Product[],
 ): string => {
-  if (items.length === 0) return '';
-  const cap = bucketCap[bucket];
-  const lis = items
-    .slice(0, cap)
-    .map((i) => `<li>${renderReleaseItem(i, bucket, release, flagSection, products)}</li>`)
-    .join('');
+  if (units.length === 0) return '';
+  const lis = units.map((u) => `<li>${renderReleaseItem(u, flagSection, products)}</li>`).join('');
   const cls = bucket === 'breaking' ? 'release-section breaking' : 'release-section';
   return `<div class="${cls}"><h4>${escHtml(bucketHeading[bucket])}</h4><ul>${lis}</ul></div>`;
 };
@@ -182,15 +128,19 @@ export const renderReleases = (
   const html = releases
     .slice(0, 5)
     .map((rel) => {
-      const groups = parseReleaseBody(rel.body);
+      const units = releaseUnitsFor(rel);
+      const breaking = units.filter((u) => u.source.bucket === 'breaking');
+      const features = units.filter((u) => u.source.bucket === 'features');
+      const fixes = units.filter((u) => u.source.bucket === 'fixes');
+      const alpha = units.filter((u) => u.source.bucket === 'alpha');
       const sections = [
-        renderSection(groups.breaking, 'breaking', rel, section, products),
-        renderSection(groups.features, 'features', rel, section, products),
-        renderSection(groups.fixes, 'fixes', rel, section, products),
-        renderSection(groups.alpha, 'alpha', rel, section, products),
+        renderBucket(breaking, 'breaking', section, products),
+        renderBucket(features, 'features', section, products),
+        renderBucket(fixes, 'fixes', section, products),
+        renderBucket(alpha, 'alpha', section, products),
       ].join('');
       const breakingBadge =
-        groups.breaking.length > 0 ? '<span class="badge badge-red">breaking</span>' : '';
+        breaking.length > 0 ? '<span class="badge badge-red">breaking</span>' : '';
       return `<div class="card">
         <div class="card-row">
           <div class="release-version">

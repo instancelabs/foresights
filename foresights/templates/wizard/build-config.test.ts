@@ -3,8 +3,10 @@ import {
   type WizardConfig,
   type WizardProduct,
   type WizardSource,
+  deriveFlagManifest,
   derivePlaceholderMap,
   deriveSentinelMap,
+  genBakedBriefs,
   genCcBuilders,
   genForesightsConfigJson,
   genHighlightsMarkup,
@@ -718,6 +720,7 @@ describe('deriveSentinelMap', () => {
       'PRODUCTS_CONFIG:RULES',
       'PRODUCTS_CONFIG:CONTEXT_REFRESH',
       'PRODUCTS_CONFIG:CC_BUILDERS',
+      'BAKED_BRIEFS',
       'SECTION_NAV',
       'SECTION_MARKUP:ABOVE_HIGHLIGHTS',
       'SECTION_MARKUP:BELOW_HIGHLIGHTS',
@@ -923,5 +926,183 @@ describe('outputMode — genLoadBody', () => {
     const omitted = deriveSentinelMap(config()).LOAD_BODY;
     const explicit = deriveSentinelMap(config({ outputMode: 'artifact' })).LOAD_BODY;
     expect(explicit).toBe(omitted);
+  });
+});
+
+describe('genBakedBriefs', () => {
+  it('emits an empty BAKED_BRIEFS map when briefs are omitted', () => {
+    const out = genBakedBriefs(undefined);
+    expect(out).toContain(
+      'const BAKED_BRIEFS: Readonly<Record<string, Readonly<Record<string, Brief>>>> = {};',
+    );
+  });
+
+  it('emits the same empty map for an empty briefs object (additive guarantee)', () => {
+    expect(genBakedBriefs({})).toBe(genBakedBriefs(undefined));
+  });
+
+  it('embeds each baked brief keyed by product then stableId', () => {
+    const out = genBakedBriefs({
+      cdki: {
+        'pr:42': { why: 'Touches the construct tree.', integrations: [] },
+      },
+    });
+    expect(out).toContain('"cdki"');
+    expect(out).toContain('"pr:42"');
+    expect(out).toContain('Touches the construct tree.');
+  });
+
+  it('escapes quotes / backslashes / markup so the literal stays valid', () => {
+    const briefs = {
+      lc: {
+        'release:v1:features:x': {
+          why: 'Has "quotes", a \\ backslash, and a </script> tag.',
+          integrations: [{ title: 'In `lc-api`', detail: 'See src/handler.ts.' }],
+        },
+      },
+    };
+    const out = genBakedBriefs(briefs);
+    // The emitted object literal round-trips through JSON.parse unchanged.
+    const literal = out.slice(out.indexOf('= ') + 2, out.lastIndexOf(';'));
+    expect(JSON.parse(literal)).toEqual(briefs);
+  });
+
+  it('deriveSentinelMap wires genBakedBriefs into the BAKED_BRIEFS sentinel', () => {
+    const baked = deriveSentinelMap(
+      config({ briefs: { cdki: { 'rfc:7': { why: 'Relevant RFC.', integrations: [] } } } }),
+    ).BAKED_BRIEFS;
+    expect(baked).toContain('Relevant RFC.');
+    // A config with no briefs leaves the sentinel as the shipped empty map.
+    expect(deriveSentinelMap(config()).BAKED_BRIEFS).toBe(genBakedBriefs(undefined));
+  });
+});
+
+describe('deriveFlagManifest', () => {
+  it('returns an empty manifest when the config has no products', () => {
+    expect(deriveFlagManifest(config())).toEqual([]);
+  });
+
+  it('flags a release bullet that matches a product rule (and skips the rest)', () => {
+    const manifest = deriveFlagManifest(
+      config({
+        products: [product()],
+        sources: [
+          source({
+            kind: 'releases',
+            section: 'releases',
+            baked: [
+              {
+                tag_name: 'v1.0.0',
+                name: 'v1.0.0',
+                body: '### Features\n* improve cdk synth\n* totally unrelated bullet',
+                html_url: 'https://example.com/r/v1.0.0',
+                published_at: '2026-05-01T00:00:00Z',
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(manifest).toEqual([
+      {
+        productId: 'cdki',
+        stableId: 'release:v1.0.0:features:improve-cdk-synth',
+        kind: 'release-features',
+        text: 'improve cdk synth',
+        title: 'improve cdk synth',
+        url: 'https://example.com/r/v1.0.0',
+      },
+    ]);
+  });
+
+  it('tags each source kind with the right kind label', () => {
+    const manifest = deriveFlagManifest(
+      config({
+        products: [product()],
+        sources: [
+          source({
+            id: 'p',
+            kind: 'pull_requests',
+            section: 'prs',
+            baked: [
+              {
+                number: 7,
+                title: 'feat: cdk thing',
+                html_url: 'https://example.com/pr/7',
+                merged_at: '2026-05-01T00:00:00Z',
+              },
+            ],
+          }),
+          source({
+            id: 'i',
+            kind: 'issues',
+            section: 'rfcs',
+            baked: [
+              {
+                number: 9,
+                title: 'cdk rfc',
+                body: 'body',
+                html_url: 'https://example.com/i/9',
+                labels: [],
+                updated_at: '2026-05-01T00:00:00Z',
+              },
+            ],
+          }),
+          {
+            id: 'f',
+            label: 'Feed',
+            kind: 'rss',
+            url: 'https://example.com/feed',
+            section: 'updates',
+            items: [
+              {
+                title: 'cdk news',
+                link: 'https://example.com/post',
+                description: 'about cdk',
+                pubDate: '2026-05-01T00:00:00Z',
+                author: 'A',
+                guid: 'guid-1',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(manifest.map((e) => `${e.kind}:${e.stableId}`)).toEqual([
+      'pr:pr:7',
+      'rfc:rfc:9',
+      'rss:rss:guid-1',
+    ]);
+  });
+
+  it('emits one entry per matching product, in product declaration order', () => {
+    const manifest = deriveFlagManifest(
+      config({
+        products: [
+          product({ id: 'a', rules: [{ source: 'cdk', flags: 'i', reason: 'a' }] }),
+          product({ id: 'b', rules: [{ source: 'synth', flags: 'i', reason: 'b' }] }),
+        ],
+        sources: [
+          source({
+            kind: 'pull_requests',
+            section: 'prs',
+            baked: [
+              {
+                number: 1,
+                title: 'feat: cdk synth speedup',
+                html_url: 'https://example.com/pr/1',
+                merged_at: '2026-05-01T00:00:00Z',
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(manifest.map((e) => e.productId)).toEqual(['a', 'b']);
+  });
+
+  it('treats a github source with no baked data as zero flagged items', () => {
+    // config()'s default source is a releases source with no `baked`.
+    expect(deriveFlagManifest(config({ products: [product()] }))).toEqual([]);
   });
 });
