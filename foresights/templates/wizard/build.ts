@@ -35,7 +35,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { type WizardConfig, derivePlaceholderMap, deriveSentinelMap } from './build-config';
+import {
+  type WizardConfig,
+  deriveFlagManifest,
+  derivePlaceholderMap,
+  deriveSentinelMap,
+} from './build-config';
 import { hydrateRssSources } from './fetch-feeds';
 import { substituteAll } from './substitute';
 
@@ -46,6 +51,7 @@ export const TS_FILES_WITH_SENTINELS = [
   'sources.ts',
   'boot.ts',
   'spotlight/data.ts',
+  'products/brief.ts',
   'products/cc-prompts.ts',
   'products/config.ts',
   'products/context-refresh-config.ts',
@@ -298,6 +304,11 @@ interface CliArgs {
   readonly skipPreflight: boolean;
   readonly withTests: boolean;
   readonly fast: boolean;
+  /**
+   * Emit a flag manifest instead of building. Pass 1 of the static-mode
+   * two-pass flow — `--out` receives the manifest JSON, not a dashboard.
+   */
+  readonly emitFlags: boolean;
 }
 
 const parseArgs = (argv: readonly string[]): CliArgs => {
@@ -307,6 +318,7 @@ const parseArgs = (argv: readonly string[]): CliArgs => {
   let skipPreflight = false;
   let withTests = false;
   let fast = false;
+  let emitFlags = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--config') configPath = argv[++i] ?? '';
@@ -315,10 +327,11 @@ const parseArgs = (argv: readonly string[]): CliArgs => {
     else if (a === '--skip-preflight') skipPreflight = true;
     else if (a === '--with-tests') withTests = true;
     else if (a === '--fast') fast = true;
+    else if (a === '--emit-flags') emitFlags = true;
   }
   if (!configPath || !outFile) {
     throw new Error(
-      'Usage: node wizard/build.ts --config <path> --out <path> [--templates <dir>] [--fast] [--skip-preflight] [--with-tests]',
+      'Usage: node wizard/build.ts --config <path> --out <path> [--templates <dir>] [--fast] [--emit-flags] [--skip-preflight] [--with-tests]',
     );
   }
   // Default templates dir = the directory of this file's parent.
@@ -330,6 +343,7 @@ const parseArgs = (argv: readonly string[]): CliArgs => {
     skipPreflight,
     withTests,
     fast,
+    emitFlags,
   };
 };
 
@@ -346,6 +360,19 @@ const main = async (): Promise<void> => {
     ...rawConfig,
     sources: await hydrateRssSources(rawConfig.sources),
   };
+  // --emit-flags: pass 1 of the static-mode two-pass flow. Enumerate every
+  // flagged (product × item) pair from the baked data and write the manifest.
+  // The wizard agent then generates a Haiku brief per entry and re-invokes
+  // build.ts for the real build with the briefs in WizardConfig.briefs.
+  if (args.emitFlags) {
+    const manifest = deriveFlagManifest(config);
+    await mkdir(dirname(args.outFile), { recursive: true });
+    await writeFile(args.outFile, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    process.stdout.write(
+      `${JSON.stringify({ mode: 'emit-flags', flags: manifest.length, outFile: args.outFile })}\n`,
+    );
+    return;
+  }
   const result = await build({
     config,
     templatesDir: args.templatesDir,
