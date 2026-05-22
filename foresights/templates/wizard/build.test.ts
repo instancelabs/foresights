@@ -200,3 +200,25 @@ describe('injectBundleAndSubstitute (unit)', () => {
     expect(out).toContain('{{UNKNOWN}}');
   });
 });
+
+describe('build — baked briefs (Phase 3b)', () => {
+  // A real esbuild compile (fast: skips biome + tsc, keeps esbuild) so the
+  // whole chain is exercised: WizardConfig.briefs → genBakedBriefs →
+  // products/brief.ts BAKED_BRIEFS sentinel → bundle → final HTML.
+  it('bakes WizardConfig.briefs through to the compiled dashboard HTML', async () => {
+    const outFile = resolve(TEST_OUT_PREFIX, 'dashboard.html');
+    const marker = 'BAKED-BRIEF-E2E-MARKER: construct-tree traversal matters here';
+    await build({
+      config: {
+        ...minimalConfig,
+        briefs: { cdki: { 'pr:1': { why: marker, integrations: [] } } },
+      },
+      templatesDir: TEMPLATES_DIR,
+      outFile,
+      fast: true,
+    });
+    const { readFile } = await import('node:fs/promises');
+    const html = await readFile(outFile, 'utf8');
+    expect(html).toContain(marker);
+  }, 60000);
+});
