@@ -6,7 +6,10 @@
  * labels (RFC convention), an author line, and a relative-time meta column.
  *
  * Signature deviation from the Phase 2 stub: replaces `baseMeta: FlagMeta`
- * with `section: string` + `products`. The per-item FlagMeta is built inline.
+ * with `section: string` + `products`. The per-item FlagMeta fields
+ * (stableId / matchText / title / url) come from `issueUnits`
+ * (render/flag-units) so they stay byte-identical to the wizard's pre-baked-
+ * brief manifest.
  */
 
 import { flagBadgeHtml } from '../products/badge';
@@ -14,6 +17,7 @@ import { flagsForText } from '../products/matcher';
 import type { Deps, Issue, Product } from '../types';
 import { fmtDate, relTime } from '../util/date';
 import { escHtml } from '../util/escape';
+import { issueUnits } from './flag-units';
 import { appendToSection } from './section';
 
 interface RfcStatus {
@@ -66,18 +70,17 @@ export const renderRfcs = (
   section: string,
   products: readonly Product[],
 ): void => {
-  const html = issues
-    .slice(0, 8)
-    .map((it) => {
+  const html = issueUnits(issues)
+    .map((u) => {
+      const it = u.source;
       const status = rfcStatus(it.labels);
-      const url = it.html_url ?? '';
-      const matchText = `${it.title} ${it.body ?? ''}`;
+      const url = u.url;
       const flags = flagsForText(
-        matchText,
+        u.matchText,
         {
           section,
-          stableId: `rfc:${it.number}`,
-          title: it.title,
+          stableId: u.stableId,
+          title: u.title,
           url,
         },
         products,
@@ -87,7 +90,7 @@ export const renderRfcs = (
           const product = products.find((p) => p.id === f.productId);
           const cssMod = product?.cssMod ?? '';
           const label = product?.label ?? f.productId;
-          return ` ${flagBadgeHtml(f, { kind: 'rfc', text: matchText }, label, cssMod)}`;
+          return ` ${flagBadgeHtml(f, { kind: 'rfc', text: u.matchText }, label, cssMod)}`;
         })
         .join('');
       const created = it.updated_at; // Issue type doesn't expose created_at; updated_at is the available timestamp.
