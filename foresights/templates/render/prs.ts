@@ -8,7 +8,9 @@
  * .scope span.
  *
  * Signature deviation from the Phase 2 stub: replaces `baseMeta: FlagMeta`
- * with `section: string` + `products`. The per-item FlagMeta is built inline.
+ * with `section: string` + `products`. The per-item FlagMeta fields
+ * (stableId / matchText / title / url) come from `prUnits` (render/flag-units)
+ * so they stay byte-identical to the wizard's pre-baked-brief manifest.
  */
 
 import { flagBadgeHtml } from '../products/badge';
@@ -16,6 +18,7 @@ import { flagsForText } from '../products/matcher';
 import type { Deps, Product, PullRequest } from '../types';
 import { relTime } from '../util/date';
 import { escHtml } from '../util/escape';
+import { prUnits } from './flag-units';
 import { appendToSection } from './section';
 
 interface TitleParts {
@@ -45,28 +48,21 @@ export const renderPrs = (
   section: string,
   products: readonly Product[],
 ): void => {
-  const merged = prs
-    .filter(
-      (p) =>
-        p.merged_at !== null &&
-        !/^chore\(merge-back\)/i.test(p.title) &&
-        !/Contributors File/i.test(p.title),
-    )
-    .slice(0, 10);
-  const html = merged
-    .map((p) => {
+  const html = prUnits(prs)
+    .map((u) => {
+      const p = u.source;
       const { scope, rest } = splitConventionalTitle(p.title);
       const titleHtml = scope
         ? `<span class="scope">${escHtml(scope)}</span> ${escHtml(rest)}`
         : escHtml(p.title);
       const author = p.user?.login ? `@${p.user.login}` : '';
       const flags = flagsForText(
-        p.title,
+        u.matchText,
         {
           section,
-          stableId: `pr:${p.number}`,
-          title: p.title,
-          url: p.html_url,
+          stableId: u.stableId,
+          title: u.title,
+          url: u.url,
         },
         products,
       );
@@ -75,7 +71,7 @@ export const renderPrs = (
           const product = products.find((pp) => pp.id === f.productId);
           const cssMod = product?.cssMod ?? '';
           const label = product?.label ?? f.productId;
-          return ` ${flagBadgeHtml(f, { kind: 'pr', text: p.title }, label, cssMod)}`;
+          return ` ${flagBadgeHtml(f, { kind: 'pr', text: u.matchText }, label, cssMod)}`;
         })
         .join('');
       const mergedMeta = p.merged_at ? escHtml(relTime(p.merged_at, deps.now)) : '';
