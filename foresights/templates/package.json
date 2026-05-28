@@ -11,8 +11,12 @@
     "build": "esbuild dashboard.ts --bundle --format=iife --target=es2022 --sourcemap=inline --outfile=dist/dashboard.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preflight": "npm run lint && npm run typecheck && npm run test",
-    "wizard:build": "tsx wizard/build.ts"
+    "preflight": "npm run lint && npm run typecheck && npm run prebuild-wizard && npm run test",
+    "wizard:build": "tsx wizard/build.ts",
+    "prebuild-wizard": "esbuild wizard/build.ts wizard/refresh.ts --bundle --platform=node --target=node20 --format=esm --outdir=wizard --out-extension:.js=.js --allow-overwrite --external:esbuild-wasm --external:jsdom"
+  },
+  "dependencies": {
+    "esbuild-wasm": "0.24.0"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
