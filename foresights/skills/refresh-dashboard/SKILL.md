@@ -107,11 +107,13 @@ fresh curation is grounded in.
 1. **Re-curate the four sections.** From the fresh live data, regenerate the
    curated arrays — `highlights`, `patterns`, `tips`, `resources` — following
    the per-entry shapes and the inline-HTML rule (only `<code>` is allowed)
-   documented in `create-dashboard/SKILL.md` → "Haiku batch contract". Aim for
-   the same counts: 6 highlights, 6 patterns, 8 tips, 4–8 resources. Prefer
-   genuinely new items; don't just reword the previous ones (the recovered
-   config still holds the old arrays — use them as a "don't repeat these"
-   reference).
+   documented in `create-dashboard/references/build-internals.md` → "Curated
+   content shapes". You (the wizard agent) synthesize each array yourself
+   from the recovered config + the fresh data — there's no separate Haiku
+   call at refresh time. Aim for the same counts: 6 highlights, 6 patterns,
+   8 tips, 4–8 resources. Prefer genuinely new items; don't just reword the
+   previous ones (the recovered config still holds the old arrays — use them
+   as a "don't repeat these" reference).
 2. **Write an updated config JSON.** Take the recovered config and replace its
    `highlights` / `patterns` / `tips` / `resources` with the fresh arrays.
    Leave every other field untouched. Write it to a temp file.

@@ -14,11 +14,14 @@
  * round-trips.
  *
  * Parsing reuses `util/rss-parser.ts` (RSS 2.0 + Atom 1.0). That parser needs
- * a `DOMParser`; Node has none, so we back one with `jsdom` — already a
- * devDependency, and the same way the test suite drives `parseRss`.
+ * a `DOMParser`; Node has none, so we back one with `jsdom`. Crucially, the
+ * `jsdom` import is **lazy** — see `domParser()` below. A build with no RSS
+ * sources never reaches that import, so `jsdom` never loads (and never has to
+ * be installed, in any environment where the toolchain is otherwise present).
+ * The `hydrateRssSources` short-circuit makes the no-RSS path a single
+ * `Array.some` check.
  */
 
-import { JSDOM } from 'jsdom';
 import type { RssItem } from '../types';
 import { parseRss } from '../util/rss-parser';
 import type { WizardSource } from './build-config';
@@ -39,10 +42,22 @@ export type FetchLike = (
   init?: { readonly signal?: AbortSignal; readonly headers?: Record<string, string> },
 ) => Promise<{ readonly ok: boolean; readonly text: () => Promise<string> }>;
 
-/** Lazily-created, reused jsdom-backed DOMParser (parseFromString is stateless). */
+/**
+ * Lazily-created, reused jsdom-backed DOMParser.
+ *
+ * `jsdom` is heavy (transitive deps include tough-cookie, whatwg-url, etc.)
+ * and isn't available in every sandbox where this code runs. By moving the
+ * import inside this function, a build with no RSS sources never triggers
+ * the import — `parseRss` is only called from `fetchFeed`, which is only
+ * called from `hydrateRssSources`'s per-source loop, which is short-circuited
+ * to a no-op when the config has no `kind: 'rss'` sources. So a CDK-only
+ * (or any RSS-less) build can run in an environment that doesn't even have
+ * `jsdom` installed.
+ */
 let cachedParser: DOMParser | undefined;
-const domParser = (): DOMParser => {
+const domParser = async (): Promise<DOMParser> => {
   if (!cachedParser) {
+    const { JSDOM } = await import('jsdom');
     cachedParser = new new JSDOM().window.DOMParser();
   }
   return cachedParser;
@@ -70,7 +85,7 @@ export const fetchFeed = async (
     });
     if (!res.ok) return [];
     const xml = await res.text();
-    return parseRss(xml, domParser()).slice(0, MAX_ITEMS_PER_FEED);
+    return parseRss(xml, await domParser()).slice(0, MAX_ITEMS_PER_FEED);
   } catch {
     return [];
   } finally {
@@ -84,13 +99,21 @@ export const fetchFeed = async (
  * already have items (e.g. pre-baked by a caller or a test fixture), or that
  * lack a `url` are returned untouched. Never throws.
  *
- * @returns a new sources array — the input is not mutated.
+ * Short-circuits when no rss source is present — returns the input unchanged
+ * with zero work and without ever reaching `fetchFeed` / `domParser` /
+ * `jsdom`. Combined with the lazy `import('jsdom')` inside `domParser`, a
+ * config with no `kind: 'rss'` source never imports `jsdom` at all.
+ *
+ * @returns the input array unchanged when no rss source needs hydrating, or
+ *   a new sources array when at least one rss source was hydrated. The input
+ *   is never mutated.
  */
 export const hydrateRssSources = async (
   sources: readonly WizardSource[],
   fetchFeedImpl: (url: string) => Promise<readonly RssItem[]> = fetchFeed,
-): Promise<readonly WizardSource[]> =>
-  Promise.all(
+): Promise<readonly WizardSource[]> => {
+  if (!sources.some((s) => s.kind === 'rss')) return sources;
+  return Promise.all(
     sources.map(async (s): Promise<WizardSource> => {
       if (s.kind !== 'rss') return s;
       if (s.items && s.items.length > 0) return s;
@@ -98,3 +121,4 @@ export const hydrateRssSources = async (
       return { ...s, items: await fetchFeedImpl(s.url) };
     }),
   );
+};

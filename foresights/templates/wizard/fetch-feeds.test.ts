@@ -120,4 +120,23 @@ describe('hydrateRssSources', () => {
     expect(out[1]?.items).toEqual(stubItems);
     expect(out[2]).toBe(gh);
   });
+
+  it('short-circuits — never calls fetchFeed when no rss source exists', async () => {
+    // failFetch throws if called; if the short-circuit works, it isn't called.
+    await expect(hydrateRssSources([gh], failFetch)).resolves.toBeTruthy();
+  });
+
+  it('returns the input array reference unchanged on the short-circuit path', async () => {
+    // Identity check: no rss sources → the function does zero work and hands
+    // back the very same array. This is what guarantees no jsdom import.
+    const input: readonly WizardSource[] = [gh, { ...gh, id: 'gh2' }];
+    const out = await hydrateRssSources(input, failFetch);
+    expect(out).toBe(input);
+  });
+
+  it('short-circuits even with an empty sources array', async () => {
+    const input: readonly WizardSource[] = [];
+    const out = await hydrateRssSources(input, failFetch);
+    expect(out).toBe(input);
+  });
 });
