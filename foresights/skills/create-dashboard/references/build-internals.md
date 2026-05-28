@@ -159,13 +159,13 @@ A typed `SPOTLIGHTS` JS const inside `<script>`. Each entry:
 
 ## Build invocation
 
-The orchestrator is `templates/wizard/build.ts`. Flags:
+The plugin ships a pre-bundled `templates/wizard/build.js` (v0.9.0+) — run that with `node`, no `tsx` or `npm install` needed. The `.ts` source is left in the tree for dev (`npx tsx wizard/build.ts` works identically if you have `tsx` installed); both produce byte-equivalent output. The bundled JS uses `esbuild-wasm` (vendored at `templates/node_modules/esbuild-wasm/`) instead of the native `esbuild` CLI. Flags:
 
 - `--config <path>` — path to the WizardConfig JSON. **Required.**
 - `--out <path>`    — where to write the final dashboard HTML. **Required.**
-- `--fast` — skip biome + tsc, run esbuild only (~2s vs ~3.5s). esbuild still parses the substituted TS, so syntax errors in generated code still fail the build. Recommended for wizard runs.
+- `--fast` — skip biome + tsc, run esbuild only (~0.5s wasm, ~0.2s native). esbuild still parses the substituted TS, so syntax errors in generated code still fail the build. Recommended for wizard runs.
 - `--templates <dir>` — override the templates source directory (default: parent of `wizard/`).
-- `--with-tests` — also run `npm run test` (vitest) on the substituted tree. Slow; debugging only.
+- `--with-tests` — also run `npm run test` (vitest) on the substituted tree. Slow; debugging only. **Requires `npm install` in the staged dir** (vitest is a devDep).
 - `--emit-flags` — **pass 1 of the static-mode two-pass flow.** Write a flag manifest JSON to `--out` instead of building. Used only in `outputMode: 'static'`.
 
 > RSS: `build.ts` fetches and bakes every `kind: 'rss'` source's feed itself, in Node, before the build runs. Don't pre-fetch feeds or set `items` in the WizardConfig — just pass each rss source's `url`.

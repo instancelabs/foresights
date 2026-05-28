@@ -194,6 +194,38 @@ const runStep = async (cmd: string, args: readonly string[], cwd: string): Promi
   }
 };
 
+/**
+ * Bundle `dashboard.ts` → `dist/dashboard.js` via the esbuild-wasm JS API.
+ *
+ * Lazy-imports `esbuild-wasm` so the WASM-init cost is only paid on builds
+ * that actually reach this step — tests with `skipPreflight: true` (the
+ * substitute-layer ones) never load it.
+ *
+ * v0.9.0 — was a `runStep('npx', ['esbuild', ...])` subprocess that required
+ * the `esbuild` CLI on PATH (i.e. a working `npm install`). The wasm flavour
+ * ships inside the plugin as one vendored package (`node_modules/esbuild-wasm`),
+ * so the wizard runs with zero install in any Node ≥20 environment — even
+ * sandboxes where the npm registry is firewalled. The build output is
+ * byte-equivalent to the native esbuild path; wasm is ~3–5× slower (still
+ * sub-second for a typical dashboard).
+ */
+const runEsbuild = async (workDir: string): Promise<void> => {
+  const esbuild = await import('esbuild-wasm');
+  try {
+    await esbuild.build({
+      entryPoints: ['dashboard.ts'],
+      bundle: true,
+      format: 'iife',
+      target: 'es2022',
+      sourcemap: 'inline',
+      outfile: 'dist/dashboard.js',
+      absWorkingDir: workDir,
+    });
+  } finally {
+    await esbuild.stop();
+  }
+};
+
 /** Run the toolchain in the staged working dir. */
 const runToolchain = async (workDir: string, withTests: boolean, fast: boolean): Promise<void> => {
   // biome auto-fixes after substitution because generated TS often has
@@ -205,23 +237,17 @@ const runToolchain = async (workDir: string, withTests: boolean, fast: boolean):
   // regions, and the esbuild step below still parses every file — so a
   // malformed generated literal still fails loudly. What `fast` trades away
   // is lint + strict type-checking, which the templates' preflight covers.
+  //
+  // biome / tsc / vitest stay as `npx` subprocesses — they're the dev-only
+  // slow-path tools, and a user who explicitly opts into `--with-tests` (or
+  // away from `--fast`) has the dev devDeps installed. esbuild — the one
+  // tool the `--fast` happy path *requires* — runs via the bundled
+  // esbuild-wasm JS API instead, so the zero-install plugin works.
   if (!fast) {
     await runStep('npx', ['biome', 'check', '--write', '.'], workDir);
     await runStep('npx', ['tsc', '--noEmit'], workDir);
   }
-  await runStep(
-    'npx',
-    [
-      'esbuild',
-      'dashboard.ts',
-      '--bundle',
-      '--format=iife',
-      '--target=es2022',
-      '--sourcemap=inline',
-      '--outfile=dist/dashboard.js',
-    ],
-    workDir,
-  );
+  await runEsbuild(workDir);
   if (withTests) {
     await runStep('npx', ['vitest', 'run'], workDir);
   }

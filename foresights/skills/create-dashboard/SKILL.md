@@ -5,7 +5,7 @@ description: Wizard that builds a live, product-customised news dashboard. Use w
 
 # Create Dashboard
 
-> **Status:** v0.8.4 — install-friction pass. RSS-less builds no longer load `jsdom` (relevant for sandboxes where the npm registry is firewalled), the wizard now explicitly asks when no GitHub MCP is connected (instead of silently producing a data-less dashboard), and this SKILL.md is split into a focused happy-path + four `references/` deep-dives. v0.8.3 added the static-mode Refresh button; v0.8.2 pre-baked digest triage; v0.8.1 pre-baked briefs; v0.8.0 added the `'static'` output mode for environments with no Cowork artifact runtime. Every artifact-mode dashboard keeps building byte-for-byte identically. Full history in `references/implementation-status.md`.
+> **Status:** v0.9.0 — precompiled wizard. The orchestrator now ships as a pre-bundled `wizard/build.js` with `esbuild-wasm` vendored next to it, so `/create-dashboard` runs with **zero `npm install`** in any Node ≥20 environment — even sandboxes where the npm registry is firewalled. Invoke with `node wizard/build.js`, not `tsx`. v0.8.4 made `jsdom` lazy and slimmed this SKILL.md into focused references; v0.8.3 added the static-mode Refresh button; v0.8.0 added the `'static'` output mode for environments with no Cowork artifact runtime. Every artifact-mode dashboard keeps building byte-for-byte identically. Full history in `references/implementation-status.md`.
 
 ## What this skill does
 
@@ -137,22 +137,22 @@ Report the dashboard URL / file path. Suggest `/setup-cc` **only when the dashbo
 
 ## Build step
 
-The orchestrator lives at `${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates/wizard/build.ts`. The plugin directory is read-only, so stage a writable copy to `/tmp` once per session, then reuse it for every dashboard.
+The plugin ships a pre-bundled `wizard/build.js` plus a vendored `esbuild-wasm` next to it, so the wizard runs with **zero `npm install`** — Node ≥20 is the only requirement. The plugin directory is read-only, so stage a writable copy to `/tmp` once per session, then reuse it.
 
 ```bash
-# One-time per session — stage + install. SYNCHRONOUS only; each shell call
-# is its own process, so backgrounded `npm install &` does NOT survive.
+# One-time per session — copy the plugin templates to a writable dir. No
+# npm install needed; the staged tree already contains the pre-bundled
+# wizard/build.js and node_modules/esbuild-wasm.
 FORESIGHTS_TPL=/tmp/foresights-templates
-if [ ! -d "$FORESIGHTS_TPL/node_modules" ]; then
+if [ ! -f "$FORESIGHTS_TPL/wizard/build.js" ]; then
   rm -rf "$FORESIGHTS_TPL"
   cp -R "${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates" "$FORESIGHTS_TPL"
   chmod -R u+w "$FORESIGHTS_TPL"
-  ( cd "$FORESIGHTS_TPL" && npm install --prefer-offline --no-audit --no-fund )
 fi
 
-# Per dashboard — ~2s on the esbuild-only --fast path:
+# Per dashboard — sub-second on the esbuild-wasm --fast path:
 echo "$WIZARD_CONFIG_JSON" > /tmp/foresights-config.json
-cd "$FORESIGHTS_TPL" && npx tsx wizard/build.ts \
+cd "$FORESIGHTS_TPL" && node wizard/build.js \
   --config /tmp/foresights-config.json \
   --out    /tmp/foresights-dashboard.html \
   --fast
@@ -163,6 +163,8 @@ Key flags (`--config`, `--out`, `--fast`, `--templates`, `--with-tests`, `--emit
 > **Static mode is a two-pass build** (`--emit-flags` first, then the real build). See `references/static-mode.md`.
 >
 > `--skip-preflight` is an internal test switch that emits a stub bundle — never pass it from the skill. `--fast` is the supported speed switch.
+>
+> **Slow path (non-`--fast`, or `--with-tests`)** still needs the dev toolchain (`biome`, `tsc`, `vitest`). Run `npm install` in the staged templates dir first if you need it. The recommended `--fast` path doesn't.
 
 ## Toolchain commands
 

@@ -2,6 +2,17 @@
 
 Version history. The current `SKILL.md` only carries the headline status; the full per-version notes live here.
 
+## v0.9.0 — precompiled wizard
+
+Strictly additive — build *output* is unchanged for every existing dashboard. Removes the load-bearing `npm install` step that the v0.8.4 dogfood report flagged: `/create-dashboard` now runs with **zero install** in any Node ≥20 environment, even sandboxes where the npm registry is firewalled.
+
+- **Pre-bundled `wizard/build.js` + `wizard/refresh.js`.** `wizard/build.ts` and `wizard/refresh.ts` are bundled by a new `npm run prebuild-wizard` script (ESM, `platform=node`, `target=node20`) into single self-contained JS files (`build.js` ~36KB, `refresh.js` ~6KB). The shipped plugin contains the `.js` outputs; the `.ts` sources stay for dev. Invoke the wizard with `node wizard/build.js`, not `tsx`. Both produce byte-equivalent output.
+- **esbuild via `esbuild-wasm`.** The orchestrator's dashboard-bundling step is no longer a `runStep('npx', ['esbuild', ...])` subprocess — it now lazy-imports `esbuild-wasm` and calls the JS API. esbuild-wasm is vendored at `templates/node_modules/esbuild-wasm/` (the only runtime dep, ~12MB unpacked; ships compressed in the `.plugin`). Build time at `--fast` is ~0.5s wasm vs ~0.2s native — well under the wizard's UX budget.
+- **`scripts/build-plugin.sh`.** Bootstraps by running `npm install` + `npm run prebuild-wizard` in the source tree when needed, then stages the templates with `node_modules/esbuild-wasm/` vendored back in (and nothing else from `node_modules`). New completeness checks verify `wizard/build.js`, `wizard/refresh.js`, and `node_modules/esbuild-wasm/esbuild.wasm` all land in the bundle.
+- **Slow path unchanged.** `--with-tests` and the non-`--fast` toolchain (`biome`, `tsc`, `vitest`) still subprocess `npx` — they're dev-only, opt-in, and require the templates' devDeps. The `--fast` happy path is what the wizard recommends.
+- **`.plugin` size.** ~255KB → ~3.5MB compressed (the cost of zero install). Almost entirely esbuild-wasm. 148 files in the bundle.
+- **New zero-install test** (`wizard/zero-install.test.ts`). Subprocess-runs `node wizard/build.js` against a staged templates dir whose `node_modules/` contains **only** `esbuild-wasm` — no biome, tsc, vitest, tsx, or jsdom. Proves the dogfood-feedback scenario actually works end-to-end. Now part of `npm run preflight` (which also runs `prebuild-wizard` ahead of the test suite).
+
 ## v0.8.4 — install-friction pass
 
 Strictly additive — build *output* is unchanged for every existing dashboard. Aimed squarely at the dogfood-friction surfaced by trying the plugin on a fresh sandbox.
