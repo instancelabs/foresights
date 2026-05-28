@@ -47,6 +47,20 @@ fi
 STAGE="$(mktemp -d -t foresights-stage.XXXXXX)"
 trap 'rm -rf "$STAGE"' EXIT
 
+# v0.9.0+: ensure the pre-bundled wizard entrypoints (`wizard/build.js`,
+# `wizard/refresh.js`) and the vendored `esbuild-wasm` package are present in
+# the source tree before we stage. The plugin ships them so the user runs
+# `node wizard/build.js` directly — no `tsx`, no `npm install` at install
+# time, no native esbuild binary required. Skipped if both are already built.
+if [[ ! -f "$SRC/templates/wizard/build.js" ]] \
+   || [[ ! -f "$SRC/templates/wizard/refresh.js" ]] \
+   || [[ ! -d "$SRC/templates/node_modules/esbuild-wasm" ]]; then
+  echo "-> Bootstrap: npm install + prebuild-wizard in $SRC/templates"
+  ( cd "$SRC/templates" \
+    && npm install --prefer-offline --no-audit --no-fund >/dev/null \
+    && npm run prebuild-wizard >/dev/null )
+fi
+
 echo "-> Staging plugin v$VERSION at $STAGE"
 
 # Copy the four things that belong in the bundle: manifest, README, skills,
@@ -65,7 +79,9 @@ fi
 # Drop the known cruft patterns. These only appear when building from a
 # working tree where `npm install` / `npm test` / a smoke run have happened;
 # a clean clone has none of them. Everything dropped here is gitignored — see
-# foresights/templates/.gitignore — so it must never reach the bundle.
+# foresights/templates/.gitignore — so it must never reach the bundle. The
+# exception is `node_modules/esbuild-wasm/` (the one runtime dep), which we
+# vendor back in below.
 TPL="$STAGE/skills/create-dashboard/templates"
 rm -rf "$STAGE/skills/setup-claude-code" 2>/dev/null || true
 rm -rf "$TPL/node_modules" "$TPL/dist" "$TPL/coverage" 2>/dev/null || true
@@ -74,6 +90,14 @@ find "$STAGE" -name .DS_Store -delete
 find "$STAGE" -name '*.tsbuildinfo' -delete
 find "$STAGE" -name 'vitest.config.ts.timestamp-*' -delete
 find "$STAGE" -name 'tmp-wizard-test' -type d -exec rm -rf {} + 2>/dev/null || true
+find "$STAGE" -name 'tmp-wizard-refresh-test' -type d -exec rm -rf {} + 2>/dev/null || true
+find "$STAGE" -name 'tmp-zero-install-test' -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Vendor `esbuild-wasm` (the only runtime dep) — copy it from the source's
+# fresh install. The plugin user gets `node wizard/build.js` working with
+# zero npm install. ~12MB; the only meaningful weight in the .plugin file.
+mkdir -p "$TPL/node_modules"
+cp -R "$SRC/templates/node_modules/esbuild-wasm" "$TPL/node_modules/esbuild-wasm"
 
 # --- Completeness guard ----------------------------------------------------
 # v0.7.0 shipped with 14 source modules missing from templates/: the staged
@@ -82,6 +106,22 @@ find "$STAGE" -name 'tmp-wizard-test' -type d -exec rm -rf {} + 2>/dev/null || t
 # module is invisible until a user hits it. Scan every staged templates/*.ts
 # for relative imports and confirm each resolves to a file that is actually in
 # the bundle; abort the build if any does not.
+# v0.9.0+: also verify the precompiled wizard entrypoints and the vendored
+# esbuild-wasm package landed. If any are missing the plugin will appear to
+# install but break at the first /create-dashboard run.
+echo "-> Verifying precompiled wizard entrypoints are present"
+for required in \
+  "wizard/build.js" \
+  "wizard/refresh.js" \
+  "node_modules/esbuild-wasm/lib/main.js" \
+  "node_modules/esbuild-wasm/esbuild.wasm"; do
+  if [[ ! -f "$TPL/$required" ]]; then
+    echo "   !! $required missing — `npm run prebuild-wizard` or the esbuild-wasm vendor copy failed" >&2
+    exit 1
+  fi
+done
+echo "   precompiled wizard ✓"
+
 echo "-> Verifying templates/ tree is import-complete"
 import_misses=0
 while IFS= read -r tsfile; do
@@ -114,10 +154,25 @@ rm -f "$OUT"
 echo "-> Built $OUT ($(du -h "$OUT" | cut -f1))"
 echo
 echo "Sanity-check:"
+# `node_modules` is intentionally present in v0.9.0+ to vendor esbuild-wasm —
+# the rest of the cruft patterns stay banned. The follow-up check below
+# confirms `node_modules/` carries only `esbuild-wasm/`.
 unzip -l "$OUT" \
-  | grep -E '(setup-claude-code|DS_Store|tmp-wizard-test|node_modules|_smoke|coverage/|tsbuildinfo|timestamp-)' \
+  | grep -E '(setup-claude-code|DS_Store|tmp-wizard-test|tmp-wizard-refresh-test|tmp-zero-install-test|_smoke|coverage/|tsbuildinfo|timestamp-)' \
   && { echo "!! cruft leaked"; exit 1; } \
   || echo "   clean ✓"
+
+# Confirm node_modules contains only esbuild-wasm — any other package would
+# inflate the .plugin without being needed at run time.
+nm_others="$(unzip -l "$OUT" \
+  | awk '/node_modules\// { sub(/.*node_modules\//, ""); sub(/\/.*/, ""); print }' \
+  | sort -u \
+  | grep -vE '^(esbuild-wasm)?$' || true)"
+if [[ -n "$nm_others" ]]; then
+  echo "!! unexpected node_modules packages: $nm_others" >&2
+  exit 1
+fi
+echo "   only esbuild-wasm in node_modules ✓"
 
 echo "
 Drag $OUT into Cowork to install."
