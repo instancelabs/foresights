@@ -36,7 +36,7 @@ Static dashboards can't generate briefs at runtime (no `window.cowork`), so the 
 #### Pass 1 — emit the flag manifest
 
 ```bash
-cd "$FORESIGHTS_TPL" && npx tsx wizard/build.ts \
+cd "$FORESIGHTS_TPL" && node wizard/build.js \
   --config /tmp/foresights-config.json \
   --out    /tmp/foresights-flags.json \
   --emit-flags
@@ -60,7 +60,7 @@ For each product, bucket every flagged item into 🟢 `green` / 🟡 `yellow` / 
 #### Pass 2 — the real build
 
 ```bash
-cd "$FORESIGHTS_TPL" && npx tsx wizard/build.ts \
+cd "$FORESIGHTS_TPL" && node wizard/build.js \
   --config /tmp/foresights-config-with-briefs-and-triage.json \
   --out    /tmp/foresights-dashboard.html \
   --fast
