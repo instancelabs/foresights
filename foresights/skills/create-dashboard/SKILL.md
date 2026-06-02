@@ -91,14 +91,21 @@ Most dashboards are live Cowork artifacts — the default; don't ask about it. C
 
 Look in your tool list for a `*__list_releases` tool. The matching prefix (e.g. `mcp__github` or `mcp__<uuid>`) is the `ghServer`. **If no `__list_releases` tool is present:**
 
-- Ask the user explicitly via `AskUserQuestion`: "I don't see a GitHub MCP connected. (a) Install one (I'll suggest connectors via `mcp__mcp-registry__suggest_connectors` for `github`), (b) proceed with curated content synthesized from training knowledge and a 'reduced freshness' footer note, or (c) cancel."
-- For `'static'` builds option (b) is **not enough** — the wizard agent has to populate `WizardSource.baked` from the MCP. If the user can't or won't install a GitHub MCP, fall back to `'artifact'` mode or cancel.
+- Ask the user explicitly via `AskUserQuestion`: "I don't see a GitHub MCP connected. (a) Install one (I'll suggest connectors via `mcp__mcp-registry__suggest_connectors` for `github`), (b) **switch each GitHub source to its public atom feed** — GitHub publishes one per repo (`github.com/<owner>/<repo>/releases.atom`, `commits.atom`, `pulls.atom`) and the wizard can treat them as `kind: 'rss'`; substantively equivalent for any public repo. (c) proceed with curated content synthesized from training knowledge and a 'reduced freshness' footer note, or (d) cancel."
+- The **atom-feed fallback (b)** is the right choice for most users — it gets real live data into the dashboard without an MCP install. The downside: GitHub's atom feeds are public-only (no private repos). For static-mode dashboards over public repos, this is the cleanest path.
+- For `'static'` builds option (c) is **not enough** — the wizard agent has to populate either `WizardSource.baked` (GitHub kinds) or `items` (RSS kinds). If the user can't or won't install a GitHub MCP and won't use atom feeds, fall back to `'artifact'` mode or cancel.
 
 Don't hardcode `mcp__github` and silently proceed — the dashboard will build successfully and fail at runtime with no on-screen indication.
 
 ### 1. Sample live data from each GitHub source
 
-For each GitHub source, call `${ghServer}__list_<kind>` (e.g. `list_releases`, `list_issues`, `list_pull_requests`) for a sample that seeds the curation pass below. **RSS sources need no wizard fetching** — leave `items` unset and pass the `url`; `build.ts` fetches every feed itself, in Node, in parallel. Don't call `web_fetch` on feed URLs.
+For each GitHub source, call `${ghServer}__list_<kind>` (e.g. `list_releases`, `list_issues`, `list_pull_requests`) for a sample that seeds the curation pass below.
+
+**RSS sources — default path:** leave `items` unset and pass just the `url`. The build orchestrator (`wizard/build.ts`'s `wizard/fetch-feeds.ts`) fetches every feed in Node, in parallel, before the build.
+
+**RSS sources — restricted-environment path:** if you know (or discover via `/foresights-doctor`) that Node's outbound `fetch` is blocked in your environment — common in sandboxed Cowork sessions where only `WebFetch` is allowed through an allowlist — pre-populate each RSS source's `items` yourself by `WebFetch`-ing each URL, parsing the atom/rss XML into `RssItem[]` (`{title, link, description, pubDate, author, guid}` — shape in `templates/types.ts`), and setting `items` on the source before invoking the build. `hydrateRssSources` short-circuits when `items.length > 0`, so the blocked Node fetch is bypassed.
+
+**Verify your fetches actually returned data.** Count items per source. If any source returned **zero** items, raise it explicitly before continuing — that section will render an empty "no recent items in this feed" card and the user gets a half-broken dashboard with no obvious cause. Either try the alternative fetch path or warn the user. The orchestrator surfaces zero-item warnings in its stdout summary (v0.9.1+), but catching it before the build is faster.
 
 In `outputMode: 'static'`, also fetch each GitHub source's **full** `list_<kind>` result and store it on the source's `baked` field (see `references/static-mode.md`).
 
@@ -122,9 +129,16 @@ Static-mode only. The same agent-synthesis approach: a two-pass `build.ts --emit
 
 Hand the populated `WizardConfig` to `wizard/build.ts`. See the "Build step" below.
 
-### 5. Smoke-test the boot block
+### 5. Smoke-test the boot block + verify data
 
 Run the built bundle in Node with stubbed `window` / `document` / `localStorage`. Catches TDZ errors and missing functions before shipping.
+
+**Also: check the orchestrator's stdout summary.** v0.9.1+ surfaces a `warnings` field on the stdout JSON. If it contains anything, *act on it*:
+
+- **`zero-items: <source-id>`** — that source returned 0 items at build time. Almost always a blocked network or a stale URL. Don't ship a dashboard with empty sections; warn the user, suggest re-running with `WebFetch`-populated `items` (step 1's restricted-environment path), or recommend `/foresights-doctor` to confirm which fetch paths work in this environment.
+- Other warnings are self-describing.
+
+**Then scan the built HTML for empty sections.** Open the file, find each `<div class="section-body" id="<section>-body">`, and confirm it's not stuck in the "Loading…" skeleton placeholder. (For static-mode builds, also confirm the section's baked items aren't `[]` in the embedded `<script id="foresights-config">` block — that's the source of truth.) Ship-blocking if any are empty.
 
 ### 6. Ship
 
