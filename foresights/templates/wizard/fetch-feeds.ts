@@ -20,6 +20,12 @@
  * be installed, in any environment where the toolchain is otherwise present).
  * The `hydrateRssSources` short-circuit makes the no-RSS path a single
  * `Array.some` check.
+ *
+ * v0.9.1: zero-item fetches now surface as `warnings` on the returned
+ * `HydrationResult` rather than silently baking an empty section. That's the
+ * killer diagnostic — a sandboxed Cowork environment where Node's outbound
+ * fetch is blocked previously produced a dashboard with all sections empty
+ * and no on-screen failure indication.
  */
 
 import type { RssItem } from '../types';
@@ -41,6 +47,22 @@ export type FetchLike = (
   url: string,
   init?: { readonly signal?: AbortSignal; readonly headers?: Record<string, string> },
 ) => Promise<{ readonly ok: boolean; readonly text: () => Promise<string> }>;
+
+/**
+ * Result of an RSS-hydration pass. `sources` is the (possibly mutated) source
+ * array; `warnings` is a machine-readable list of build-time issues — one
+ * entry per RSS source whose fetch returned zero items. Callers can surface
+ * this to the user (the wizard's smoke-test step, the orchestrator's stdout
+ * summary, `/foresights-doctor`).
+ *
+ * Each warning starts with a `zero-items:` discriminator so machine readers
+ * can filter without parsing prose.
+ */
+export interface HydrationResult {
+  readonly sources: readonly WizardSource[];
+  /** Structured warning lines — see file header for the format. */
+  readonly warnings: readonly string[];
+}
 
 /**
  * Lazily-created, reused jsdom-backed DOMParser.
@@ -104,16 +126,21 @@ export const fetchFeed = async (
  * `jsdom`. Combined with the lazy `import('jsdom')` inside `domParser`, a
  * config with no `kind: 'rss'` source never imports `jsdom` at all.
  *
- * @returns the input array unchanged when no rss source needs hydrating, or
- *   a new sources array when at least one rss source was hydrated. The input
- *   is never mutated.
+ * v0.9.1: returns `HydrationResult` — a `{sources, warnings}` tuple — so
+ * zero-item fetches surface to callers instead of silently producing empty
+ * sections. Each warning is a single line beginning with a `zero-items:`
+ * discriminator.
+ *
+ * @returns the input sources unchanged on the short-circuit path (or when no
+ *   source needed hydrating), or a new sources array when at least one was
+ *   hydrated. Warnings list is empty on success.
  */
 export const hydrateRssSources = async (
   sources: readonly WizardSource[],
   fetchFeedImpl: (url: string) => Promise<readonly RssItem[]> = fetchFeed,
-): Promise<readonly WizardSource[]> => {
-  if (!sources.some((s) => s.kind === 'rss')) return sources;
-  return Promise.all(
+): Promise<HydrationResult> => {
+  if (!sources.some((s) => s.kind === 'rss')) return { sources, warnings: [] };
+  const hydrated = await Promise.all(
     sources.map(async (s): Promise<WizardSource> => {
       if (s.kind !== 'rss') return s;
       if (s.items && s.items.length > 0) return s;
@@ -121,4 +148,25 @@ export const hydrateRssSources = async (
       return { ...s, items: await fetchFeedImpl(s.url) };
     }),
   );
+  // Walk the hydrated result and flag any rss source whose post-hydration
+  // items list is empty. Pre-populated sources (the restricted-environment
+  // path) won't trigger a warning because they bypass the fetch entirely;
+  // unhydrated `url`-less sources don't trigger a warning because they were
+  // already broken before we got here. The warning is specifically about
+  // *fetched* rss sources that came back empty.
+  const warnings: string[] = [];
+  for (let i = 0; i < hydrated.length; i++) {
+    const s = hydrated[i];
+    if (s?.kind !== 'rss') continue;
+    if (!s.url) continue;
+    // Pre-populated by a caller? (Then s and sources[i] are reference-equal
+    // because the map fast-paths `items.length > 0`.) Skip.
+    if (s === sources[i]) continue;
+    if ((s.items ?? []).length === 0) {
+      warnings.push(
+        `zero-items: rss source "${s.id}" (${s.url}) returned 0 items — likely a blocked Node fetch or a stale URL. Try the WebFetch fallback (see create-dashboard SKILL.md step 1) or run /foresights-doctor to confirm which fetch paths work.`,
+      );
+    }
+  }
+  return { sources: hydrated, warnings };
 };

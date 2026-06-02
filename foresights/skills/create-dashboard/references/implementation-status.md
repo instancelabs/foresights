@@ -2,6 +2,16 @@
 
 Version history. The current `SKILL.md` only carries the headline status; the full per-version notes live here.
 
+## v0.9.1 — restricted-environment robustness + `/foresights-doctor`
+
+Strictly additive. The v0.9.0 install path worked on Lee's sandboxed work Mac — but a CDK dashboard built there had every section rendering "no recent items in this feed". Diagnosis: the sandbox blocks Node's outbound `fetch` (via Cowork's allowlist), so `wizard/fetch-feeds.ts` returned empty arrays for every RSS source and silently baked them into the dashboard. The agent's `WebFetch` tool would have reached the same feeds, but the SKILL.md actively told the agent **not** to use it. v0.9.1 closes that loop on three sides — SKILL.md guidance, orchestrator-side warnings, and a new doctor skill.
+
+- **`create-dashboard/SKILL.md` tightenings.** Step 0's no-MCP branch now documents the atom-feed fallback (`github.com/<owner>/<repo>/releases.atom` etc.) as a first-class option, not an agent improvisation. Step 1 drops the "don't `web_fetch` feed URLs" line entirely and replaces it with explicit default vs restricted-environment paths — the wizard now knows to `WebFetch`-and-prepopulate items when Node fetch is blocked. Step 1 also gains a "verify your fetches returned data" gate. Step 5's smoke-test grows teeth: read the orchestrator's `warnings` field and scan the built HTML for empty sections before shipping.
+- **`wizard/fetch-feeds.ts` surfaces zero-item fetches.** `hydrateRssSources` now returns `HydrationResult = {sources, warnings}` instead of a bare source array. Each warning is a single line prefixed `zero-items:` so both humans and machines (`/foresights-doctor`, the smoke-test step) can parse them. `BuildResult.warnings` plumbs the list through to the orchestrator's stdout summary; the `--emit-flags` path also warns when the manifest came back empty despite a non-zero product count. Four new vitest cases pin the warning behaviour.
+- **New `/foresights-doctor` skill** (`skills/foresights-doctor/SKILL.md`). Seven cheap checks, < 10s total: Node version, templates dir + pre-bundled wizard JS, vendored `esbuild-wasm`, a canned no-source build (proves the toolchain), Node outbound fetch reachability, `WebFetch` reachability, and GitHub MCP detection. The Node+WebFetch combination is the killer diagnostic: it routes `/create-dashboard` to the right RSS-hydration path *before* the user spends 20 minutes building a broken dashboard. Triggers fire on "empty dashboard", "is Foresights working", and direct `/foresights-doctor` invocations.
+
+635 tests (631 → +4 for the warning behaviour). The `BuildResult` shape gains a `warnings` field; tests asserting result identity were updated. `BuildOpts` also gains a `priorWarnings` knob so `main()` can pipe `hydrateRssSources` warnings through.
+
 ## v0.9.0 — precompiled wizard
 
 Strictly additive — build *output* is unchanged for every existing dashboard. Removes the load-bearing `npm install` step that the v0.8.4 dogfood report flagged: `/create-dashboard` now runs with **zero install** in any Node ≥20 environment, even sandboxes where the npm registry is firewalled.
