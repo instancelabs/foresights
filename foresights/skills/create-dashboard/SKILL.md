@@ -5,7 +5,7 @@ description: Wizard that builds a live, product-customised news dashboard. Use w
 
 # Create Dashboard
 
-> **Status:** v0.9.0 — precompiled wizard. The orchestrator now ships as a pre-bundled `wizard/build.js` with `esbuild-wasm` vendored next to it, so `/create-dashboard` runs with **zero `npm install`** in any Node ≥20 environment — even sandboxes where the npm registry is firewalled. Invoke with `node wizard/build.js`, not `tsx`. v0.8.4 made `jsdom` lazy and slimmed this SKILL.md into focused references; v0.8.3 added the static-mode Refresh button; v0.8.0 added the `'static'` output mode for environments with no Cowork artifact runtime. Every artifact-mode dashboard keeps building byte-for-byte identically. Full history in `references/implementation-status.md`.
+> **Status:** v0.9.2 — environment-aware wizard. Step 0 now runs three quick probes (GH MCP, Node fetch, WebFetch) before any data fetching and routes the rest of the wizard accordingly. When all three fail — fully sandboxed environment, the case Lee's work Mac hit — Step 0 offers a **curated-only** mode that ships a dashboard with no live data sections, just the synthesized spotlights/highlights/patterns/tips/resources. v0.9.1 added `/foresights-doctor` and structured `zero-items:` warnings; v0.9.0 made the orchestrator zero-install via vendored `esbuild-wasm`; v0.8.4 made `jsdom` lazy and slimmed this SKILL.md. Every artifact-mode dashboard keeps building byte-for-byte identically. Full history in `references/implementation-status.md`.
 
 ## What this skill does
 
@@ -87,27 +87,65 @@ Most dashboards are live Cowork artifacts — the default; don't ask about it. C
 
 ## Wizard outputs
 
-### 0. Detect GH MCP + pick `ghServer` *(do this first)*
+### 0. Detect the environment *(do this first)*
 
-Look in your tool list for a `*__list_releases` tool. The matching prefix (e.g. `mcp__github` or `mcp__<uuid>`) is the `ghServer`. **If no `__list_releases` tool is present:**
+Three quick probes that jointly decide the data-fetch strategy for the rest of the wizard. Total runtime under 10 seconds. (For a full report instead of just routing, the user can invoke `/foresights-doctor` — same checks, formatted output.)
 
-- Ask the user explicitly via `AskUserQuestion`: "I don't see a GitHub MCP connected. (a) Install one (I'll suggest connectors via `mcp__mcp-registry__suggest_connectors` for `github`), (b) **switch each GitHub source to its public atom feed** — GitHub publishes one per repo (`github.com/<owner>/<repo>/releases.atom`, `commits.atom`, `pulls.atom`) and the wizard can treat them as `kind: 'rss'`; substantively equivalent for any public repo. (c) proceed with curated content synthesized from training knowledge and a 'reduced freshness' footer note, or (d) cancel."
-- The **atom-feed fallback (b)** is the right choice for most users — it gets real live data into the dashboard without an MCP install. The downside: GitHub's atom feeds are public-only (no private repos). For static-mode dashboards over public repos, this is the cleanest path.
-- For `'static'` builds option (c) is **not enough** — the wizard agent has to populate either `WizardSource.baked` (GitHub kinds) or `items` (RSS kinds). If the user can't or won't install a GitHub MCP and won't use atom feeds, fall back to `'artifact'` mode or cancel.
+**0a. GitHub MCP detection.** Scan your tool list for a `*__list_releases` tool. The matching prefix (e.g. `mcp__github` or `mcp__<uuid>`) is the `ghServer`.
 
-Don't hardcode `mcp__github` and silently proceed — the dashboard will build successfully and fail at runtime with no on-screen indication.
+**0b. Node outbound fetch reachability.**
 
-### 1. Sample live data from each GitHub source
+```bash
+node -e "fetch('https://example.com', { signal: AbortSignal.timeout(8000) }).then(r => console.log('node-fetch:' + r.status)).catch(e => { console.error('error:' + (e && e.message)); process.exit(1); })"
+```
 
-For each GitHub source, call `${ghServer}__list_<kind>` (e.g. `list_releases`, `list_issues`, `list_pull_requests`) for a sample that seeds the curation pass below.
+PASS if it prints `node-fetch:200`.
 
-**RSS sources — default path:** leave `items` unset and pass just the `url`. The build orchestrator (`wizard/build.ts`'s `wizard/fetch-feeds.ts`) fetches every feed in Node, in parallel, before the build.
+**0c. WebFetch reachability.** Use your own `WebFetch` tool against `https://example.com`. PASS if it returns content; FAIL on any error or block message.
 
-**RSS sources — restricted-environment path:** if you know (or discover via `/foresights-doctor`) that Node's outbound `fetch` is blocked in your environment — common in sandboxed Cowork sessions where only `WebFetch` is allowed through an allowlist — pre-populate each RSS source's `items` yourself by `WebFetch`-ing each URL, parsing the atom/rss XML into `RssItem[]` (`{title, link, description, pubDate, author, guid}` — shape in `templates/types.ts`), and setting `items` on the source before invoking the build. `hydrateRssSources` short-circuits when `items.length > 0`, so the blocked Node fetch is bypassed.
+**Strategy by probe result:**
+
+| GH MCP | Node fetch | WebFetch | Strategy |
+|---|---|---|---|
+| Present | — | — | Use the GH MCP for GitHub sources (preferred — bypasses sandbox egress entirely). RSS sources hydrate via whichever fetch path works. |
+| Absent | Pass | — | **Atom-feed fallback** — for GitHub sources, swap to the repo's atom feed (`github.com/<owner>/<repo>/releases.atom`, `commits.atom`, `pulls.atom`) and treat as `kind: 'rss'`. Substantively equivalent for any public repo (private repos still need a GH MCP). Node-side hydration. |
+| Absent | Fail | Pass | **Restricted-environment path** — atom-feed fallback as above, but you `WebFetch` each URL and pre-populate `items` yourself. See Step 1. |
+| Absent | Fail | Fail | **No live data branch** — see below. |
+
+**No live data branch.** When both fetch paths fail AND no GH MCP is present, no remote source is reachable. Ask the user explicitly via `AskUserQuestion`:
+
+> "Both Node fetch and WebFetch are blocked at the network layer here (your environment's egress allowlist is locked down — common in sandboxed Cowork sessions). I can't reach any feed URLs from this environment. Options:
+> (a) **Curated-only dashboard now** — I'll skip the live data sections entirely and ship a dashboard built from synthesized spotlights, highlights, patterns, tips, and resources. Best choice for getting something working today.
+> (b) **Install a GitHub MCP first** — MCP traffic routes through the MCP server, bypassing the sandbox's egress allowlist. I can suggest connectors via `mcp__mcp-registry__suggest_connectors github`. Once installed, re-run /create-dashboard.
+> (c) **Cancel and ask the network admin** to allowlist `github.com`, `raw.githubusercontent.com`, and the relevant blog feed hosts."
+
+If they pick **(a) curated-only mode**:
+
+- Set `sources: []` in the `WizardConfig`. The dashboard ships with no live data sections — no Releases, RFCs, PRs, RSS feeds. The renderers gracefully omit empty sections; the section nav, header source links, and per-source `<section>` blocks are not emitted.
+- Append " — curated content only, live data unavailable in this environment" to `footerNote` so anyone opening the dashboard sees why the live sections are missing.
+- **Skip Step 1 entirely** — no live data to fetch. Step 2 synthesizes the curated arrays from your training knowledge alone (no live data sample). Step 3 (static-mode pre-baking) is a no-op for `'artifact'` builds and almost always inapplicable here (no sources → no flag manifest entries). Continue to Step 4 (build).
+
+If they pick **(b)** or **(c)** — cancel the current run and tell the user to re-run when ready.
+
+**For `'static'` builds** the no-live-data branch is the same — `sources: []`, curated-only, footer note. Without any data, the `briefs` / `triage` flow is a no-op.
+
+Don't hardcode `mcp__github` and silently proceed — without a working data path, the dashboard will build successfully and ship with empty sections that look like a bug.
+
+### 1. Sample live data from each source
+
+*Skip this step if you took the curated-only branch in Step 0.*
+
+The fetch path depends on the Step 0 strategy:
+
+**GH MCP present.** For each GitHub source, call `${ghServer}__list_<kind>` (`list_releases`, `list_issues`, `list_pull_requests`) for a sample that seeds the curation pass below. For RSS sources, leave `items` unset — the build orchestrator (`wizard/fetch-feeds.ts`) fetches each feed in Node before the build.
+
+**Atom-feed fallback (no GH MCP, Node fetch works).** GitHub sources were swapped to `kind: 'rss'` in Step 0 using the repo's atom feeds. Leave `items` unset for all RSS sources and pass just the `url` — `wizard/fetch-feeds.ts` hydrates them all in Node.
+
+**Restricted-environment path (no GH MCP, only WebFetch works).** GitHub sources were swapped to atom-feed RSS in Step 0. **Pre-populate `items` yourself**: `WebFetch` each URL, parse the atom/rss XML into `RssItem[]` (`{title, link, description, pubDate, author, guid}` — shape in `templates/types.ts`), and set `items` on the source before invoking the build. `hydrateRssSources` short-circuits when `items.length > 0`, so the blocked Node fetch is bypassed.
 
 **Verify your fetches actually returned data.** Count items per source. If any source returned **zero** items, raise it explicitly before continuing — that section will render an empty "no recent items in this feed" card and the user gets a half-broken dashboard with no obvious cause. Either try the alternative fetch path or warn the user. The orchestrator surfaces zero-item warnings in its stdout summary (v0.9.1+), but catching it before the build is faster.
 
-In `outputMode: 'static'`, also fetch each GitHub source's **full** `list_<kind>` result and store it on the source's `baked` field (see `references/static-mode.md`).
+In `outputMode: 'static'`, also fetch each GitHub source's **full** `list_<kind>` result and store it on the source's `baked` field (see `references/static-mode.md`). The atom-feed fallback applies for static too: swap `kind: 'releases' | 'issues' | 'pull_requests'` to `kind: 'rss'` with the repo's atom URLs, then hydrate `items` instead of `baked`.
 
 ### 2. Synthesize the curated content
 

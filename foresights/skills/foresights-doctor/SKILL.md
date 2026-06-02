@@ -105,7 +105,7 @@ PASS if WebFetch returns content. WARN if it fails. The combination with check 5
 - Check 5 PASS, Check 6 PASS → both fetch paths work; default to the orchestrator's Node fetch.
 - Check 5 FAIL, Check 6 PASS → restricted environment. Wizard must use WebFetch + pre-populate items.
 - Check 5 PASS, Check 6 FAIL → unusual; agent has restricted outbound but Node doesn't. Use Node fetch path.
-- Both FAIL → no live data is reachable from this environment. Dashboards must be limited to agent-synthesized content (curated highlights / tips / spotlights), or built elsewhere and copied in.
+- Both FAIL → no live data is reachable from this environment. `/create-dashboard` v0.9.2+ handles this with an explicit "no live data" branch: ask the user whether to build a curated-only dashboard (`sources: []`, curated arrays only — spotlights / highlights / patterns / tips / resources), install a GitHub MCP first (MCP traffic bypasses the sandbox egress allowlist), or cancel.
 
 ### Check 7 — GitHub MCP detection
 
@@ -156,3 +156,13 @@ If every check passes, the Recommendations block is a single line: `All checks g
 - Total runtime budget: ~10 seconds. The build (check 4) is the slowest piece (~0.5 s wasm). Checks 5 + 6 share an 8-second-each network timeout.
 - Run checks **in order** and **don't skip** any. Even when an early check fails, run the rest — they're independent diagnostics and the user benefits from the full picture.
 - Print check results **as they complete**, not as one batched dump. Slow checks (4, 5, 6) shouldn't make the report feel hung.
+
+### Phrasing the report accurately
+
+When writing the Recommendations block, be careful with the distinction between **build-time** and **runtime** fetches — they have different network policies and produce different failure modes. The reason this matters: a recommendation like "the dashboard will be empty when opened because the runtime can't reach the URLs" is wrong for RSS, even though the user's symptoms ("empty sections") match.
+
+- **RSS items are baked at build time** (`wizard/fetch-feeds.ts`, v0.5.3 design). The artifact sandbox always blocks cross-origin `window.fetch`, so RSS sections in a built dashboard render **only** what the build managed to bake. If Node fetch was blocked at build time, the RSS items array is empty in the embedded `<script id="foresights-config">` block; opening the dashboard later doesn't re-attempt anything.
+- **GitHub items in artifact mode** are fetched at runtime via `window.cowork.callMcpTool(${ghServer}__list_<kind>)`. MCP traffic routes through the MCP server's network, not the artifact sandbox's egress allowlist — so a working GH MCP almost always reaches GitHub even on locked-down hosts.
+- **GitHub items in static mode** are baked at build time via `WizardSource.baked`. Same build-time-fetch story as RSS.
+
+So when the doctor's checks 5+6 fail and the user already built a dashboard with RSS sources, say "the build couldn't reach the feed URLs, so the items were never baked" — not "the runtime can't reach them". The wording matters because the right fix differs: build-time bake failures want a rebuild via a working fetch path; runtime fetch failures want network or MCP adjustments.

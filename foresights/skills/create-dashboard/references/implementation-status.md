@@ -2,6 +2,16 @@
 
 Version history. The current `SKILL.md` only carries the headline status; the full per-version notes live here.
 
+## v0.9.2 — environment-aware wizard + curated-only mode
+
+Strictly additive — no code changes, SKILL.md tightenings only. Closes the loop on the v0.9.1 dogfood report: `/foresights-doctor` correctly diagnosed Lee's work Mac as maximally sandboxed (both Node fetch and WebFetch blocked, only `an internal corporate model endpoint` on the egress allowlist), but `/create-dashboard` didn't yet *consult* the doctor. The wizard still chose RSS sources by default and shipped a dashboard guaranteed to render empty sections. v0.9.2 makes the wizard environment-aware.
+
+- **`create-dashboard/SKILL.md` Step 0 rewrite.** Step 0 now runs three quick probes before any data fetching — GH MCP detection (existing), Node outbound fetch reachability (new, ~1 line `node -e` probe), and WebFetch reachability (new, agent uses its own tool). The four-state routing table maps probe results to one of five strategies: use GH MCP, atom-feed fallback (Node-side hydration), restricted-environment path (WebFetch + pre-populated `items`), or the new "no live data" branch.
+- **Curated-only branch.** When all three probes fail, ask the user explicitly via `AskUserQuestion` to (a) build curated-only now, (b) install a GitHub MCP first (MCP traffic bypasses the sandbox egress allowlist), or (c) cancel and ask the network admin. Picking (a) sets `sources: []` in the `WizardConfig`, appends an explanatory clause to `footerNote`, and skips Step 1 entirely. The dashboard ships with synthesized spotlights / highlights / patterns / tips / resources only — no Releases, RFCs, PRs, RSS feed sections. Renderers gracefully omit empty sections; the section nav, header source links, and per-source `<section>` blocks are not emitted.
+- **`foresights-doctor/SKILL.md` accuracy fix.** Added an "implementation notes → phrasing the report accurately" section clarifying the build-time vs runtime distinction. RSS items are baked at build time (v0.5.3 design); GitHub items in artifact mode are fetched at runtime via the MCP bridge (which routes through the MCP server's network, not the sandbox's egress). The doctor's recommendations should describe the fix in terms of the right network policy.
+
+635 tests (no code changes). Plugin version 0.9.1 → 0.9.2.
+
 ## v0.9.1 — restricted-environment robustness + `/foresights-doctor`
 
 Strictly additive. The v0.9.0 install path worked on Lee's sandboxed work Mac — but a CDK dashboard built there had every section rendering "no recent items in this feed". Diagnosis: the sandbox blocks Node's outbound `fetch` (via Cowork's allowlist), so `wizard/fetch-feeds.ts` returned empty arrays for every RSS source and silently baked them into the dashboard. The agent's `WebFetch` tool would have reached the same feeds, but the SKILL.md actively told the agent **not** to use it. v0.9.1 closes that loop on three sides — SKILL.md guidance, orchestrator-side warnings, and a new doctor skill.
