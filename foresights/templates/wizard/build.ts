@@ -90,6 +90,12 @@ export interface BuildOpts {
    * passes this; drop it to run the full gate when debugging a build.
    */
   readonly fast?: boolean;
+  /**
+   * Pre-existing warnings to fold into `BuildResult.warnings` — used by
+   * `main()` to pipe `hydrateRssSources` warnings through to the stdout
+   * summary. Tests + library callers can leave this unset.
+   */
+  readonly priorWarnings?: readonly string[];
 }
 
 export interface BuildResult {
@@ -104,6 +110,13 @@ export interface BuildResult {
   };
   /** Bytes written to the output file. */
   readonly outBytes: number;
+  /**
+   * Structured warning lines emitted by the build — currently sourced from
+   * `hydrateRssSources` (one per RSS feed that fetched zero items). Each line
+   * is prefixed with a discriminator like `zero-items:` for machine parsing.
+   * v0.9.1+. Empty array on a healthy build.
+   */
+  readonly warnings: readonly string[];
 }
 
 /**
@@ -317,6 +330,7 @@ export const build = async (opts: BuildOpts): Promise<BuildResult> => {
       description: opts.config.artifactDescription,
     },
     outBytes: Buffer.byteLength(finalHtml, 'utf8'),
+    warnings: opts.priorWarnings ?? [],
   };
 };
 
@@ -379,14 +393,14 @@ const main = async (): Promise<void> => {
   const configRaw = await readFile(args.configPath, 'utf8');
   const rawConfig = JSON.parse(configRaw) as WizardConfig;
   // Fetch + bake RSS feeds here, in Node, before the build. The artifact
-  // sandbox blocks cross-origin fetch, and the wizard agent's web-fetch tool
-  // only resolves URLs already in the conversation — so RSS hydration belongs
-  // in the orchestrator, not the agent. GitHub-only configs are untouched;
-  // rss sources that already carry `items` are left as-is.
-  const config: WizardConfig = {
-    ...rawConfig,
-    sources: await hydrateRssSources(rawConfig.sources),
-  };
+  // sandbox blocks cross-origin fetch, so RSS hydration belongs in the
+  // orchestrator. GitHub-only configs are untouched; rss sources that
+  // already carry `items` (the restricted-environment path, where the
+  // wizard agent pre-populated via `WebFetch`) are left as-is. v0.9.1+
+  // surfaces zero-item fetches as structured warnings — see
+  // `HydrationResult` and the SKILL.md step-5 smoke-test guidance.
+  const { sources: hydrated, warnings: rssWarnings } = await hydrateRssSources(rawConfig.sources);
+  const config: WizardConfig = { ...rawConfig, sources: hydrated };
   // --emit-flags: pass 1 of the static-mode two-pass flow. Enumerate every
   // flagged (product × item) pair from the baked data and write the manifest.
   // The wizard agent then generates a Haiku brief per entry and re-invokes
@@ -395,8 +409,17 @@ const main = async (): Promise<void> => {
     const manifest = deriveFlagManifest(config);
     await mkdir(dirname(args.outFile), { recursive: true });
     await writeFile(args.outFile, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    // Warn if the manifest is empty in static mode — almost always a sign
+    // that GitHub `baked` data or RSS `items` came back empty for every
+    // source, which means no items were available to flag.
+    const emitWarnings = [...rssWarnings];
+    if (manifest.length === 0 && (config.products ?? []).length > 0) {
+      emitWarnings.push(
+        'zero-items: flag manifest came back empty — every source either returned no items or none of them matched any product matcher. Confirm `WizardSource.baked` (GitHub) and `items` (RSS) are populated before re-running.',
+      );
+    }
     process.stdout.write(
-      `${JSON.stringify({ mode: 'emit-flags', flags: manifest.length, outFile: args.outFile })}\n`,
+      `${JSON.stringify({ mode: 'emit-flags', flags: manifest.length, outFile: args.outFile, warnings: emitWarnings })}\n`,
     );
     return;
   }
@@ -407,6 +430,7 @@ const main = async (): Promise<void> => {
     skipPreflight: args.skipPreflight,
     withTests: args.withTests,
     fast: args.fast,
+    priorWarnings: rssWarnings,
   });
   // One-line JSON summary for the SKILL.md caller to consume.
   process.stdout.write(`${JSON.stringify(result)}\n`);
