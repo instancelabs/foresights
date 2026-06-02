@@ -87,25 +87,27 @@ describe('hydrateRssSources', () => {
   };
 
   it('leaves non-rss sources untouched', async () => {
-    const out = await hydrateRssSources([gh], stubFetch);
-    expect(out[0]).toBe(gh);
+    const { sources } = await hydrateRssSources([gh], stubFetch);
+    expect(sources[0]).toBe(gh);
   });
 
   it('populates items for an rss source that has none', async () => {
-    const out = await hydrateRssSources([rss], stubFetch);
-    expect(out[0]?.items).toEqual(stubItems);
+    const { sources, warnings } = await hydrateRssSources([rss], stubFetch);
+    expect(sources[0]?.items).toEqual(stubItems);
+    expect(warnings).toEqual([]);
   });
 
   it('leaves an rss source that already carries items', async () => {
     const prebaked: WizardSource = { ...rss, items: stubItems };
-    const out = await hydrateRssSources([prebaked], failFetch);
-    expect(out[0]).toBe(prebaked);
+    const { sources, warnings } = await hydrateRssSources([prebaked], failFetch);
+    expect(sources[0]).toBe(prebaked);
+    expect(warnings).toEqual([]);
   });
 
   it('skips an rss source with no url', async () => {
     const noUrl: WizardSource = { id: 'feed', label: 'Example', kind: 'rss' };
-    const out = await hydrateRssSources([noUrl], failFetch);
-    expect(out[0]).toBe(noUrl);
+    const { sources } = await hydrateRssSources([noUrl], failFetch);
+    expect(sources[0]).toBe(noUrl);
   });
 
   it('does not mutate the input sources', async () => {
@@ -115,28 +117,71 @@ describe('hydrateRssSources', () => {
   });
 
   it('hydrates several feeds in one pass', async () => {
-    const out = await hydrateRssSources([rss, { ...rss, id: 'feed2' }, gh], stubFetch);
-    expect(out[0]?.items).toEqual(stubItems);
-    expect(out[1]?.items).toEqual(stubItems);
-    expect(out[2]).toBe(gh);
+    const { sources } = await hydrateRssSources([rss, { ...rss, id: 'feed2' }, gh], stubFetch);
+    expect(sources[0]?.items).toEqual(stubItems);
+    expect(sources[1]?.items).toEqual(stubItems);
+    expect(sources[2]).toBe(gh);
   });
 
   it('short-circuits — never calls fetchFeed when no rss source exists', async () => {
     // failFetch throws if called; if the short-circuit works, it isn't called.
-    await expect(hydrateRssSources([gh], failFetch)).resolves.toBeTruthy();
+    await expect(hydrateRssSources([gh], failFetch)).resolves.toMatchObject({ warnings: [] });
   });
 
   it('returns the input array reference unchanged on the short-circuit path', async () => {
     // Identity check: no rss sources → the function does zero work and hands
     // back the very same array. This is what guarantees no jsdom import.
     const input: readonly WizardSource[] = [gh, { ...gh, id: 'gh2' }];
-    const out = await hydrateRssSources(input, failFetch);
-    expect(out).toBe(input);
+    const { sources, warnings } = await hydrateRssSources(input, failFetch);
+    expect(sources).toBe(input);
+    expect(warnings).toEqual([]);
   });
 
   it('short-circuits even with an empty sources array', async () => {
     const input: readonly WizardSource[] = [];
-    const out = await hydrateRssSources(input, failFetch);
-    expect(out).toBe(input);
+    const { sources, warnings } = await hydrateRssSources(input, failFetch);
+    expect(sources).toBe(input);
+    expect(warnings).toEqual([]);
+  });
+
+  // v0.9.1 — zero-item fetches surface as structured warnings.
+  it('emits a zero-items warning when an RSS feed fetches empty', async () => {
+    const emptyFetch = async (): Promise<readonly RssItem[]> => [];
+    const { sources, warnings } = await hydrateRssSources([rss], emptyFetch);
+    expect(sources[0]?.items).toEqual([]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/^zero-items: rss source "feed"/);
+    expect(warnings[0]).toContain('https://example.com/feed');
+    expect(warnings[0]).toContain('WebFetch');
+    expect(warnings[0]).toContain('/foresights-doctor');
+  });
+
+  it('emits one warning per zero-item RSS source, no warnings for the populated ones', async () => {
+    // Each source gets a distinct URL so the fetch impl can dispatch by URL.
+    const r1: WizardSource = { ...rss, id: 'feed1', url: 'https://e/feed1' };
+    const r2: WizardSource = { ...rss, id: 'feed2', url: 'https://e/feed2' };
+    const r3: WizardSource = { ...rss, id: 'feed3', url: 'https://e/feed3' };
+    const { warnings } = await hydrateRssSources([r1, r2, r3, gh], async (url) =>
+      url.endsWith('/feed2') ? stubItems : [],
+    );
+    expect(warnings).toHaveLength(2);
+    expect(warnings.every((w) => w.startsWith('zero-items:'))).toBe(true);
+    expect(warnings.some((w) => w.includes('"feed1"'))).toBe(true);
+    expect(warnings.some((w) => w.includes('"feed3"'))).toBe(true);
+    expect(warnings.some((w) => w.includes('"feed2"'))).toBe(false);
+  });
+
+  it('does not warn for pre-populated sources (the restricted-environment path)', async () => {
+    // A caller that pre-populated items via WebFetch bypasses the fetch and
+    // shouldn't trigger a warning — its items came from a working code path.
+    const prebaked: WizardSource = { ...rss, items: stubItems };
+    const { warnings } = await hydrateRssSources([prebaked], failFetch);
+    expect(warnings).toEqual([]);
+  });
+
+  it('does not warn for url-less rss sources (they were already broken)', async () => {
+    const noUrl: WizardSource = { id: 'feed', label: 'Example', kind: 'rss' };
+    const { warnings } = await hydrateRssSources([noUrl], failFetch);
+    expect(warnings).toEqual([]);
   });
 });
