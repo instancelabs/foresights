@@ -11,7 +11,7 @@ import type {
   RssItem,
   TriagedItem,
 } from '../types';
-import { escHtml } from '../util/escape';
+import { escHtml, safeHref } from '../util/escape';
 
 /** Dashboard output mode — see `WizardConfig.outputMode`. */
 export type OutputMode = 'artifact' | 'static';
@@ -833,7 +833,7 @@ const hlCardHtml = (c: WizardHighlightCard | WizardPatternCard): string => {
         <span class="tag">${escHtml(c.tag)}</span>
         <h3>${escAllowCode(c.title)}</h3>
         <p>${escAllowCode(c.body)}</p>
-        <a class="more" href="${escHtml(c.url)}" target="_blank" rel="noopener">${escHtml(cta)} →</a>
+        <a class="more" href="${safeHref(c.url)}" target="_blank" rel="noopener">${escHtml(cta)} →</a>
       </div>`;
 };
 
@@ -889,7 +889,7 @@ export const genResourcesMarkup = (config: WizardConfig): string => {
   }
   const cards = config.resources.map(
     (r) =>
-      `      <a class="res" href="${escHtml(r.url)}" target="_blank" rel="noopener"><div class="res-name">${escHtml(r.name)}</div><div class="res-desc">${escHtml(r.desc)}</div></a>`,
+      `      <a class="res" href="${safeHref(r.url)}" target="_blank" rel="noopener"><div class="res-name">${escHtml(r.name)}</div><div class="res-desc">${escHtml(r.desc)}</div></a>`,
   );
   return `\n${cards.join('\n')}\n    `;
 };
