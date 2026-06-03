@@ -6,18 +6,12 @@ Foresights gives you a dashboard of just the news, releases, and patterns that a
 
 When something is worth acting on, click through to a Haiku-generated brief grounded in *your* codebase, then generate a self-contained Claude Code prompt to implement it — or batch everything into a triaged upgrade digest that drops into your repo's `.claude/upgrade-digests/` folder.
 
-<!--
-  Screenshots come in after the marketplace-prep PR lands and Lee captures
-  them in a live Cowork session. See assets/SCREENSHOTS-TODO.md for the
-  capture checklist. Once `foresights/assets/screenshot-*.png` exist, swap
-  the comment for the row below.
 
   <p align="center">
     <img src="foresights/assets/screenshot-dashboard.png" width="32%" alt="A live Foresights dashboard with product badges">
     <img src="foresights/assets/screenshot-brief.png"     width="32%" alt="A brief panel expanded under a flagged item">
     <img src="foresights/assets/screenshot-digest.png"    width="32%" alt="An upgrade digest with triaged items">
   </p>
--->
 
 ## What's different
 
