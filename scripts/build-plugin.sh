@@ -71,6 +71,13 @@ for d in .claude-plugin README.md skills assets; do
   fi
 done
 
+# LICENSE lives at the REPO ROOT (one source of truth) — copy it into the
+# plugin staging so the marketplace card can render the license badge and
+# users can read the terms from inside the installed plugin folder.
+if [[ -e "$REPO_ROOT/LICENSE" ]]; then
+  cp "$REPO_ROOT/LICENSE" "$STAGE/LICENSE"
+fi
+
 # Move templates/ under skills/create-dashboard/ to match SKILL.md path.
 if [[ -d "$SRC/templates" ]]; then
   cp -R "$SRC/templates" "$STAGE/skills/create-dashboard/templates"
