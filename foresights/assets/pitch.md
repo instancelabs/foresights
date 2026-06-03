@@ -51,10 +51,13 @@ item gets a brief grounded in *your* codebase and a one-click Claude Code
 prompt to implement it. It closes the loop from "X just shipped" to "here's
 the PR."
 
-It's a v1 — rough edges and all. If keeping up with your stack feels like a
-second job, I would love for you to try it and tell me where it falls short.
+It's open and live. If keeping up with your stack feels like a second job,
+I would love for you to try it and tell me where it falls short.
 
-Built by Instance Labs — github.com/instancelabs/foresights
+Install from the Cowork marketplace → <MARKETPLACE_URL>
+Or grab the latest .plugin from github.com/instancelabs/foresights/releases
+
+Built by Instance Labs — instancelabs.dev
 
 ## Screenshots
 
