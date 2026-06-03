@@ -7,10 +7,7 @@
   },
   "license": "MIT",
   "homepage": "https://instancelabs.dev",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/instancelabs/foresights"
-  },
+  "repository": "https://github.com/instancelabs/foresights",
   "keywords": [
     "cowork",
     "foresights",
