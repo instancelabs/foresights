@@ -34,7 +34,7 @@
  */
 
 import type { Deps } from '../types';
-import { escHtml } from '../util/escape';
+import { escHtml, safeHref } from '../util/escape';
 
 export interface InitDigestPanelOpts {
   /** ID of the panel container element. Default: `'digest-panel'`. */
@@ -84,6 +84,16 @@ export interface DigestPanelHandle {
  */
 export const mdToHtml = (md: string): string => {
   let html = escHtml(md);
+  // escHtml escapes backticks to `&#96;` (v0.9.3 / finding L1 — defence
+  // for any template-literal-context consumer). Markdown's inline-code
+  // and fenced-code syntax both rely on literal backticks, so restore
+  // them here BEFORE the code-block / inline-code regexes run. This is
+  // safe because the only thing parsed in the digest panel is the
+  // markdown the caller passed in — anything that survives the regex
+  // patterns below stays escaped, including the now-restored backticks
+  // in normal prose (which will appear in the final HTML as a literal
+  // backtick character, which is the markdown rendering the user wrote).
+  html = html.replace(/&#96;/g, '`');
 
   // Code blocks first so their content isn't double-processed. The fence is
   // matched as a run of 3+ backticks with a backreference for the close, so
@@ -111,10 +121,13 @@ export const mdToHtml = (md: string): string => {
   // Inline code.
   html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
 
-  // Links.
+  // Links. Route the captured URL ($2) through `safeHref` so a
+  // `[click](javascript:...)` payload in Haiku-emitted triage prose
+  // degrades to a `#` anchor instead of an active script URL.
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener">$1</a>',
+    (_m, text: string, url: string) =>
+      `<a href="${safeHref(url)}" target="_blank" rel="noopener">${text}</a>`,
   );
 
   // Lists — numbered and bulleted, both converted to <li>.

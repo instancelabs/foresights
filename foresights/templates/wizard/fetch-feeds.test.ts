@@ -42,24 +42,30 @@ describe('fetchFeed', () => {
       (_, i) => `<item><title>post ${i}</title><link>https://example.com/${i}</link></item>`,
     ).join('');
     const big = `<?xml version="1.0"?><rss version="2.0"><channel>${entries}</channel></rss>`;
-    const items = await fetchFeed('u', okWith(big));
+    const items = await fetchFeed('https://example.com/feed.xml', okWith(big));
     expect(items).toHaveLength(MAX_ITEMS_PER_FEED);
   });
 
   it('returns [] on a non-ok response', async () => {
-    const items = await fetchFeed('u', async () => ({ ok: false, text: async () => '' }));
+    const items = await fetchFeed('https://example.com/feed.xml', async () => ({
+      ok: false,
+      text: async () => '',
+    }));
     expect(items).toEqual([]);
   });
 
   it('returns [] when the fetch rejects', async () => {
-    const items = await fetchFeed('u', async () => {
+    const items = await fetchFeed('https://example.com/feed.xml', async () => {
       throw new Error('network down');
     });
     expect(items).toEqual([]);
   });
 
   it('returns [] for content that is not a feed', async () => {
-    const items = await fetchFeed('u', okWith('<html><body>not a feed</body></html>'));
+    const items = await fetchFeed(
+      'https://example.com/feed.xml',
+      okWith('<html><body>not a feed</body></html>'),
+    );
     expect(items).toEqual([]);
   });
 });

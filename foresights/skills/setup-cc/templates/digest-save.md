@@ -24,6 +24,21 @@ The user is providing a Foresights upgrade digest as markdown — either in
    each run of non-alphanumeric characters with a single `-`, and trim
    leading/trailing `-`. (e.g. "CDK Insights" → `cdk-insights`.)
 
+   **Reject the digest and ask the user to fix the heading** if any of
+   the following appears in the extracted product name *before* slug
+   normalisation:
+
+   - A `..` path component (e.g. `# ../etc/passwd upgrade digest — 2026-06-02`).
+   - A `/` or `\` (path separators of any flavour).
+   - A null byte (`\0`).
+   - A leading `.` (so the resulting slug can't start with `.`).
+
+   Do **not** try to sanitise these by stripping characters — a heading
+   like `# ../../foo upgrade digest — 2026-06-02` is ambiguous and
+   almost certainly indicates either a copy-paste mishap or an
+   injection attempt. Surface the issue and let the user retype the
+   heading.
+
 3. Target path:
    `.claude/upgrade-digests/<date>-<product-slug>-upgrade-digest.md`.
    Create `.claude/upgrade-digests/` if it doesn't exist.

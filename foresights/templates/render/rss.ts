@@ -15,7 +15,7 @@ import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
 import type { Deps, Product, RssItem } from '../types';
 import { relTime } from '../util/date';
-import { escHtml } from '../util/escape';
+import { escHtml, safeHref } from '../util/escape';
 import { rssUnits } from './flag-units';
 import { appendToSection } from './section';
 
@@ -70,7 +70,7 @@ export const renderRssItems = (
       const descHtml = desc.length > 0 ? `<div class="rss-snippet">${escHtml(desc)}</div>` : '';
       return `<div class="pr-item">
         <div class="pr-row">
-          <div class="pr-title"><a href="${escHtml(linkHref)}" target="_blank" rel="noopener">${escHtml(item.title || '(untitled)')}</a>${flagBadges}</div>
+          <div class="pr-title"><a href="${safeHref(linkHref)}" target="_blank" rel="noopener">${escHtml(item.title || '(untitled)')}</a>${flagBadges}</div>
           <div class="pr-meta">${date}${author}</div>
         </div>
         ${descHtml}

@@ -31,6 +31,7 @@
 import type { RssItem } from '../types';
 import { parseRss } from '../util/rss-parser';
 import type { WizardSource } from './build-config';
+import { classifyFetchUrl } from './url-guard';
 
 /** Most recent entries to bake per feed — matches the SKILL.md contract. */
 export const MAX_ITEMS_PER_FEED = 10;
@@ -96,6 +97,14 @@ export const fetchFeed = async (
   url: string,
   fetchImpl: FetchLike = fetch as unknown as FetchLike,
 ): Promise<readonly RssItem[]> => {
+  // SSRF guard (v0.9.3 / finding M3) — reject non-http(s) schemes and
+  // loopback / link-local / RFC1918 hosts BEFORE the fetch reaches Node's
+  // network stack. Returns [] on rejection so hydrateRssSources surfaces
+  // the failure via its existing zero-items warning path. The reason is
+  // intentionally not logged from here (this module never throws and
+  // never writes to stderr); the warning string in hydrateRssSources is
+  // sufficient to point the user at the issue.
+  if (!classifyFetchUrl(url).safe) return [];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
@@ -164,7 +173,7 @@ export const hydrateRssSources = async (
     if (s === sources[i]) continue;
     if ((s.items ?? []).length === 0) {
       warnings.push(
-        `zero-items: rss source "${s.id}" (${s.url}) returned 0 items — likely a blocked Node fetch or a stale URL. Try the WebFetch fallback (see create-dashboard SKILL.md step 1) or run /foresights-doctor to confirm which fetch paths work.`,
+        `zero-items: rss source "${s.id}" (${s.url}) returned 0 items — likely a blocked Node fetch, a stale URL, or a URL rejected by the build-time SSRF guard (non-http(s) scheme or loopback / link-local / RFC1918 host). Try the WebFetch fallback (see create-dashboard SKILL.md step 1) or run /foresights-doctor to confirm which fetch paths work.`,
       );
     }
   }

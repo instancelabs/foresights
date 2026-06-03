@@ -22,7 +22,7 @@ import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
 import type { Deps, Product, Release } from '../types';
 import { fmtDate } from '../util/date';
-import { escHtml } from '../util/escape';
+import { escHtml, safeHref } from '../util/escape';
 import {
   type Bucket,
   type FlagUnit,
@@ -57,7 +57,7 @@ const renderReleaseItem = (
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
     (_, t: string, u: string) =>
-      `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(t)}</a>`,
+      `<a href="${safeHref(u)}" target="_blank" rel="noopener">${escHtml(t)}</a>`,
   );
   // matchText carries the BREAKING prefix for breaking changes (so prefix-
   // anchored matcher rules fire) — computed by releaseUnitsFor.
@@ -147,7 +147,7 @@ export const renderReleases = (
             <span class="ver">${escHtml(rel.tag_name || rel.name)}</span>
             ${breakingBadge}
           </div>
-          <div class="card-meta">${escHtml(fmtDate(rel.published_at))} · <a href="${escHtml(rel.html_url)}" target="_blank" rel="noopener">notes ↗</a></div>
+          <div class="card-meta">${escHtml(fmtDate(rel.published_at))} · <a href="${safeHref(rel.html_url)}" target="_blank" rel="noopener">notes ↗</a></div>
         </div>
         ${sections}
       </div>`;

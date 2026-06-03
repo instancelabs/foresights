@@ -13,7 +13,7 @@ import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
 import type { Cadence, Deps, Product, Spotlight } from '../types';
 import { dayOfYear, todayLocalDate } from '../util/date';
-import { escHtml } from '../util/escape';
+import { escHtml, safeUrl } from '../util/escape';
 
 export interface SpotlightConfig {
   readonly spotlights: readonly Spotlight[];
@@ -151,7 +151,7 @@ export const renderSpotlight = (
 
   const moreEl = doc.getElementById('sl-more');
   if (moreEl instanceof HTMLAnchorElement) {
-    moreEl.href = spotlight.url;
+    moreEl.href = safeUrl(spotlight.url);
   }
 
   // Clear any brief panel left over from the previous spotlight

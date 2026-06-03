@@ -16,7 +16,7 @@ import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
 import type { Deps, Issue, Product } from '../types';
 import { fmtDate, relTime } from '../util/date';
-import { escHtml } from '../util/escape';
+import { escHtml, safeHref } from '../util/escape';
 import { issueUnits } from './flag-units';
 import { appendToSection } from './section';
 
@@ -96,7 +96,7 @@ export const renderRfcs = (
       const created = it.updated_at; // Issue type doesn't expose created_at; updated_at is the available timestamp.
       return `<div class="card">
         <div class="card-row">
-          <div class="card-title"><a href="${escHtml(url)}" target="_blank" rel="noopener">#${it.number} — ${escHtml(it.title)}</a> <span class="badge ${escHtml(status.cls)}">${escHtml(status.name)}</span>${flagBadges}</div>
+          <div class="card-title"><a href="${safeHref(url)}" target="_blank" rel="noopener">#${it.number} — ${escHtml(it.title)}</a> <span class="badge ${escHtml(status.cls)}">${escHtml(status.name)}</span>${flagBadges}</div>
           <div class="card-meta">${escHtml(relTime(it.updated_at, deps.now))}</div>
         </div>
         <div class="rfc-meta">updated ${escHtml(fmtDate(created))}</div>

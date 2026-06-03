@@ -17,7 +17,7 @@ import { flagBadgeHtml } from '../products/badge';
 import { flagsForText } from '../products/matcher';
 import type { Deps, Product, PullRequest } from '../types';
 import { relTime } from '../util/date';
-import { escHtml } from '../util/escape';
+import { escHtml, safeHref } from '../util/escape';
 import { prUnits } from './flag-units';
 import { appendToSection } from './section';
 
@@ -77,7 +77,7 @@ export const renderPrs = (
       const mergedMeta = p.merged_at ? escHtml(relTime(p.merged_at, deps.now)) : '';
       return `<div class="pr-item">
         <div class="pr-row">
-          <div class="pr-title"><a href="${escHtml(p.html_url)}" target="_blank" rel="noopener">${titleHtml}</a>${flagBadges}</div>
+          <div class="pr-title"><a href="${safeHref(p.html_url)}" target="_blank" rel="noopener">${titleHtml}</a>${flagBadges}</div>
           <div class="pr-meta">#${p.number} · ${escHtml(author)} · merged ${mergedMeta}</div>
         </div>
       </div>`;

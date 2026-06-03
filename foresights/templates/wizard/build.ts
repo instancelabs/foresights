@@ -43,6 +43,8 @@ import {
 } from './build-config';
 import { hydrateRssSources } from './fetch-feeds';
 import { substituteAll } from './substitute';
+import { validateAllTrustedHtml } from './trusted-html';
+import { stressTestProductRegexes } from './validate-regexes';
 
 const execFileAsync = promisify(execFile);
 
@@ -293,6 +295,25 @@ export const injectBundleAndSubstitute = (
  * use to invoke `mcp__cowork__create_artifact`.
  */
 export const build = async (opts: BuildOpts): Promise<BuildResult> => {
+  // Security pre-flight (v0.9.3). Validate the WizardConfig BEFORE any
+  // rendering or staging so an XSS payload in a "trusted HTML" field —
+  // or a catastrophic-backtracking regex in a product matcher — fails
+  // the build with a clear, field-named error rather than shipping into
+  // the artifact. See `trusted-html.ts` (finding H2) and
+  // `validate-regexes.ts` (finding M1).
+  validateAllTrustedHtml(opts.config);
+  const regexReport = stressTestProductRegexes({
+    products: opts.config.products as ReadonlyArray<{
+      readonly id: string;
+      readonly rules: ReadonlyArray<{ readonly source: string; readonly flags?: string }>;
+    }>,
+  });
+  if (regexReport.failures.length > 0) {
+    throw new Error(
+      `build: product regex stress test failed:\n  ${regexReport.failures.join('\n  ')}`,
+    );
+  }
+
   const work = await stageTemplates(opts.templatesDir);
 
   // Apply substitutions to every TS file that carries sentinels.
@@ -330,7 +351,7 @@ export const build = async (opts: BuildOpts): Promise<BuildResult> => {
       description: opts.config.artifactDescription,
     },
     outBytes: Buffer.byteLength(finalHtml, 'utf8'),
-    warnings: opts.priorWarnings ?? [],
+    warnings: [...(opts.priorWarnings ?? []), ...regexReport.warnings],
   };
 };
 
