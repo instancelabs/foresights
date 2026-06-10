@@ -1,6 +1,6 @@
 {
   "name": "foresights",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Spin up a live news dashboard customised to your product. GitHub releases, RSS feeds, curated highlights, per-product flagging, brief-all + digest bars, and context refresh — with built-in Claude Code integration for action.",
   "author": {
     "name": "Instance Labs Ltd"
