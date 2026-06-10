@@ -99,6 +99,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>{{TOPIC}} — {{TAGLINE_SUFFIX}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
@@ -113,8 +116,8 @@
     --text-dim: #828a99;
     --accent: {{ACCENT}};
     --accent-soft: {{ACCENT_SOFT}};
-    --link: #1f4ed8;
-    --link-hover: #0a37b8;
+    --link: var(--accent);
+    --link-hover: var(--accent);
     --green: #1b8a3a;
     --green-soft: #e6f5ec;
     --amber: #b46a00;
@@ -127,18 +130,35 @@
     --slate-soft: #eef0f4;
     --code-bg: #f4f4f8;
     --shadow: 0 1px 2px rgba(20,25,35,.04), 0 4px 14px rgba(20,25,35,.05);
+
+    /* Foresights brand · type tri-family (SF Pro Display fallback, Instrument
+       Serif for gravitas, JetBrains Mono for eyebrows/code) */
+    --font-ui:    'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', Georgia, serif;
+    --font-mono:  'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    /* Foresights brand · cyan signal (live data + actively-refreshing UI) */
+    --signal:      #5EEAD4;
+    --signal-2:    #2DD4BF;
+    --signal-soft: rgba(94, 234, 212, 0.14);
+    --signal-dim:  #1C8F80;
+
+    /* Eyebrow contract — uppercase mono 11px .14em, iris by default */
+    --eyebrow-size: 11px;
+    --eyebrow-ls:   .14em;
   }
   * { box-sizing: border-box; }
   html, body { background: var(--bg); }
   body {
     margin: 0;
     color: var(--text);
-    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    font: 14px/1.5 var(--font-ui);
     -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'cv11' 1, 'ss01' 1;
   }
   a { color: var(--link); text-decoration: none; }
   a:hover { color: var(--link-hover); text-decoration: underline; }
-  code, pre { font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace; }
+  code, pre { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
   code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
   /* Utility class for light-mode code blocks. Don't put a global `pre` rule
      here — dark-themed blocks (.sl-code, .brief-cc-text) inherit transparent
@@ -163,6 +183,22 @@
     padding: 6px 0 14px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 18px;
+  }
+  .hero-main { display: flex; gap: 12px; align-items: flex-start; }
+  .hero-glyph {
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: inline-flex;
+    transition: transform .15s ease;
+  }
+  .hero-glyph:hover { transform: translateX(2px); color: var(--link-hover); }
+  .hero-suffix {
+    font-family: var(--font-serif);
+    font-style: italic;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0;
   }
   .hero h1 {
     font-size: 22px;
@@ -207,12 +243,13 @@
     margin: 0 0 10px;
   }
   .section-head h2 {
-    font-size: 15px;
+    font-family: var(--font-mono);
+    font-size: var(--eyebrow-size);
     margin: 0;
-    letter-spacing: 0.02em;
+    letter-spacing: var(--eyebrow-ls);
     text-transform: uppercase;
-    color: var(--text);
-    font-weight: 700;
+    color: var(--accent);
+    font-weight: 500;
   }
   .section-head .h-meta { font-size: 12px; color: var(--text-dim); }
   .section-head .h-meta a { color: var(--text-muted); }
@@ -828,15 +865,12 @@
     margin-bottom: 6px;
   }
   .sl-tag {
-    display: inline-block;
-    font-size: 10.5px;
+    font-family: var(--font-mono);
+    font-size: var(--eyebrow-size);
+    letter-spacing: var(--eyebrow-ls);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
     color: var(--accent);
-    font-weight: 700;
-    background: var(--accent-soft);
-    padding: 3px 9px;
-    border-radius: 999px;
+    font-weight: 500;
   }
   .sl-controls { display: flex; align-items: center; gap: 6px; }
   .sl-btn {
@@ -1012,15 +1046,66 @@
        .digest-btn-<id>    { ... } */
   /* FORESIGHTS_START:PRODUCT_CSS */
   /* FORESIGHTS_END:PRODUCT_CSS */
+
+  /* Brand · eyebrow treatment for card tags + tip "why" suffix */
+  .hl-card .tag, .tip .why {
+    font-family: var(--font-mono);
+    font-size: var(--eyebrow-size);
+    letter-spacing: var(--eyebrow-ls);
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  /* Brand · live signal — cyan pulse on the section-refresh "Refresh" affordance
+     once it's been activated. Only the spotlight refresh button uses .acked today;
+     this brings the cyan into the chrome subtly, on earned moments. */
+  .section-refresh-btn.acked {
+    background: var(--signal-soft);
+    color: var(--signal-dim);
+    border-color: rgba(94, 234, 212, 0.45);
+  }
+  /* Brand · tabular numerals on numeric-heavy elements for diff stability */
+  .card-meta, .h-meta, .pr-meta, .badge { font-variant-numeric: tabular-nums; }
+  /* Brand · footer subtle attribution lockup */
+  .footer-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .footer-brand svg { width: 14px; height: 14px; color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header class="hero">
-    <div>
-      <h1>{{TOPIC}} — {{TAGLINE_SUFFIX}}</h1>
-      <div class="sub">{{TAGLINE_SUB}}</div>
+    <div class="hero-main">
+      <a class="hero-glyph" href="https://github.com/instancelabs/foresights" target="_blank" rel="noopener" title="Built with Foresights — github.com/instancelabs/foresights" aria-label="Foresights">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" role="img" aria-hidden="true">
+          <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6">
+            <line x1="6" y1="8" x2="17" y2="16"></line>
+            <line x1="5" y1="16.5" x2="17" y2="16"></line>
+            <line x1="7" y1="25" x2="17" y2="16"></line>
+          </g>
+          <g fill="currentColor">
+            <circle cx="6" cy="8" r="2.1"></circle>
+            <circle cx="5" cy="16.5" r="1.5"></circle>
+            <circle cx="7" cy="25" r="2.6"></circle>
+          </g>
+          <circle cx="17.5" cy="16" r="3.4" fill="currentColor"></circle>
+          <path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"></path>
+          <path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+        </svg>
+      </a>
+      <div>
+        <h1>{{TOPIC}} <span class="hero-suffix">— {{TAGLINE_SUFFIX}}</span></h1>
+        <div class="sub">{{TAGLINE_SUB}}</div>
+      </div>
     </div>
     <div class="meta">
       <div><strong id="last-refresh">—</strong></div>

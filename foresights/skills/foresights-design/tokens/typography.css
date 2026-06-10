@@ -1,0 +1,61 @@
+/* ============================================================
+ * Foresights — Typography Tokens
+ * Same tri-family system as Instance Labs:
+ *   · SF Pro Display (system) — UI + display
+ *   · Instrument Serif        — KPI numerals, hero numbers (gravitas)
+ *   · JetBrains Mono          — eyebrows, IDs, timestamps, log streams
+ * ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --font-ui:    'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono:  'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Type scale (px) */
+  --t-eyebrow:  11px;   /* mono, .14em, uppercase */
+  --t-caption:  12px;
+  --t-body-sm:  13px;
+  --t-body:     14px;
+  --t-lead:     16px;
+  --t-h4:       18px;
+  --t-h3:       22px;
+  --t-h2:       30px;
+  --t-h1:       44px;
+  --t-display:  72px;   /* hero */
+
+  --lh-tight:   1.05;
+  --lh-snug:    1.2;
+  --lh-normal:  1.5;
+  --lh-relaxed: 1.6;
+
+  --ls-display: -0.045em;
+  --ls-tight:   -0.02em;
+  --ls-eyebrow: 0.14em;
+}
+
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--t-body);
+  line-height: var(--lh-normal);
+}
+
+.mono   { font-family: var(--font-mono); }
+.serif  { font-family: var(--font-serif); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--iris-soft);
+}
+.eyebrow-signal { color: var(--signal); }
+.eyebrow-dim    { color: var(--text-3); }

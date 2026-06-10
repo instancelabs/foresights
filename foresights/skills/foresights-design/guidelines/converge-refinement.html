@@ -1,0 +1,156 @@
+<!-- @dsCard group="Brand" viewport="1180x820" name="Converge refinement" subtitle="Focal-node treatments, locked to 3 sources, directional" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Foresights — Converge Refinement</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --bg:#08080A; --surface:#121217; --line:#1C1C23; --line-bright:#2A2A34;
+    --text:#F4F4F5; --text-2:#A3A3AC; --text-3:#6E6E78;
+    --iris:#7C6AFF; --iris-soft:#A89AFF; --iris-dim:#4A3CB0; --iris-tint:rgba(124,106,255,.12); --signal:#5EEAD4;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace; --serif:'Instrument Serif',Georgia,serif;
+    --ui:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);
+    background-image:radial-gradient(ellipse 700px 420px at 82% -4%, rgba(124,106,255,.14), transparent 60%);}
+  .wrap{max-width:1140px;margin:0 auto;padding:56px 40px 96px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:var(--iris-soft);margin-bottom:14px;}
+  h1{font-size:38px;font-weight:500;letter-spacing:-.03em;margin:0 0 12px;}
+  h1 .serif{font-family:var(--serif);font-style:italic;color:var(--iris-soft);}
+  .lede{color:var(--text-2);max-width:680px;font-size:15px;line-height:1.6;margin:0;}
+  .note{margin-top:22px;padding:14px 16px;background:var(--iris-tint);border:1px solid rgba(124,106,255,.25);border-radius:8px;color:var(--text);font-size:13px;line-height:1.6;max-width:780px;}
+  .note b{color:var(--iris-soft);}
+
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:38px;}
+  .opt{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 20px 18px;position:relative;}
+  .opt.pick{border-color:var(--iris-dim);box-shadow:0 0 0 1px var(--iris-dim),0 0 40px rgba(124,106,255,.10);}
+  .opt .num{font-family:var(--mono);font-size:10px;color:var(--text-3);letter-spacing:.12em;}
+  .opt h3{font-size:14.5px;font-weight:600;margin:3px 0 0;letter-spacing:-.01em;}
+  .opt .picktag{position:absolute;top:16px;right:16px;font-family:var(--ui);font-size:10px;font-weight:600;color:var(--iris-soft);background:var(--iris-tint);border:1px solid rgba(124,106,255,.3);padding:2px 8px;border-radius:999px;}
+  .specimen{display:flex;align-items:center;gap:14px;margin:18px 0 14px;}
+  .sq{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#8E7DFF,#6450E6);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 24px rgba(124,106,255,.22);flex:none;}
+  .sq.lg{width:64px;height:64px;border-radius:15px;}
+  .sq.lg svg{width:40px;height:40px;}
+  .sq.fav{width:24px;height:24px;border-radius:6px;}
+  .sq.fav svg{width:16px;height:16px;}
+  .favwrap{display:flex;align-items:center;gap:8px;color:var(--text-3);font-family:var(--mono);font-size:9.5px;}
+  .desc{font-size:12px;color:var(--text-2);line-height:1.5;margin:0;min-height:54px;}
+  .distinct{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--signal);line-height:1.45;}
+  .distinct b{color:var(--text-2);font-weight:500;}
+
+  .compare{margin-top:46px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;}
+  .compare .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:18px;}
+  .crow{display:flex;align-items:center;gap:32px;flex-wrap:wrap;}
+  .citem{display:flex;flex-direction:column;align-items:center;gap:9px;}
+  .citem .cap{font-family:var(--mono);font-size:10px;color:var(--text-3);}
+  .citem .bad{color:#FFB547;}
+  .lockup{display:flex;align-items:center;gap:13px;margin-left:auto;}
+  .lockup .wm{font-size:23px;font-weight:600;letter-spacing:-.027em;}
+
+  footer{margin-top:48px;padding-top:22px;border-top:1px solid var(--line);color:var(--text-3);font-size:12.5px;line-height:1.6;}
+  .mono{font-family:var(--mono);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">// foresights · brand · 004</div>
+  <h1>Converge, made <span class="serif">ours</span></h1>
+  <p class="lede">Four refinements of Converge — all locked to <b style="color:var(--text)">exactly 3 source nodes</b> (mirroring the product's real "3 sources"), all <b style="color:var(--text)">directional</b> left→right, each trying a different focal-node treatment instead of the atom-ish halo ring.</p>
+  <div class="note"><b>Goal:</b> get as far from the generic <i>radial</i> hub-and-spoke as possible. The asymmetry (sources on one side, you on the other) is the differentiator — these push it.</div>
+
+  <div class="grid">
+
+    <!-- V1 Diamond focal -->
+    <div class="opt pick">
+      <span class="picktag">pick</span>
+      <div class="num">V1</div><h3>Diamond focal</h3>
+      <div class="specimen">
+        <span class="sq lg"><svg viewBox="0 0 32 32" fill="none">
+          <g stroke="currentColor" stroke-width="1.7" opacity=".62"><line x1="7" y1="8" x2="21" y2="16"/><line x1="6" y1="16.5" x2="21" y2="16"/><line x1="8" y1="25" x2="21" y2="16"/></g>
+          <g fill="currentColor"><circle cx="7" cy="8" r="2.1"/><circle cx="6" cy="16.5" r="1.5"/><circle cx="8" cy="25" r="2.6"/></g>
+          <rect x="21" y="13" width="6" height="6" rx="1.1" transform="rotate(45 24 16)" fill="currentColor"/>
+        </svg></span>
+        <div class="favwrap"><span class="sq fav"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.5" opacity=".7"><line x1="8" y1="9" x2="21" y2="16"/><line x1="9" y1="24" x2="21" y2="16"/></g><g fill="currentColor"><circle cx="8" cy="9" r="2.4"/><circle cx="9" cy="24" r="2.4"/></g><rect x="20" y="12" width="8" height="8" rx="1.4" transform="rotate(45 24 16)" fill="currentColor"/></svg></span>24px</div>
+      </div>
+      <p class="desc">The focal node becomes an iris diamond — a deliberate "signal/flag" shape that echoes the relevance badge used across the UI.</p>
+      <div class="distinct"><b>Distinct:</b> a diamond hub is unusual (most are round); ties directly to the product's flag motif. Sharp at favicon size.</div>
+    </div>
+
+    <!-- V2 Solid -->
+    <div class="opt">
+      <div class="num">V2</div><h3>Solid</h3>
+      <div class="specimen">
+        <span class="sq lg"><svg viewBox="0 0 32 32" fill="none">
+          <g stroke="currentColor" stroke-width="1.7" opacity=".62"><line x1="7" y1="8" x2="22" y2="16"/><line x1="6" y1="16.5" x2="22" y2="16"/><line x1="8" y1="25" x2="22" y2="16"/></g>
+          <g fill="currentColor"><circle cx="7" cy="8" r="2.1"/><circle cx="6" cy="16.5" r="1.5"/><circle cx="8" cy="25" r="2.6"/></g>
+          <circle cx="22.5" cy="16" r="4.4" fill="currentColor"/>
+        </svg></span>
+        <div class="favwrap"><span class="sq fav"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.5" opacity=".7"><line x1="8" y1="9" x2="22" y2="16"/><line x1="9" y1="24" x2="22" y2="16"/></g><g fill="currentColor"><circle cx="8" cy="9" r="2.4"/><circle cx="9" cy="24" r="2.4"/></g><circle cx="22" cy="16" r="5" fill="currentColor"/></svg></span>24px</div>
+      </div>
+      <p class="desc">No ring at all — just a single bold focal node, weight carrying the emphasis. The cleanest, most timeless option.</p>
+      <div class="distinct"><b>Distinct:</b> drops the halo entirely; pure weight hierarchy. Reads instantly, ages well, hardest to misread.</div>
+    </div>
+
+    <!-- V3 Aperture node -->
+    <div class="opt">
+      <div class="num">V3</div><h3>Aperture</h3>
+      <div class="specimen">
+        <span class="sq lg"><svg viewBox="0 0 32 32" fill="none">
+          <g stroke="currentColor" stroke-width="1.7" opacity=".62"><line x1="7" y1="8" x2="21" y2="16"/><line x1="6" y1="16.5" x2="21" y2="16"/><line x1="8" y1="25" x2="21" y2="16"/></g>
+          <g fill="currentColor"><circle cx="7" cy="8" r="2.1"/><circle cx="6" cy="16.5" r="1.5"/><circle cx="8" cy="25" r="2.6"/></g>
+          <circle cx="22.5" cy="16" r="4.6" fill="none" stroke="currentColor" stroke-width="2"/>
+          <circle cx="22.5" cy="16" r="1.5" fill="currentColor"/>
+        </svg></span>
+        <div class="favwrap"><span class="sq fav"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.5" opacity=".7"><line x1="8" y1="9" x2="21" y2="16"/><line x1="9" y1="24" x2="21" y2="16"/></g><g fill="currentColor"><circle cx="8" cy="9" r="2.4"/><circle cx="9" cy="24" r="2.4"/></g><circle cx="22" cy="16" r="4.4" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="22" cy="16" r="1.4" fill="currentColor"/></svg></span>24px</div>
+      </div>
+      <p class="desc">The focal node is a hollow ring with a pupil — an eye/aperture "focusing" on the incoming signals. Foresight, literally.</p>
+      <div class="distinct"><b>Distinct:</b> the pupil makes it a "seeing" node, not an atom. Strongest meaning, slightly busier than V2.</div>
+    </div>
+
+    <!-- V4 Twin -->
+    <div class="opt">
+      <div class="num">V4</div><h3>Lens</h3>
+      <div class="specimen">
+        <span class="sq lg"><svg viewBox="0 0 32 32" fill="none">
+          <g stroke="currentColor" stroke-width="1.7" opacity=".62"><line x1="7" y1="8" x2="20" y2="16"/><line x1="6" y1="16.5" x2="20" y2="16"/><line x1="8" y1="25" x2="20" y2="16"/></g>
+          <g fill="currentColor"><circle cx="7" cy="8" r="2.1"/><circle cx="6" cy="16.5" r="1.5"/><circle cx="8" cy="25" r="2.6"/></g>
+          <circle cx="20.5" cy="16" r="3.7" fill="currentColor"/>
+          <path d="M25 12.5 A 5 5 0 0 1 25 19.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+        </svg></span>
+        <div class="favwrap"><span class="sq fav"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.5" opacity=".7"><line x1="8" y1="9" x2="20" y2="16"/><line x1="9" y1="24" x2="20" y2="16"/></g><g fill="currentColor"><circle cx="8" cy="9" r="2.4"/><circle cx="9" cy="24" r="2.4"/></g><circle cx="20" cy="16" r="4.2" fill="currentColor"/><path d="M25 13 A 4.5 4.5 0 0 1 25 19" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none"/></g></svg></span>24px</div>
+      </div>
+      <p class="desc">A solid focal node with one outgoing arc — the signal is received <i>and</i> re-emitted: sources in, foresight out.</p>
+      <div class="distinct"><b>Distinct:</b> a single trailing arc nods to the radar story without the RSS look — bridges Converge and Sweep.</div>
+    </div>
+  </div>
+
+  <!-- comparison -->
+  <div class="compare">
+    <div class="lbl">Why asymmetric beats the generic radial hub</div>
+    <div class="crow">
+      <div class="citem">
+        <span class="sq lg" style="background:#16161C;border:1px solid var(--line-bright);box-shadow:none"><svg viewBox="0 0 32 32" fill="none"><g stroke="#6E6E78" stroke-width="1.6" opacity=".8"><line x1="16" y1="16" x2="16" y2="6"/><line x1="16" y1="16" x2="24.5" y2="11"/><line x1="16" y1="16" x2="24.5" y2="21"/><line x1="16" y1="16" x2="16" y2="26"/><line x1="16" y1="16" x2="7.5" y2="21"/><line x1="16" y1="16" x2="7.5" y2="11"/></g><circle cx="16" cy="16" r="3.4" fill="#6E6E78"/><g fill="#6E6E78"><circle cx="16" cy="6" r="1.8"/><circle cx="24.5" cy="11" r="1.8"/><circle cx="24.5" cy="21" r="1.8"/><circle cx="16" cy="26" r="1.8"/><circle cx="7.5" cy="21" r="1.8"/><circle cx="7.5" cy="11" r="1.8"/></g></svg></span>
+        <span class="cap bad">✕ generic radial</span>
+      </div>
+      <div class="citem">
+        <span class="sq lg"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" opacity=".62"><line x1="7" y1="8" x2="21" y2="16"/><line x1="6" y1="16.5" x2="21" y2="16"/><line x1="8" y1="25" x2="21" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="8" r="2.1"/><circle cx="6" cy="16.5" r="1.5"/><circle cx="8" cy="25" r="2.6"/></g><rect x="21" y="13" width="6" height="6" rx="1.1" transform="rotate(45 24 16)" fill="currentColor"/></svg></span>
+        <span class="cap" style="color:var(--signal)">✓ Foresights · directional</span>
+      </div>
+      <div class="lockup">
+        <span class="sq" style="width:38px;height:38px;border-radius:9px"><svg viewBox="0 0 32 32" fill="none" style="width:24px;height:24px"><g stroke="currentColor" stroke-width="1.9" opacity=".62"><line x1="7" y1="8" x2="21" y2="16"/><line x1="6" y1="16.5" x2="21" y2="16"/><line x1="8" y1="25" x2="21" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="8" r="2.2"/><circle cx="6" cy="16.5" r="1.6"/><circle cx="8" cy="25" r="2.7"/></g><rect x="21" y="13" width="6" height="6" rx="1.1" transform="rotate(45 24 16)" fill="currentColor"/></svg></span>
+        <span class="wm">Foresights</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span class="mono">FORESIGHTS · INSTANCE LABS · 0x04</span><br/>
+    My pick: <b style="color:var(--iris-soft)">V1 Diamond focal</b> — it ties the mark to the relevance-flag motif already in the UI and is the sharpest at small sizes. <b style="color:var(--iris-soft)">V2 Solid</b> is the safe, timeless fallback; <b style="color:var(--iris-soft)">V3 Aperture</b> carries the most meaning. Pick one and I'll roll it through the brand page, lockups, FS sub-mark, favicon and the marketing hero.
+  </footer>
+</div>
+</body>
+</html>

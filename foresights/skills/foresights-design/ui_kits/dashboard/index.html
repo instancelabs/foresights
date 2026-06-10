@@ -1,0 +1,377 @@
+<!-- @dsCard group="Dashboard" viewport="1180x900" name="Live dashboard" subtitle="The generated Foresights dashboard — light product surface" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Node &amp; TypeScript — what's new &amp; worth knowing · Foresights</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    color-scheme: light;
+    --bg:#f3f4f7; --surface:#ffffff; --surface-2:#f7f8fa; --surface-3:#eef0f4;
+    --line:#e3e6ec; --line-strong:#cdd2dc;
+    --text:#1a1f2b; --text-2:#5b6373; --text-3:#828a99;
+    --accent:#6450E6; --accent-2:#4f3dc9; --accent-soft:#efeaff; --accent-line:#d4c8f4;
+    --link:#4f3dc9; --link-hover:#3a2aa6;
+    --green:#1b8a3a; --green-soft:#e6f5ec; --green-line:#c6e8d2;
+    --amber:#b46a00; --amber-soft:#fff3df; --amber-line:#f0d8a3;
+    --red:#b6253b; --red-soft:#fde8eb; --red-line:#f1c5cd;
+    --teal:#0d8a7d; --teal-soft:#e6f6f8; --teal-line:#b5e3e0;
+    --slate:#4d5568; --slate-soft:#eef0f4;
+    --code-bg:#13131a;
+    --shadow:0 1px 2px rgba(20,25,35,.04), 0 4px 14px rgba(20,25,35,.05);
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --serif:'Instrument Serif',Georgia,serif;
+    --ui:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',system-ui,sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 var(--ui); -webkit-font-smoothing:antialiased; }
+  a { color:var(--link); text-decoration:none; }
+  a:hover { color:var(--link-hover); text-decoration:underline; }
+  code { font-family:var(--mono); background:var(--surface-3); padding:1px 5px; border-radius:4px; font-size:12.5px; }
+  .mono { font-family:var(--mono); }
+
+  /* window chrome */
+  .chrome {
+    height:40px; background:#16161c; color:#cfcfd6; display:flex; align-items:center;
+    justify-content:space-between; padding:0 16px; font-size:13px;
+    border-bottom:1px solid #000;
+  }
+  .chrome .title { color:#f4f4f5; font-weight:500; }
+  .chrome .right { display:flex; align-items:center; gap:14px; color:#9a9aa4; font-size:12px; }
+  .chrome .right strong { color:#f4f4f5; font-weight:600; }
+  .chrome .ic { width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; color:#9a9aa4; }
+  .chrome .ic:hover { background:#26262e; color:#f4f4f5; }
+  .chrome .sep { width:1px; height:14px; background:#2a2a32; }
+
+  .wrap { max-width:1080px; margin:0 auto; padding:20px 24px 80px; }
+
+  /* hero */
+  .hero { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; padding:8px 0 16px; border-bottom:1px solid var(--line); margin-bottom:18px; }
+  .hero h1 { font-size:24px; margin:0 0 5px; letter-spacing:-.015em; font-weight:680; }
+  .hero .sub { color:var(--text-2); font-size:13px; max-width:560px; }
+  .hero .meta { text-align:right; color:var(--text-3); font-size:12px; white-space:nowrap; display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+  .live { display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--teal); letter-spacing:.02em; white-space:nowrap; }
+  .live::before { content:''; width:7px; height:7px; border-radius:999px; background:var(--teal); animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+  @media (prefers-reduced-motion:reduce){ .live::before{animation:none} }
+  .hero .meta .srcs a { color:var(--text-2); }
+
+  /* section nav */
+  .nav { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px; }
+  .nav a { font-size:12.5px; padding:5px 12px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--text-2); }
+  .nav a:hover { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-2); text-decoration:none; }
+
+  /* action bars */
+  .bar { display:flex; align-items:center; gap:14px; padding:12px 16px; border-radius:10px; margin-bottom:10px; font-size:13px; }
+  .bar.briefall { background:var(--accent-soft); border:1px solid var(--accent-line); }
+  .bar.digest { background:var(--surface-2); border:1px solid var(--line); }
+  .bar .bar-lbl { font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-2); }
+  .pbtn { font-family:var(--ui); font-size:12.5px; font-weight:600; padding:6px 13px; border-radius:7px; border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .pbtn.accent { background:var(--accent); color:#fff; border-color:var(--accent-2); }
+  .pbtn.accent:hover { background:var(--accent-2); box-shadow:0 4px 14px rgba(100,80,230,.3); }
+  .pbtn.teal { background:#fff; color:var(--teal); border-color:var(--teal-line); }
+  .pbtn.teal:hover { background:var(--teal-soft); }
+  .pbtn.ghost { background:#fff; color:var(--text); border-color:var(--line-strong); }
+  .pbtn.ghost:hover { background:var(--surface-2); }
+  .ctxbar { display:flex; align-items:center; justify-content:space-between; padding:6px 2px 18px; }
+  .ctxbar .ctx-lbl { font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); }
+  .ctxbar .ctx-lbl b { color:var(--text); }
+  .linkbtn { background:none; border:1px solid var(--line); border-radius:6px; padding:4px 10px; font-size:11.5px; font-weight:600; color:var(--accent); cursor:pointer; font-family:var(--ui); }
+  .linkbtn:hover { background:var(--accent-soft); border-color:var(--accent-line); }
+
+  /* sections */
+  section { margin-bottom:30px; }
+  .shead { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:0 0 12px; }
+  .shead h2 { font-size:14px; margin:0; letter-spacing:.04em; text-transform:uppercase; font-weight:750; }
+  .shead .hmeta { font-size:12px; color:var(--text-3); display:flex; align-items:center; gap:10px; }
+  .srefresh { background:transparent; color:var(--accent); border:1px solid var(--line); border-radius:5px; padding:2px 9px; font-size:11px; font-weight:600; cursor:pointer; font-family:var(--ui); }
+  .srefresh:hover { background:var(--accent-soft); border-color:var(--accent-line); }
+
+  /* spotlight */
+  .spot { background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); padding:22px 24px; }
+  .spot .eyebrow { font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); }
+  .spot h3 { font-size:19px; margin:9px 0 12px; letter-spacing:-.01em; }
+  .spot p { color:var(--text); margin:10px 0; font-size:13.5px; }
+  .spot .summary code { font-family:var(--mono); }
+  .trick { background:var(--accent-soft); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:11px 15px; margin:14px 0; }
+  .trick .t-lbl { font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--accent-2); margin-bottom:5px; }
+  .trick p { margin:0; font-size:13px; color:var(--text); }
+  .code-block { background:var(--code-bg); color:#e8e8ef; padding:14px 16px; border-radius:9px; overflow-x:auto; font-family:var(--mono); font-size:12.5px; line-height:1.6; margin:14px 0; }
+  .code-block .k { color:#c084fc; } .code-block .t { color:#5eead4; } .code-block .s { color:#a7e58b; } .code-block .c { color:#6b7280; }
+  .spot .foot { display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--line); padding-top:14px; margin-top:4px; }
+  .spot .foot .note { color:var(--text-2); font-size:12.5px; max-width:620px; }
+  .pager { display:flex; align-items:center; gap:6px; }
+  .pager button { width:28px; height:26px; border:1px solid var(--line); background:var(--surface); border-radius:6px; cursor:pointer; color:var(--text-2); font-size:13px; }
+  .pager button:hover { background:var(--surface-2); border-color:var(--line-strong); }
+  .pager .pos { font-family:var(--mono); font-size:11px; color:var(--text-3); margin:0 4px; }
+
+  /* relevance badge */
+  .flag { display:inline-flex; align-items:center; gap:5px; height:20px; padding:0 9px 0 8px; font-size:11px; font-weight:600; border-radius:999px; cursor:pointer; border:1px solid; vertical-align:middle; transition:all .12s; }
+  .flag .dia { width:6px; height:6px; transform:rotate(45deg); background:currentColor; }
+  .flag.lc { background:var(--teal-soft); color:var(--teal); border-color:var(--teal-line); }
+  .flag.lc:hover { background:#d6eef0; }
+  .flag.fk { background:var(--accent-soft); color:var(--accent-2); border-color:var(--accent-line); }
+  .flag.fk:hover { background:#e4dcff; }
+  .flag.on { box-shadow:0 0 0 3px rgba(100,80,230,.14); }
+
+  /* cards */
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); padding:15px 17px; margin-bottom:10px; }
+  .crow { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:8px; }
+  .release-version { display:inline-flex; align-items:center; gap:8px; }
+  .ver { font-family:var(--mono); background:var(--accent-soft); color:var(--accent-2); padding:2px 8px; border-radius:5px; font-size:12.5px; font-weight:600; }
+  .cmeta { font-size:12px; color:var(--text-3); white-space:nowrap; }
+  .rsec { margin-top:9px; }
+  .rsec h4 { font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; margin:9px 0 4px; color:var(--text-2); font-weight:700; }
+  .rsec.breaking h4 { color:var(--red); }
+  .rsec ul { margin:0; padding:0 0 0 18px; font-size:13px; }
+  .rsec li { margin:3px 0; }
+  .scope { font-family:var(--mono); color:var(--accent-2); font-weight:600; font-size:12px; }
+  .badge { display:inline-block; font-size:10.5px; padding:2px 7px; border-radius:999px; font-weight:600; margin-left:5px; border:1px solid transparent; }
+  .badge.red { background:var(--red-soft); color:var(--red); border-color:var(--red-line); }
+  .badge.amber { background:var(--amber-soft); color:var(--amber); border-color:var(--amber-line); }
+  .badge.slate { background:var(--slate-soft); color:var(--slate); border-color:var(--line-strong); }
+
+  /* brief panel (expands) */
+  .brief { display:none; border:1px solid var(--accent-line); background:linear-gradient(180deg,#faf8ff,#fff); border-radius:10px; padding:15px 16px; margin:2px 0 12px; }
+  .brief.open { display:block; }
+  .brief .b-head { display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-2); margin-bottom:10px; }
+  .brief .b-head .spark { width:13px;height:13px; }
+  .brief h5 { margin:12px 0 4px; font-size:13px; }
+  .brief p { margin:0 0 8px; font-size:13px; color:var(--text); }
+  .brief .paths { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 12px; }
+  .brief .path { font-family:var(--mono); font-size:11px; background:var(--surface-3); color:var(--text-2); padding:2px 8px; border-radius:5px; }
+  .brief .b-foot { display:flex; gap:8px; border-top:1px solid var(--line); padding-top:12px; }
+  .brief .cached { font-family:var(--mono); font-size:10.5px; color:var(--text-3); margin-left:auto; align-self:center; }
+
+  /* highlights / patterns grid */
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .hl { background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); padding:14px 16px; }
+  .hl .h-eye { font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-bottom:6px; }
+  .hl h4 { margin:0 0 5px; font-size:14px; }
+  .hl p { margin:0; font-size:12.5px; color:var(--text-2); }
+  .tips { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .tip { background:var(--surface-2); border:1px solid var(--line); border-radius:9px; padding:12px 14px; font-size:12.5px; color:var(--text-2); }
+  .tip b { color:var(--text); display:block; margin-bottom:3px; font-size:12.5px; }
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:#16161c; color:#f4f4f5; padding:11px 18px; border-radius:9px; font-size:13px; box-shadow:0 12px 40px rgba(0,0,0,.4); opacity:0; pointer-events:none; transition:all .25s; display:flex; align-items:center; gap:10px; z-index:50; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast .ok { color:#5eead4; }
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <div class="title">node-ts-news</div>
+  <div class="right">
+    <span class="live">LIVE · updated 2h ago</span>
+    <span class="sep"></span>
+    <span>Version <strong>Current ▾</strong></span>
+    <span class="ic" title="Refresh">↻</span>
+    <span class="ic" title="More">⋯</span>
+    <span class="ic" title="Close">✕</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <h1>Node &amp; TypeScript — what's new &amp; worth knowing</h1>
+      <div class="sub">Releases, RFCs and merged PRs across the Node/TS toolchain — filtered for what affects Last Command &amp; Field Kit.</div>
+    </div>
+    <div class="meta">
+      <div class="srcs"><a href="#">nodejs/node</a> · <a href="#">microsoft/TypeScript</a> · <a href="#">evanw/esbuild</a></div>
+      <div style="color:var(--text-3)">12 flagged · 7d window</div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="#spotlight">Spotlight</a>
+    <a href="#releases">Releases</a>
+    <a href="#rfcs">RFCs</a>
+    <a href="#highlights">Highlights</a>
+    <a href="#patterns">Patterns</a>
+    <a href="#tips">Tips</a>
+  </nav>
+
+  <!-- ACTION BARS -->
+  <div class="bar briefall">
+    <span class="bar-lbl">Brief all flagged:</span>
+    <button class="pbtn teal" onclick="toast('Briefing 8 Last Command items…')"><span class="dia" style="width:7px;height:7px;background:currentColor;transform:rotate(45deg);display:inline-block"></span>Last Command (8)</button>
+    <button class="pbtn ghost" onclick="toast('Briefing 4 Field Kit items…')">Field Kit (4)</button>
+  </div>
+  <div class="bar digest">
+    <span class="bar-lbl">Generate upgrade digest:</span>
+    <button class="pbtn accent" onclick="window.location.href='../brief-digest/index.html'">Last Command digest →</button>
+    <button class="pbtn ghost" onclick="window.location.href='../brief-digest/index.html'">Field Kit digest</button>
+  </div>
+  <div class="ctxbar">
+    <span class="ctx-lbl">Last Command context: <b>refreshed 3d ago</b> · 1,204 files indexed</span>
+    <button class="linkbtn" onclick="toast('Re-indexing repo…')">↻ Refresh from repo</button>
+  </div>
+
+  <!-- SPOTLIGHT -->
+  <section id="spotlight">
+    <div class="shead">
+      <h2>Spotlight</h2>
+      <div class="hmeta"><button class="srefresh" onclick="toast('Re-curating spotlight…')">↻ Refresh content</button><span>Rotates daily · use ← → to browse</span></div>
+    </div>
+    <div class="spot" id="spotCard"><!-- filled by JS --></div>
+  </section>
+
+  <!-- RELEASES -->
+  <section id="releases">
+    <div class="shead"><h2>Releases</h2><div class="hmeta">nodejs/node · microsoft/TypeScript</div></div>
+
+    <div class="card">
+      <div class="crow">
+        <span class="release-version"><span class="ver">typescript@5.9.0</span> <span class="badge slate">stable</span></span>
+        <span class="cmeta">3 days ago · <a href="#">notes ↗</a></span>
+      </div>
+      <div class="rsec breaking">
+        <h4>⚠ Breaking</h4>
+        <ul><li><code>--moduleResolution node</code> (legacy) is removed. Projects must move to <code>node16</code>/<code>bundler</code>. <span class="flag lc" data-brief="b1"><span class="dia"></span>Last Command</span></li></ul>
+      </div>
+      <div class="rsec">
+        <h4>Features</h4>
+        <ul>
+          <li><span class="scope">tsc</span>: cached project references cut incremental builds ~40%. <span class="flag lc" data-brief="b2"><span class="dia"></span>Last Command</span></li>
+          <li>Stable <code>using</code> / explicit resource management codegen. <span class="flag fk" data-brief="b3"><span class="dia"></span>Field Kit</span></li>
+        </ul>
+      </div>
+      <div class="brief" id="b1"></div>
+      <div class="brief" id="b2"></div>
+      <div class="brief" id="b3"></div>
+    </div>
+
+    <div class="card">
+      <div class="crow">
+        <span class="release-version"><span class="ver">node@22.12.0</span> <span class="badge amber">LTS</span></span>
+        <span class="cmeta">5 days ago · <a href="#">notes ↗</a></span>
+      </div>
+      <div class="rsec">
+        <h4>Features</h4>
+        <ul>
+          <li>Stable <code>node --run</code> for package scripts — drop the npm shell-out. <span class="flag lc" data-brief="b4"><span class="dia"></span>Last Command</span></li>
+          <li><span class="scope">fs</span>: <code>glob</code> &amp; <code>globSync</code> land in core.</li>
+        </ul>
+      </div>
+      <div class="brief" id="b4"></div>
+    </div>
+  </section>
+
+  <!-- HIGHLIGHTS -->
+  <section id="highlights">
+    <div class="shead"><h2>Highlights</h2><div class="hmeta"><button class="srefresh" onclick="toast('Re-curating highlights…')">↻ Refresh content</button>curated</div></div>
+    <div class="grid2">
+      <div class="hl"><div class="h-eye">esbuild · 0.24</div><h4>Per-file <code>tsconfig</code> resolution</h4><p>esbuild now reads the nearest tsconfig per entry — multi-package monorepos stop needing a flatten step.</p></div>
+      <div class="hl"><div class="h-eye">tooling</div><h4>tsgo native preview</h4><p>The Go port of tsc lands a public preview. 8–10× cold typecheck on large projects, same diagnostics.</p></div>
+    </div>
+  </section>
+
+  <!-- PATTERNS -->
+  <section id="patterns">
+    <div class="shead"><h2>Community patterns</h2><div class="hmeta"><button class="srefresh" onclick="toast('Re-curating patterns…')">↻ Refresh content</button></div></div>
+    <div class="grid2">
+      <div class="hl"><div class="h-eye">pattern · DX</div><h4>Branded types for IDs</h4><p>Wrap primitive IDs in a <code>__brand</code> intersection so a <code>UserId</code> can't be passed where an <code>OrgId</code> is expected — zero runtime cost.</p></div>
+      <div class="hl"><div class="h-eye">pattern · perf</div><h4><code>satisfies</code> over annotations</h4><p>Use <code>satisfies</code> to keep literal inference while still checking shape — config objects stay narrow.</p></div>
+    </div>
+  </section>
+
+  <!-- TIPS -->
+  <section id="tips">
+    <div class="shead"><h2>Tips</h2><div class="hmeta">3</div></div>
+    <div class="tips">
+      <div class="tip"><b>isolatedDeclarations</b>Ship <code>.d.ts</code> without a full typecheck — parallelises library builds.</div>
+      <div class="tip"><b>node --watch</b>Replaces nodemon for most dev loops. No dep, no config.</div>
+      <div class="tip"><b>pnpm catalogs</b>Pin shared dep versions once; every workspace inherits.</div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"><span class="ok">●</span><span id="toastMsg"></span></div>
+
+<script>
+  // ---- Spotlight rotation ----
+  const spotlights = [
+    {
+      tag:'PATTERN · BUILD', flag:{cls:'lc',name:'Last Command'},
+      title:'node --run replaces the npm script shell-out',
+      summary:'Node 22 stabilises <code>node --run &lt;script&gt;</code> — it executes a package.json script in-process, skipping the npm wrapper and its ~120ms spawn cost. For CLIs that fan out to many sub-scripts, the saving compounds.',
+      trick:'It reads <code>package.json</code> from the cwd only — no workspace traversal. That makes it deterministic in CI, where an inherited root script could otherwise shadow the local one.',
+      code:'<span class="c">// before — spawns a full npm process</span>\n<span class="k">await</span> exec(<span class="s">"npm run build"</span>);\n\n<span class="c">// after — in-process, ~120ms faster per call</span>\n<span class="k">await</span> exec(<span class="s">"node --run build"</span>);',
+      note:'Last Command shells out to 6 scripts per invocation — this is a measurable cold-start win on the hot path.'
+    },
+    {
+      tag:'PATTERN · TYPES', flag:{cls:'fk',name:'Field Kit'},
+      title:'Explicit resource management with using',
+      summary:'TypeScript 5.9 ships stable codegen for the <code>using</code> declaration. A scoped resource with <code>[Symbol.dispose]</code> is released the moment it leaves scope — no try/finally ladder.',
+      trick:'The downlevel transform is allocation-free below ES2023 — it lowers to a synchronous disposal stack, so you can adopt it without bumping your target.',
+      code:'<span class="k">function</span> <span class="t">openConn</span>() {\n  <span class="k">const</span> c = pool.acquire();\n  <span class="k">return</span> { c, [<span class="t">Symbol</span>.dispose]() { c.release(); } };\n}\n\n<span class="k">using</span> conn = openConn(); <span class="c">// released at scope exit</span>',
+      note:'Field Kit holds device handles across async hops — using removes a whole class of leak.'
+    },
+    {
+      tag:'PATTERN · TOOLING', flag:null,
+      title:'tsgo — the native typechecker preview',
+      summary:'The Go rewrite of <code>tsc</code> is in public preview. Same diagnostics, same config, but cold typechecks run 8–10× faster on large codebases by parallelising across cores.',
+      trick:'Run it side-by-side: <code>tsgo --noEmit</code> as a fast pre-commit gate, keep <code>tsc</code> for emit. Diagnostics are byte-identical, so CI stays the source of truth.',
+      code:'<span class="c"># fast gate locally</span>\nnpx tsgo --noEmit\n\n<span class="c"># unchanged emit in CI</span>\nnpx tsc --build',
+      note:'No code change required — a drop-in speed-up for the inner loop.'
+    }
+  ];
+  let si = 0;
+  function renderSpot(){
+    const s = spotlights[si];
+    const flag = s.flag ? `<span class="flag ${s.flag.cls}"><span class="dia"></span>${s.flag.name}</span>` : '';
+    document.getElementById('spotCard').innerHTML = `
+      <div class="eyebrow">${s.tag}</div>
+      <h3>${s.title}</h3>
+      ${flag}
+      <p class="summary">${s.summary}</p>
+      <div class="trick"><div class="t-lbl">The cool trick</div><p>${s.trick}</p></div>
+      <div class="code-block">${s.code}</div>
+      <div class="foot"><div class="note">${s.note}</div>
+        <div class="pager"><button onclick="moveSpot(-1)">←</button><span class="pos">${si+1} / ${spotlights.length}</span><button onclick="moveSpot(1)">→</button></div>
+      </div>`;
+  }
+  function moveSpot(d){ si=(si+d+spotlights.length)%spotlights.length; renderSpot(); }
+  document.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft')moveSpot(-1); if(e.key==='ArrowRight')moveSpot(1); });
+
+  // ---- Brief panels ----
+  const briefs = {
+    b1:{ product:'Last Command', why:'Last Command ships its own <code>tsconfig.base.json</code> with <code>moduleResolution: "node"</code>. The 5.9 removal will hard-fail your build on upgrade.', how:'Switch the base config to <code>"bundler"</code> — it matches how esbuild already resolves at build time, so runtime and typecheck agree. One-line change, no import rewrites expected.', paths:['tsconfig.base.json','packages/cli/tsconfig.json'] },
+    b2:{ product:'Last Command', why:'Your monorepo uses 11 project references; incremental <code>tsc -b</code> is the slowest step in CI at ~38s.', how:'Enable the cached references path — no config change, just upgrade and re-run with <code>--build</code>. Expect the CI typecheck step to drop toward ~23s.', paths:['turbo.json','.github/workflows/ci.yml'] },
+    b3:{ product:'Field Kit', why:'Field Kit manages serial-port handles that currently rely on manual <code>finally</code> cleanup — a known source of "port busy" bugs.', how:'Adopt <code>using</code> for the handle wrapper in the device layer. The disposal runs deterministically at scope exit, even on throw.', paths:['src/device/serial.ts','src/device/session.ts'] },
+    b4:{ product:'Last Command', why:'Last Command spawns npm for 6 internal scripts per run; cold start is ~700ms, half of it npm overhead.', how:'Replace <code>npm run X</code> with <code>node --run X</code> in the orchestrator. Gate on <code>process.versions.node >= "22"</code> with an npm fallback for older hosts.', paths:['src/orchestrator/run.ts'] }
+  };
+  const spark = '<svg class="spark" viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.4" stroke-linecap="round" opacity="0.7"><line x1="7" y1="9" x2="17" y2="16"/><line x1="8" y1="24" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="9" r="2.3"/><circle cx="8" cy="24" r="2.3"/></g><circle cx="17" cy="16" r="3.6" fill="currentColor"/><path d="M21 16 H 28.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M25 12.5 L29 16 L25 19.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+  document.querySelectorAll('.flag[data-brief]').forEach(f=>{
+    f.addEventListener('click', ()=>{
+      const id=f.dataset.brief, panel=document.getElementById(id), open=panel.classList.contains('open');
+      document.querySelectorAll('.brief.open').forEach(p=>p.classList.remove('open'));
+      document.querySelectorAll('.flag.on').forEach(x=>x.classList.remove('on'));
+      if(open) return;
+      const b=briefs[id];
+      panel.innerHTML = `
+        <div class="b-head">${spark} Brief · ${b.product} · grounded in your repo</div>
+        <h5>Why it's relevant</h5><p>${b.why}</p>
+        <h5>How it could integrate</h5><p>${b.how}</p>
+        <div class="paths">${b.paths.map(p=>`<span class="path">${p}</span>`).join('')}</div>
+        <div class="b-foot"><button class="pbtn accent" onclick="toast('Claude Code prompt copied to clipboard')">Generate Claude Code prompt</button><button class="pbtn ghost" onclick="toast('Added to ${b.product} digest')">Add to digest</button><span class="cached">cached · hash 9f3a1c</span></div>`;
+      panel.classList.add('open'); f.classList.add('on');
+    });
+  });
+
+  // ---- Toast ----
+  let tt;
+  function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toastMsg').textContent=msg; t.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),2200); }
+
+  renderSpot();
+</script>
+</body>
+</html>

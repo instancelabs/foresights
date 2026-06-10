@@ -1,0 +1,624 @@
+<!-- @dsCard group="Brand" viewport="1200x760" name="Brand & logo" subtitle="Logomark, lockups, sub-mark, clear space, misuse" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Foresights — Brand</title>
+<style data-fs-tokens>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* ============================================================
+ * Foresights — Typography Tokens
+ * Same tri-family system as Instance Labs:
+ *   · SF Pro Display (system) — UI + display
+ *   · Instrument Serif        — KPI numerals, hero numbers (gravitas)
+ *   · JetBrains Mono          — eyebrows, IDs, timestamps, log streams
+ * ============================================================ */
+
+
+
+:root {
+  --font-ui:    'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono:  'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Type scale (px) */
+  --t-eyebrow:  11px;   /* mono, .14em, uppercase */
+  --t-caption:  12px;
+  --t-body-sm:  13px;
+  --t-body:     14px;
+  --t-lead:     16px;
+  --t-h4:       18px;
+  --t-h3:       22px;
+  --t-h2:       30px;
+  --t-h1:       44px;
+  --t-display:  72px;   /* hero */
+
+  --lh-tight:   1.05;
+  --lh-snug:    1.2;
+  --lh-normal:  1.5;
+  --lh-relaxed: 1.6;
+
+  --ls-display: -0.045em;
+  --ls-tight:   -0.02em;
+  --ls-eyebrow: 0.14em;
+}
+
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--t-body);
+  line-height: var(--lh-normal);
+}
+
+.mono   { font-family: var(--font-mono); }
+.serif  { font-family: var(--font-serif); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--iris-soft);
+}
+.eyebrow-signal { color: var(--signal); }
+.eyebrow-dim    { color: var(--text-3); }
+
+/* ============================================================
+ * Foresights — Color Tokens
+ * A product of Instance Labs. Inherits the cool near-black
+ * neutral ramp; promotes IRIS to primary (foresight, intelligence)
+ * and CYAN to the live-signal accent (the role lime plays for
+ * the parent). Orange + lime are retained ONLY as parent-endorsement
+ * references — never as a Foresights primary.
+ *
+ * Two surfaces are documented here:
+ *   :root        → dark brand (marketing, chrome, brand surfaces)
+ *   .fs-light    → light product (the generated dashboard output)
+ * ============================================================ */
+
+:root {
+  /* — Neutrals · cool near-black ramp (shared with Instance Labs) — */
+  --bg:          #08080A;
+  --bg-2:        #0D0D11;
+  --surface:     #121217;
+  --surface-2:   #16161C;
+  --hover:       #1D1D25;
+  --active:      #262630;
+  --line:        #1C1C23;
+  --line-bright: #2A2A34;
+
+  /* — Text — */
+  --text:        #F4F4F5;
+  --text-2:      #A3A3AC;
+  --text-3:      #6E6E78;
+  --text-4:      #4A4A53;
+
+  /* — Brand · Iris (PRIMARY — foresight, intelligence, depth) — */
+  --iris:        #7C6AFF;   /* primary brand + CTA */
+  --iris-2:      #6450E6;   /* hover / pressed */
+  --iris-dim:    #4A3CB0;   /* muted, borders */
+  --iris-soft:   #A89AFF;   /* text/icon on dark surfaces */
+  --iris-glow:   rgba(124,106,255,0.40);
+  --iris-tint:   rgba(124,106,255,0.12);
+
+  /* — Brand · Cyan (LIVE SIGNAL — telemetry, "live", focus-adjacent) — */
+  --signal:      #5EEAD4;
+  --signal-2:    #2DD4BF;
+  --signal-dim:  #1C8F80;
+  --signal-glow: rgba(94,234,212,0.35);
+  --signal-tint: rgba(94,234,212,0.10);
+
+  /* — Secondary accent ramp (relevance badges, variety) — */
+  --amber:       #FFB547;
+  --coral:       #FF6B8E;
+  --plum:        #C084FC;
+  --sky:         #60A5FA;
+  --lime:        #D4FF3A;   /* parent endorsement only */
+  --orange:      #F45A24;   /* parent endorsement only */
+
+  /* — Semantic (triage: green / amber / red) — */
+  --success:     #4ADE80;
+  --warning:     #FBBF24;
+  --error:       #FB7185;
+  --info:        #60A5FA;
+
+  /* — Triage buckets (digest 🟢🟡🔴) — */
+  --triage-go:     #4ADE80;
+  --triage-soon:   #FBBF24;
+  --triage-hold:   #FB7185;
+}
+
+/* ============================================================
+ * Light product surface — the generated dashboard.
+ * Apply `.fs-light` to a root container to flip into product mode.
+ * Mirrors the real dashboard.html token set, re-skinned to iris.
+ * ============================================================ */
+.fs-light {
+  color-scheme: light;
+  --bg:          #ffffff;
+  --bg-2:        #f7f8fa;
+  --surface:     #ffffff;
+  --surface-2:   #f7f8fa;
+  --surface-3:   #eef0f4;
+  --line:        #e3e6ec;
+  --line-bright: #cdd2dc;
+
+  --text:        #1a1f2b;
+  --text-2:      #5b6373;
+  --text-3:      #828a99;
+  --text-4:      #a3abba;
+
+  /* Iris becomes the product accent (darkened for AA on white) */
+  --accent:      #6450E6;
+  --accent-2:    #4f3dc9;
+  --accent-soft: #efeaff;
+  --accent-line: #d4c8f4;
+
+  --link:        #4f3dc9;
+  --link-hover:  #3a2aa6;
+
+  --code-bg:     #f4f4f8;
+  --shadow:      0 1px 2px rgba(20,25,35,.04), 0 4px 14px rgba(20,25,35,.05);
+
+  /* Light semantic soft pairs */
+  --green:       #1b8a3a; --green-soft:  #e6f5ec; --green-line:  #c6e8d2;
+  --amber-d:     #b46a00; --amber-soft:  #fff3df; --amber-line:  #f0d8a3;
+  --red:         #b6253b; --red-soft:    #fde8eb; --red-line:    #f1c5cd;
+  --purple:      #5c3bbb; --purple-soft: #efeaff; --purple-line: #d4c8f4;
+  --teal:        #0d8a7d; --teal-soft:   #e6f6f8; --teal-line:   #b5e3e0;
+}
+
+/* ============================================================
+ * Foresights — Spacing, Radii, Elevation
+ * 4pt scale (shared with Instance Labs).
+ * ============================================================ */
+
+:root {
+  /* 4pt spacing scale */
+  --s-0:  2px;
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  24px;
+  --s-6:  32px;
+  --s-7:  48px;
+  --s-8:  64px;
+  --s-9:  96px;
+
+  /* Radii */
+  --r-chip:  4px;
+  --r-sm:    6px;
+  --r-md:    8px;
+  --r-lg:    12px;
+  --r-xl:    16px;
+  --r-full:  999px;
+
+  /* Elevation — dark brand */
+  --e-1: 0 1px 0 rgba(255,255,255,.03), 0 1px 2px rgba(0,0,0,.4);
+  --e-2: 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.4);
+  --e-3: 0 24px 64px rgba(0,0,0,.6), 0 8px 24px rgba(0,0,0,.4);
+  --e-glow-iris:   0 0 0 1px rgba(124,106,255,.5), 0 0 28px var(--iris-glow);
+  --e-glow-signal: 0 0 0 1px rgba(94,234,212,.45), 0 0 24px var(--signal-glow);
+
+  /* App widths */
+  --app-w:   1160px;
+  --app-w-wide: 1440px;
+  --dash-w:  1080px;  /* product dashboard column */
+
+  /* Hit targets */
+  --hit-sm: 28px;
+  --hit:    36px;
+  --hit-lg: 44px;
+}
+
+/* ============================================================
+ * Foresights — Component Classes
+ * Buttons, inputs, cards, pills, kbd, marks, plus Foresights-
+ * specific patterns: live signal dot, relevance badge, triage chip.
+ * ============================================================ */
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: var(--r-md);
+  padding: 0 14px;
+  height: var(--hit);
+  font-size: 13px; font-weight: 500;
+  font-family: var(--font-ui);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s cubic-bezier(.2,.6,.2,1);
+  letter-spacing: -.005em;
+  position: relative;
+  user-select: none;
+}
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .4; pointer-events: none; }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--iris); }
+
+.btn-primary {
+  background: var(--iris);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(124,106,255,.5), inset 0 1px 0 rgba(255,255,255,.2);
+}
+.btn-primary:hover {
+  background: var(--iris-2);
+  box-shadow: var(--e-glow-iris), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.btn-signal {
+  background: var(--signal);
+  color: #04201C;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(94,234,212,.4), inset 0 1px 0 rgba(255,255,255,.3);
+}
+.btn-signal:hover { box-shadow: var(--e-glow-signal), inset 0 1px 0 rgba(255,255,255,.35); }
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--line-bright);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.btn-secondary:hover { background: var(--hover); border-color: #35353F; }
+
+.btn-ghost { background: transparent; color: var(--text-2); }
+.btn-ghost:hover { background: var(--hover); color: var(--text); }
+
+.btn-danger {
+  background: rgba(251,113,133,.12);
+  color: var(--error);
+  border-color: rgba(251,113,133,.3);
+}
+.btn-danger:hover { background: rgba(251,113,133,.18); }
+
+.btn-lg { height: var(--hit-lg); padding: 0 20px; font-size: 14px; border-radius: 10px; }
+.btn-sm { height: var(--hit-sm); padding: 0 10px; font-size: 12px; border-radius: var(--r-sm); }
+.btn-icon { width: var(--hit); padding: 0; }
+
+/* ---------- Keyboard chip ---------- */
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  color: var(--text-3);
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--line-bright);
+  border-radius: var(--r-chip);
+  margin-left: 4px;
+}
+
+/* ---------- Card ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  position: relative;
+}
+.card-hairline { border: 1px solid var(--line-bright); }
+.card-sunken { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-lg); }
+
+/* ---------- Input ---------- */
+.input {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--line-bright);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+  height: var(--hit);
+  font-size: 13px; font-family: inherit;
+  color: var(--text);
+  transition: all .15s ease;
+}
+.input::placeholder { color: var(--text-3); }
+.input:focus {
+  outline: none;
+  border-color: var(--iris);
+  box-shadow: 0 0 0 3px var(--iris-tint);
+}
+
+/* ---------- Pills / Badges ---------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 8px;
+  font-size: 11px; font-weight: 500;
+  font-family: var(--font-ui);
+  border-radius: var(--r-sm);
+  letter-spacing: -.005em;
+}
+.pill .dot {
+  width: 5px; height: 5px; border-radius: var(--r-full);
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.03), 0 0 6px currentColor;
+}
+.pill-iris    { background: var(--iris-tint); color: var(--iris-soft); border: 1px solid rgba(124,106,255,.28); }
+.pill-signal  { background: var(--signal-tint); color: var(--signal); border: 1px solid rgba(94,234,212,.22); }
+.pill-amber   { background: rgba(255,181,71,.10); color: var(--amber); border: 1px solid rgba(255,181,71,.2); }
+.pill-coral   { background: rgba(255,107,142,.12); color: var(--coral); border: 1px solid rgba(255,107,142,.25); }
+.pill-plum    { background: rgba(192,132,252,.12); color: var(--plum); border: 1px solid rgba(192,132,252,.25); }
+.pill-sky     { background: rgba(96,165,250,.12); color: var(--sky); border: 1px solid rgba(96,165,250,.25); }
+.pill-neutral { background: rgba(255,255,255,.04); color: var(--text-2); border: 1px solid var(--line-bright); }
+.pill-success { background: rgba(74,222,128,.10); color: var(--success); border: 1px solid rgba(74,222,128,.2); }
+.pill-warning { background: rgba(251,191,36,.10); color: var(--warning); border: 1px solid rgba(251,191,36,.22); }
+.pill-error   { background: rgba(251,113,133,.12); color: var(--error); border: 1px solid rgba(251,113,133,.25); }
+/* parent endorsement */
+.pill-orange  { background: rgba(244,90,36,.12); color: #FF8258; border: 1px solid rgba(244,90,36,.28); }
+
+/* ---------- Live signal dot (only on actually-live data) ---------- */
+.live {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em;
+  color: var(--signal);
+}
+.live::before {
+  content: ''; width: 7px; height: 7px; border-radius: var(--r-full);
+  background: var(--signal);
+  box-shadow: 0 0 0 0 var(--signal-glow);
+  animation: fs-pulse 2s ease-in-out infinite;
+}
+@keyframes fs-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--signal-glow); }
+  50%      { opacity: .55; box-shadow: 0 0 0 5px rgba(94,234,212,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live::before { animation: none; }
+}
+
+/* ---------- Relevance badge (per-product flag) ---------- */
+.relevance {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 20px; padding: 0 8px 0 7px;
+  font-size: 11px; font-weight: 600;
+  border-radius: var(--r-full);
+  background: var(--signal-tint); color: var(--signal);
+  border: 1px solid rgba(94,234,212,.25);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.relevance:hover { background: rgba(94,234,212,.18); }
+.relevance .diamond { width: 6px; height: 6px; background: currentColor; transform: rotate(45deg); }
+
+/* ---------- Triage chip (digest buckets) ---------- */
+.triage { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.triage::before { content: ''; width: 9px; height: 9px; border-radius: var(--r-full); }
+.triage-go::before   { background: var(--triage-go); }
+.triage-soon::before { background: var(--triage-soon); }
+.triage-hold::before { background: var(--triage-hold); }
+
+/* ---------- Logomark ---------- */
+.mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--iris); color: #fff;
+  border-radius: 7px; position: relative; overflow: hidden;
+}
+.mark.sm { width: 22px; height: 22px; border-radius: 5px; }
+.mark.md { width: 32px; height: 32px; border-radius: 7px; }
+.mark.lg { width: 56px; height: 56px; border-radius: 12px; }
+.mark svg { width: 64%; height: 64%; display: block; }
+
+</style>
+<style>
+  body { background: var(--bg); color: var(--text); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 56px 40px 96px; }
+
+  .eyebrow { margin-bottom: 14px; }
+  h1.title { font-size: 38px; font-weight: 500; letter-spacing: -.03em; margin: 0 0 10px; }
+  h1.title .serif { font-style: italic; color: var(--iris-soft); }
+  .lede { color: var(--text-2); max-width: 640px; font-size: 15px; line-height: 1.6; margin: 0 0 48px; }
+
+  .row { display: grid; gap: 20px; margin-bottom: 20px; }
+  .row.c2 { grid-template-columns: 1fr 1fr; }
+  .row.c3 { grid-template-columns: repeat(3,1fr); }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 28px; position: relative; }
+  .panel .lbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin-bottom: 18px; }
+
+  /* Hero logomark */
+  .hero { display: flex; align-items: center; gap: 28px; padding: 44px 36px; background:
+      radial-gradient(ellipse 520px 280px at 18% 0%, rgba(124,106,255,.18), transparent 62%),
+      radial-gradient(ellipse 460px 320px at 88% 110%, rgba(94,234,212,.08), transparent 60%),
+      var(--surface);
+    overflow: hidden; }
+  .markbox {
+    width: 96px; height: 96px; border-radius: 24px; flex: none;
+    background: linear-gradient(180deg, #8E7DFF, #6450E6);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 12px 40px rgba(124,106,255,.35);
+  }
+  .markbox svg { width: 60px; height: 60px; color: #fff; }
+  .hero .wm { font-size: 46px; font-weight: 600; letter-spacing: -.03em; line-height: 1; }
+  .hero .tagline { font-family: var(--font-mono); font-size: 12px; color: var(--text-2); letter-spacing: .02em; margin-top: 10px; }
+  .hero .tagline .by { color: var(--text-3); }
+
+  /* size ramp */
+  .ramp { display: flex; align-items: flex-end; gap: 26px; }
+  .ramp .u { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .ramp .u .cap { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); }
+  .sq { display:inline-flex; align-items:center; justify-content:center; background: linear-gradient(180deg,#8E7DFF,#6450E6); color:#fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+  .sq svg { width: 62%; height: 62%; display:block; }
+
+  /* clear space */
+  .clearspace { display:flex; justify-content:center; padding: 10px 0 4px; }
+  .csgrid { position: relative; padding: 36px; }
+  .csgrid::before { content:''; position:absolute; inset:0; background-image:
+      linear-gradient(to right, rgba(124,106,255,.18) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(124,106,255,.18) 1px, transparent 1px);
+    background-size: 18px 18px; border: 1px dashed rgba(124,106,255,.35); border-radius: 8px; }
+  .csgrid .sq { position: relative; }
+
+  /* lockups */
+  .lock { display:flex; align-items:center; gap: 13px; }
+  .lock .wm { font-size: 24px; font-weight: 600; letter-spacing: -.027em; }
+  .lock.stack { flex-direction: column; gap: 12px; text-align:center; }
+
+  .wm-grad { color: var(--text); }
+
+  /* color treatments */
+  .swatchbox { aspect-ratio: 16/9; border-radius: 10px; display:flex; align-items:center; justify-content:center; }
+  .swatchbox svg { width: 46px; height: 46px; }
+  .on-iris { background: linear-gradient(180deg,#8E7DFF,#6450E6); }
+  .on-dark { background: var(--bg-2); border:1px solid var(--line); }
+  .on-light { background: #fff; }
+  .on-mono { background: #fff; }
+
+  /* submark */
+  .submark { width: 56px; height: 56px; border-radius: 12px; background: linear-gradient(180deg,#8E7DFF,#6450E6); display:flex; align-items:center; justify-content:center; color:#fff; font-family: var(--font-ui); font-weight: 800; font-size: 22px; letter-spacing:-.06em; box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+
+  /* endorsement */
+  .endorse { display:flex; align-items:center; gap: 11px; }
+  .endorse .il { width: 26px; height: 26px; }
+  .endorse .div { width:1px; height: 22px; background: var(--line-bright); }
+  .small { font-size: 13px; color: var(--text-2); }
+
+  /* misuse */
+  .misuse { display:grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+  .mcell { background: var(--bg-2); border:1px solid var(--line); border-radius: 10px; padding: 18px; display:flex; flex-direction:column; align-items:center; gap: 12px; }
+  .mcell .x { font-size: 11px; color: var(--error); font-weight:600; display:flex; align-items:center; gap:5px; }
+  .mcell .demo { height: 48px; display:flex; align-items:center; justify-content:center; }
+  h2.sec { font-size: 13px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .14em; color: var(--text-3); margin: 44px 0 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">// Foresights · brand · identity</div>
+  <h1 class="title">The <span class="serif">mark</span> &amp; how to use it</h1>
+  <p class="lede">Foresights is a product of Instance Labs. It keeps the family DNA — the rounded-square logomark, mono eyebrows, serif numerals — but carries its own signal: a converging sightline that aims forward, and an iris-violet identity.</p>
+
+  <!-- HERO -->
+  <div class="row">
+    <div class="panel hero">
+      <div class="markbox">
+        <svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      </div>
+      <div>
+        <div class="wm">Foresights</div>
+        <div class="tagline">News that affects your stack — before it lands. <span class="by">· an Instance Labs product</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONSTRUCTION + CLEARSPACE -->
+  <div class="row c2">
+    <div class="panel">
+      <div class="lbl">Size ramp · 22 → 56px</div>
+      <div class="ramp">
+        <div class="u"><span class="sq" style="width:56px;height:56px;border-radius:12px"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span><span class="cap">56 · lg</span></div>
+        <div class="u"><span class="sq" style="width:40px;height:40px;border-radius:9px"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span><span class="cap">40 · md</span></div>
+        <div class="u"><span class="sq" style="width:32px;height:32px;border-radius:7px"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span><span class="cap">32 · sm</span></div>
+        <div class="u"><span class="sq" style="width:22px;height:22px;border-radius:5px"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.4" stroke-linecap="round" opacity="0.7"><line x1="7" y1="9" x2="17" y2="16"/><line x1="8" y1="24" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="9" r="2.3"/><circle cx="8" cy="24" r="2.3"/></g><circle cx="17" cy="16" r="3.6" fill="currentColor"/><path d="M21 16 H 28.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M25 12.5 L29 16 L25 19.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span><span class="cap">22 · fav</span></div>
+      </div>
+      <p class="small" style="margin:22px 0 0">At 24px and below the mark simplifies to two source nodes and a heavier sightline, so the aim point stays legible.</p>
+    </div>
+    <div class="panel">
+      <div class="lbl">Clear space = ½ mark height on all sides</div>
+      <div class="clearspace">
+        <div class="csgrid">
+          <span class="sq" style="width:72px;height:72px;border-radius:16px"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOCKUPS -->
+  <h2 class="sec">Lockups</h2>
+  <div class="row c3">
+    <div class="panel">
+      <div class="lbl">Horizontal · primary</div>
+      <div class="lock">
+        <span class="sq" style="width:34px;height:34px;border-radius:8px"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+        <span class="wm wm-grad">Foresights</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="lbl">Stacked</div>
+      <div class="lock stack">
+        <span class="sq" style="width:38px;height:38px;border-radius:9px"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+        <span class="wm wm-grad" style="font-size:20px">Foresights</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="lbl">Endorsed by parent</div>
+      <div class="endorse">
+        <svg class="il" viewBox="0 0 32 32" fill="none"><path d="M4 8L16 2L28 8L16 14L4 8Z" fill="#D4FF3A"/><path d="M4 8V16L16 22V14L4 8Z" fill="#8BA322"/><path d="M28 8V16L16 22V14L28 8Z" fill="#B8E02E"/></svg>
+        <div class="div"></div>
+        <span class="sq" style="width:26px;height:26px;border-radius:6px"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+        <span class="wm wm-grad" style="font-size:17px">Foresights</span>
+      </div>
+      <p class="small" style="margin:16px 0 0">Instance Labs mark · divider · Foresights. Used on the studio site &amp; release pages.</p>
+    </div>
+  </div>
+
+  <!-- COLOR TREATMENTS + SUBMARK -->
+  <h2 class="sec">Color treatments &amp; sub-mark</h2>
+  <div class="row c2">
+    <div class="panel">
+      <div class="lbl">Approved backgrounds</div>
+      <div class="row c2" style="margin:0">
+        <div>
+          <div class="swatchbox on-iris"><svg viewBox="0 0 32 32" fill="none" style="color:#fff"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
+          <div class="small" style="margin-top:8px;text-align:center">White on iris</div>
+        </div>
+        <div>
+          <div class="swatchbox on-dark"><svg viewBox="0 0 32 32" fill="none" style="color:var(--iris-soft)"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
+          <div class="small" style="margin-top:8px;text-align:center">Iris on near-black</div>
+        </div>
+        <div>
+          <div class="swatchbox on-light"><svg viewBox="0 0 32 32" fill="none" style="color:#6450E6"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
+          <div class="small" style="margin-top:8px;text-align:center">Iris on white</div>
+        </div>
+        <div>
+          <div class="swatchbox on-mono"><svg viewBox="0 0 32 32" fill="none" style="color:#1a1f2b"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
+          <div class="small" style="margin-top:8px;text-align:center">Mono / ink</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="lbl">Product sub-mark · two-letter code</div>
+      <div style="display:flex; align-items:center; gap:22px;">
+        <span class="submark">FS</span>
+        <div>
+          <p class="small" style="margin:0 0 8px">Where the full mark won't fit — favicons, marketplace tiles, the Cowork plugin chip — the <b style="color:var(--iris-soft)">FS</b> code stands in, matching the parent's LC / FK / PT pattern.</p>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span class="submark" style="width:32px;height:32px;border-radius:7px;font-size:13px">FS</span>
+            <span class="submark" style="width:22px;height:22px;border-radius:5px;font-size:9px">FS</span>
+            <span class="small">marketplace · favicon</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MISUSE -->
+  <h2 class="sec">Don't</h2>
+  <div class="panel">
+    <div class="misuse">
+      <div class="mcell">
+        <div class="demo"><span class="sq" style="width:42px;height:42px;border-radius:21px"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span></div>
+        <div class="x">✕ round the square</div>
+      </div>
+      <div class="mcell">
+        <div class="demo"><span class="sq" style="width:42px;height:42px;border-radius:10px;background:#F45A24"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span></div>
+        <div class="x">✕ recolor the square</div>
+      </div>
+      <div class="mcell">
+        <div class="demo"><span class="sq" style="width:42px;height:24px;border-radius:8px"><svg viewBox="0 0 32 32" fill="none" preserveAspectRatio="none" style="width:80%;height:60%"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span></div>
+        <div class="x">✕ stretch / distort</div>
+      </div>
+      <div class="mcell">
+        <div class="demo"><span class="sq" style="width:42px;height:42px;border-radius:10px;transform:rotate(18deg)"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span></div>
+        <div class="x">✕ rotate the mark</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

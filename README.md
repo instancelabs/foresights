@@ -1,8 +1,17 @@
-# Foresights
+<p align="center">
+  <img src="foresights/assets/mark.svg" width="64" height="64" alt="Foresights mark — three source nodes converging on one sightline">
+</p>
 
-Spin up a live news dashboard customised to your product — in about 15 minutes.
+<h1 align="center">Foresights</h1>
 
-Foresights gives you a dashboard of just the news, releases, and patterns that affect *your* stack — GitHub releases, PRs and issues from the orgs and repos you care about, plus RSS feeds, curated highlights, a rotating "spotlight" of one cool pattern in depth, and per-product relevance flagging so you immediately see what's worth looking at.
+<p align="center">
+  News that affects your stack — before it lands.<br/>
+  A Cowork & Claude Code plugin by <a href="https://instancelabs.dev">Instance Labs</a>.
+</p>
+
+---
+
+Foresights spins up a live news dashboard customised to your product in about 15 minutes. It shows just the GitHub releases, PRs, RFCs, and RSS items that touch *your* stack — plus curated highlights, a rotating spotlight, and per-product relevance flagging so you see what matters immediately.
 
 When something is worth acting on, click through to a Haiku-generated brief grounded in *your* codebase, then generate a self-contained Claude Code prompt to implement it — or batch everything into a triaged upgrade digest that drops into your repo's `.claude/upgrade-digests/` folder.
 
@@ -31,6 +40,7 @@ In Cowork, drag-install the latest `foresights-<version>.plugin` from this repo'
 | `/refresh-dashboard` | Re-curate the spotlight, highlights, patterns, and tips on an existing dashboard using the latest data. Hybrid: section-splice fast path vs full rebuild. |
 | `/setup-cc` | Generate `CLAUDE.md` additions, `.claude/upgrade-digests/` scaffold, and `/digest` + `/digest-save` slash commands for a target repo. Closes the loop from dashboard → digest → Claude Code → PR. |
 | `/foresights-doctor` | Diagnostic. Seven cheap checks (Node version, wizard entrypoints, network reachability, GitHub MCP detection) that confirm the install is healthy and route `/create-dashboard` to the right data-fetch path for the current environment. |
+| `/foresights-design` | The Foresights brand + product design system as an invokable skill. Drop-in tokens, components, brand guidelines, and UI-kit references for anyone building on-brand dashboards or marketing material. |
 
 ## Try a demo
 
