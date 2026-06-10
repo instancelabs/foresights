@@ -1,0 +1,424 @@
+<!-- @dsCard group="Components" viewport="700x190" name="Buttons" subtitle="Primary iris · signal · secondary · ghost · danger · sizes" -->
+<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<style data-fs-tokens>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* ============================================================
+ * Foresights — Typography Tokens
+ * Same tri-family system as Instance Labs:
+ *   · SF Pro Display (system) — UI + display
+ *   · Instrument Serif        — KPI numerals, hero numbers (gravitas)
+ *   · JetBrains Mono          — eyebrows, IDs, timestamps, log streams
+ * ============================================================ */
+
+
+
+:root {
+  --font-ui:    'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono:  'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Type scale (px) */
+  --t-eyebrow:  11px;   /* mono, .14em, uppercase */
+  --t-caption:  12px;
+  --t-body-sm:  13px;
+  --t-body:     14px;
+  --t-lead:     16px;
+  --t-h4:       18px;
+  --t-h3:       22px;
+  --t-h2:       30px;
+  --t-h1:       44px;
+  --t-display:  72px;   /* hero */
+
+  --lh-tight:   1.05;
+  --lh-snug:    1.2;
+  --lh-normal:  1.5;
+  --lh-relaxed: 1.6;
+
+  --ls-display: -0.045em;
+  --ls-tight:   -0.02em;
+  --ls-eyebrow: 0.14em;
+}
+
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--t-body);
+  line-height: var(--lh-normal);
+}
+
+.mono   { font-family: var(--font-mono); }
+.serif  { font-family: var(--font-serif); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--iris-soft);
+}
+.eyebrow-signal { color: var(--signal); }
+.eyebrow-dim    { color: var(--text-3); }
+
+/* ============================================================
+ * Foresights — Color Tokens
+ * A product of Instance Labs. Inherits the cool near-black
+ * neutral ramp; promotes IRIS to primary (foresight, intelligence)
+ * and CYAN to the live-signal accent (the role lime plays for
+ * the parent). Orange + lime are retained ONLY as parent-endorsement
+ * references — never as a Foresights primary.
+ *
+ * Two surfaces are documented here:
+ *   :root        → dark brand (marketing, chrome, brand surfaces)
+ *   .fs-light    → light product (the generated dashboard output)
+ * ============================================================ */
+
+:root {
+  /* — Neutrals · cool near-black ramp (shared with Instance Labs) — */
+  --bg:          #08080A;
+  --bg-2:        #0D0D11;
+  --surface:     #121217;
+  --surface-2:   #16161C;
+  --hover:       #1D1D25;
+  --active:      #262630;
+  --line:        #1C1C23;
+  --line-bright: #2A2A34;
+
+  /* — Text — */
+  --text:        #F4F4F5;
+  --text-2:      #A3A3AC;
+  --text-3:      #6E6E78;
+  --text-4:      #4A4A53;
+
+  /* — Brand · Iris (PRIMARY — foresight, intelligence, depth) — */
+  --iris:        #7C6AFF;   /* primary brand + CTA */
+  --iris-2:      #6450E6;   /* hover / pressed */
+  --iris-dim:    #4A3CB0;   /* muted, borders */
+  --iris-soft:   #A89AFF;   /* text/icon on dark surfaces */
+  --iris-glow:   rgba(124,106,255,0.40);
+  --iris-tint:   rgba(124,106,255,0.12);
+
+  /* — Brand · Cyan (LIVE SIGNAL — telemetry, "live", focus-adjacent) — */
+  --signal:      #5EEAD4;
+  --signal-2:    #2DD4BF;
+  --signal-dim:  #1C8F80;
+  --signal-glow: rgba(94,234,212,0.35);
+  --signal-tint: rgba(94,234,212,0.10);
+
+  /* — Secondary accent ramp (relevance badges, variety) — */
+  --amber:       #FFB547;
+  --coral:       #FF6B8E;
+  --plum:        #C084FC;
+  --sky:         #60A5FA;
+  --lime:        #D4FF3A;   /* parent endorsement only */
+  --orange:      #F45A24;   /* parent endorsement only */
+
+  /* — Semantic (triage: green / amber / red) — */
+  --success:     #4ADE80;
+  --warning:     #FBBF24;
+  --error:       #FB7185;
+  --info:        #60A5FA;
+
+  /* — Triage buckets (digest 🟢🟡🔴) — */
+  --triage-go:     #4ADE80;
+  --triage-soon:   #FBBF24;
+  --triage-hold:   #FB7185;
+}
+
+/* ============================================================
+ * Light product surface — the generated dashboard.
+ * Apply `.fs-light` to a root container to flip into product mode.
+ * Mirrors the real dashboard.html token set, re-skinned to iris.
+ * ============================================================ */
+.fs-light {
+  color-scheme: light;
+  --bg:          #ffffff;
+  --bg-2:        #f7f8fa;
+  --surface:     #ffffff;
+  --surface-2:   #f7f8fa;
+  --surface-3:   #eef0f4;
+  --line:        #e3e6ec;
+  --line-bright: #cdd2dc;
+
+  --text:        #1a1f2b;
+  --text-2:      #5b6373;
+  --text-3:      #828a99;
+  --text-4:      #a3abba;
+
+  /* Iris becomes the product accent (darkened for AA on white) */
+  --accent:      #6450E6;
+  --accent-2:    #4f3dc9;
+  --accent-soft: #efeaff;
+  --accent-line: #d4c8f4;
+
+  --link:        #4f3dc9;
+  --link-hover:  #3a2aa6;
+
+  --code-bg:     #f4f4f8;
+  --shadow:      0 1px 2px rgba(20,25,35,.04), 0 4px 14px rgba(20,25,35,.05);
+
+  /* Light semantic soft pairs */
+  --green:       #1b8a3a; --green-soft:  #e6f5ec; --green-line:  #c6e8d2;
+  --amber-d:     #b46a00; --amber-soft:  #fff3df; --amber-line:  #f0d8a3;
+  --red:         #b6253b; --red-soft:    #fde8eb; --red-line:    #f1c5cd;
+  --purple:      #5c3bbb; --purple-soft: #efeaff; --purple-line: #d4c8f4;
+  --teal:        #0d8a7d; --teal-soft:   #e6f6f8; --teal-line:   #b5e3e0;
+}
+
+/* ============================================================
+ * Foresights — Spacing, Radii, Elevation
+ * 4pt scale (shared with Instance Labs).
+ * ============================================================ */
+
+:root {
+  /* 4pt spacing scale */
+  --s-0:  2px;
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  24px;
+  --s-6:  32px;
+  --s-7:  48px;
+  --s-8:  64px;
+  --s-9:  96px;
+
+  /* Radii */
+  --r-chip:  4px;
+  --r-sm:    6px;
+  --r-md:    8px;
+  --r-lg:    12px;
+  --r-xl:    16px;
+  --r-full:  999px;
+
+  /* Elevation — dark brand */
+  --e-1: 0 1px 0 rgba(255,255,255,.03), 0 1px 2px rgba(0,0,0,.4);
+  --e-2: 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.4);
+  --e-3: 0 24px 64px rgba(0,0,0,.6), 0 8px 24px rgba(0,0,0,.4);
+  --e-glow-iris:   0 0 0 1px rgba(124,106,255,.5), 0 0 28px var(--iris-glow);
+  --e-glow-signal: 0 0 0 1px rgba(94,234,212,.45), 0 0 24px var(--signal-glow);
+
+  /* App widths */
+  --app-w:   1160px;
+  --app-w-wide: 1440px;
+  --dash-w:  1080px;  /* product dashboard column */
+
+  /* Hit targets */
+  --hit-sm: 28px;
+  --hit:    36px;
+  --hit-lg: 44px;
+}
+
+/* ============================================================
+ * Foresights — Component Classes
+ * Buttons, inputs, cards, pills, kbd, marks, plus Foresights-
+ * specific patterns: live signal dot, relevance badge, triage chip.
+ * ============================================================ */
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: var(--r-md);
+  padding: 0 14px;
+  height: var(--hit);
+  font-size: 13px; font-weight: 500;
+  font-family: var(--font-ui);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s cubic-bezier(.2,.6,.2,1);
+  letter-spacing: -.005em;
+  position: relative;
+  user-select: none;
+}
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .4; pointer-events: none; }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--iris); }
+
+.btn-primary {
+  background: var(--iris);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(124,106,255,.5), inset 0 1px 0 rgba(255,255,255,.2);
+}
+.btn-primary:hover {
+  background: var(--iris-2);
+  box-shadow: var(--e-glow-iris), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.btn-signal {
+  background: var(--signal);
+  color: #04201C;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(94,234,212,.4), inset 0 1px 0 rgba(255,255,255,.3);
+}
+.btn-signal:hover { box-shadow: var(--e-glow-signal), inset 0 1px 0 rgba(255,255,255,.35); }
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--line-bright);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.btn-secondary:hover { background: var(--hover); border-color: #35353F; }
+
+.btn-ghost { background: transparent; color: var(--text-2); }
+.btn-ghost:hover { background: var(--hover); color: var(--text); }
+
+.btn-danger {
+  background: rgba(251,113,133,.12);
+  color: var(--error);
+  border-color: rgba(251,113,133,.3);
+}
+.btn-danger:hover { background: rgba(251,113,133,.18); }
+
+.btn-lg { height: var(--hit-lg); padding: 0 20px; font-size: 14px; border-radius: 10px; }
+.btn-sm { height: var(--hit-sm); padding: 0 10px; font-size: 12px; border-radius: var(--r-sm); }
+.btn-icon { width: var(--hit); padding: 0; }
+
+/* ---------- Keyboard chip ---------- */
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  color: var(--text-3);
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--line-bright);
+  border-radius: var(--r-chip);
+  margin-left: 4px;
+}
+
+/* ---------- Card ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  position: relative;
+}
+.card-hairline { border: 1px solid var(--line-bright); }
+.card-sunken { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-lg); }
+
+/* ---------- Input ---------- */
+.input {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--line-bright);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+  height: var(--hit);
+  font-size: 13px; font-family: inherit;
+  color: var(--text);
+  transition: all .15s ease;
+}
+.input::placeholder { color: var(--text-3); }
+.input:focus {
+  outline: none;
+  border-color: var(--iris);
+  box-shadow: 0 0 0 3px var(--iris-tint);
+}
+
+/* ---------- Pills / Badges ---------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 8px;
+  font-size: 11px; font-weight: 500;
+  font-family: var(--font-ui);
+  border-radius: var(--r-sm);
+  letter-spacing: -.005em;
+}
+.pill .dot {
+  width: 5px; height: 5px; border-radius: var(--r-full);
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.03), 0 0 6px currentColor;
+}
+.pill-iris    { background: var(--iris-tint); color: var(--iris-soft); border: 1px solid rgba(124,106,255,.28); }
+.pill-signal  { background: var(--signal-tint); color: var(--signal); border: 1px solid rgba(94,234,212,.22); }
+.pill-amber   { background: rgba(255,181,71,.10); color: var(--amber); border: 1px solid rgba(255,181,71,.2); }
+.pill-coral   { background: rgba(255,107,142,.12); color: var(--coral); border: 1px solid rgba(255,107,142,.25); }
+.pill-plum    { background: rgba(192,132,252,.12); color: var(--plum); border: 1px solid rgba(192,132,252,.25); }
+.pill-sky     { background: rgba(96,165,250,.12); color: var(--sky); border: 1px solid rgba(96,165,250,.25); }
+.pill-neutral { background: rgba(255,255,255,.04); color: var(--text-2); border: 1px solid var(--line-bright); }
+.pill-success { background: rgba(74,222,128,.10); color: var(--success); border: 1px solid rgba(74,222,128,.2); }
+.pill-warning { background: rgba(251,191,36,.10); color: var(--warning); border: 1px solid rgba(251,191,36,.22); }
+.pill-error   { background: rgba(251,113,133,.12); color: var(--error); border: 1px solid rgba(251,113,133,.25); }
+/* parent endorsement */
+.pill-orange  { background: rgba(244,90,36,.12); color: #FF8258; border: 1px solid rgba(244,90,36,.28); }
+
+/* ---------- Live signal dot (only on actually-live data) ---------- */
+.live {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em;
+  color: var(--signal);
+}
+.live::before {
+  content: ''; width: 7px; height: 7px; border-radius: var(--r-full);
+  background: var(--signal);
+  box-shadow: 0 0 0 0 var(--signal-glow);
+  animation: fs-pulse 2s ease-in-out infinite;
+}
+@keyframes fs-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--signal-glow); }
+  50%      { opacity: .55; box-shadow: 0 0 0 5px rgba(94,234,212,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live::before { animation: none; }
+}
+
+/* ---------- Relevance badge (per-product flag) ---------- */
+.relevance {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 20px; padding: 0 8px 0 7px;
+  font-size: 11px; font-weight: 600;
+  border-radius: var(--r-full);
+  background: var(--signal-tint); color: var(--signal);
+  border: 1px solid rgba(94,234,212,.25);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.relevance:hover { background: rgba(94,234,212,.18); }
+.relevance .diamond { width: 6px; height: 6px; background: currentColor; transform: rotate(45deg); }
+
+/* ---------- Triage chip (digest buckets) ---------- */
+.triage { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.triage::before { content: ''; width: 9px; height: 9px; border-radius: var(--r-full); }
+.triage-go::before   { background: var(--triage-go); }
+.triage-soon::before { background: var(--triage-soon); }
+.triage-hold::before { background: var(--triage-hold); }
+
+/* ---------- Logomark ---------- */
+.mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--iris); color: #fff;
+  border-radius: 7px; position: relative; overflow: hidden;
+}
+.mark.sm { width: 22px; height: 22px; border-radius: 5px; }
+.mark.md { width: 32px; height: 32px; border-radius: 7px; }
+.mark.lg { width: 56px; height: 56px; border-radius: 12px; }
+.mark svg { width: 64%; height: 64%; display: block; }
+
+</style>
+<style>
+  body{background:var(--bg);color:var(--text);margin:0;padding:20px;font-family:var(--font-ui);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .col{display:flex;flex-direction:column;gap:14px;}
+  .lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;}
+  
+</style></head><body><div class="col">
+  <div><div class="lbl">Variants</div><div class="row">
+    <button class="btn btn-primary">Generate brief</button>
+    <button class="btn btn-signal">↻ Refresh live</button>
+    <button class="btn btn-secondary">View notes</button>
+    <button class="btn btn-ghost">Dismiss</button>
+    <button class="btn btn-danger">Remove source</button>
+  </div></div>
+  <div><div class="lbl">Sizes · icon · keys · disabled</div><div class="row">
+    <button class="btn btn-primary btn-lg">Open dashboard <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"/></svg></button>
+    <button class="btn btn-secondary btn-sm">Small</button>
+    <button class="btn btn-secondary btn-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"/></svg></button>
+    <button class="btn btn-secondary">Browse <span class="kbd">←</span><span class="kbd">→</span></button>
+    <button class="btn btn-primary" disabled>Disabled</button>
+  </div></div>
+</div></body></html>

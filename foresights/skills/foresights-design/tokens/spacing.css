@@ -1,0 +1,43 @@
+/* ============================================================
+ * Foresights — Spacing, Radii, Elevation
+ * 4pt scale (shared with Instance Labs).
+ * ============================================================ */
+
+:root {
+  /* 4pt spacing scale */
+  --s-0:  2px;
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  24px;
+  --s-6:  32px;
+  --s-7:  48px;
+  --s-8:  64px;
+  --s-9:  96px;
+
+  /* Radii */
+  --r-chip:  4px;
+  --r-sm:    6px;
+  --r-md:    8px;
+  --r-lg:    12px;
+  --r-xl:    16px;
+  --r-full:  999px;
+
+  /* Elevation — dark brand */
+  --e-1: 0 1px 0 rgba(255,255,255,.03), 0 1px 2px rgba(0,0,0,.4);
+  --e-2: 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.4);
+  --e-3: 0 24px 64px rgba(0,0,0,.6), 0 8px 24px rgba(0,0,0,.4);
+  --e-glow-iris:   0 0 0 1px rgba(124,106,255,.5), 0 0 28px var(--iris-glow);
+  --e-glow-signal: 0 0 0 1px rgba(94,234,212,.45), 0 0 24px var(--signal-glow);
+
+  /* App widths */
+  --app-w:   1160px;
+  --app-w-wide: 1440px;
+  --dash-w:  1080px;  /* product dashboard column */
+
+  /* Hit targets */
+  --hit-sm: 28px;
+  --hit:    36px;
+  --hit-lg: 44px;
+}

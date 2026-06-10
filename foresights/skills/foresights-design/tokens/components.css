@@ -1,0 +1,185 @@
+/* ============================================================
+ * Foresights — Component Classes
+ * Buttons, inputs, cards, pills, kbd, marks, plus Foresights-
+ * specific patterns: live signal dot, relevance badge, triage chip.
+ * ============================================================ */
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: var(--r-md);
+  padding: 0 14px;
+  height: var(--hit);
+  font-size: 13px; font-weight: 500;
+  font-family: var(--font-ui);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s cubic-bezier(.2,.6,.2,1);
+  letter-spacing: -.005em;
+  position: relative;
+  user-select: none;
+}
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .4; pointer-events: none; }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--iris); }
+
+.btn-primary {
+  background: var(--iris);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(124,106,255,.5), inset 0 1px 0 rgba(255,255,255,.2);
+}
+.btn-primary:hover {
+  background: var(--iris-2);
+  box-shadow: var(--e-glow-iris), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.btn-signal {
+  background: var(--signal);
+  color: #04201C;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(94,234,212,.4), inset 0 1px 0 rgba(255,255,255,.3);
+}
+.btn-signal:hover { box-shadow: var(--e-glow-signal), inset 0 1px 0 rgba(255,255,255,.35); }
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--line-bright);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.btn-secondary:hover { background: var(--hover); border-color: #35353F; }
+
+.btn-ghost { background: transparent; color: var(--text-2); }
+.btn-ghost:hover { background: var(--hover); color: var(--text); }
+
+.btn-danger {
+  background: rgba(251,113,133,.12);
+  color: var(--error);
+  border-color: rgba(251,113,133,.3);
+}
+.btn-danger:hover { background: rgba(251,113,133,.18); }
+
+.btn-lg { height: var(--hit-lg); padding: 0 20px; font-size: 14px; border-radius: 10px; }
+.btn-sm { height: var(--hit-sm); padding: 0 10px; font-size: 12px; border-radius: var(--r-sm); }
+.btn-icon { width: var(--hit); padding: 0; }
+
+/* ---------- Keyboard chip ---------- */
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  color: var(--text-3);
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--line-bright);
+  border-radius: var(--r-chip);
+  margin-left: 4px;
+}
+
+/* ---------- Card ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  position: relative;
+}
+.card-hairline { border: 1px solid var(--line-bright); }
+.card-sunken { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-lg); }
+
+/* ---------- Input ---------- */
+.input {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--line-bright);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+  height: var(--hit);
+  font-size: 13px; font-family: inherit;
+  color: var(--text);
+  transition: all .15s ease;
+}
+.input::placeholder { color: var(--text-3); }
+.input:focus {
+  outline: none;
+  border-color: var(--iris);
+  box-shadow: 0 0 0 3px var(--iris-tint);
+}
+
+/* ---------- Pills / Badges ---------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 8px;
+  font-size: 11px; font-weight: 500;
+  font-family: var(--font-ui);
+  border-radius: var(--r-sm);
+  letter-spacing: -.005em;
+}
+.pill .dot {
+  width: 5px; height: 5px; border-radius: var(--r-full);
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.03), 0 0 6px currentColor;
+}
+.pill-iris    { background: var(--iris-tint); color: var(--iris-soft); border: 1px solid rgba(124,106,255,.28); }
+.pill-signal  { background: var(--signal-tint); color: var(--signal); border: 1px solid rgba(94,234,212,.22); }
+.pill-amber   { background: rgba(255,181,71,.10); color: var(--amber); border: 1px solid rgba(255,181,71,.2); }
+.pill-coral   { background: rgba(255,107,142,.12); color: var(--coral); border: 1px solid rgba(255,107,142,.25); }
+.pill-plum    { background: rgba(192,132,252,.12); color: var(--plum); border: 1px solid rgba(192,132,252,.25); }
+.pill-sky     { background: rgba(96,165,250,.12); color: var(--sky); border: 1px solid rgba(96,165,250,.25); }
+.pill-neutral { background: rgba(255,255,255,.04); color: var(--text-2); border: 1px solid var(--line-bright); }
+.pill-success { background: rgba(74,222,128,.10); color: var(--success); border: 1px solid rgba(74,222,128,.2); }
+.pill-warning { background: rgba(251,191,36,.10); color: var(--warning); border: 1px solid rgba(251,191,36,.22); }
+.pill-error   { background: rgba(251,113,133,.12); color: var(--error); border: 1px solid rgba(251,113,133,.25); }
+/* parent endorsement */
+.pill-orange  { background: rgba(244,90,36,.12); color: #FF8258; border: 1px solid rgba(244,90,36,.28); }
+
+/* ---------- Live signal dot (only on actually-live data) ---------- */
+.live {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em;
+  color: var(--signal);
+}
+.live::before {
+  content: ''; width: 7px; height: 7px; border-radius: var(--r-full);
+  background: var(--signal);
+  box-shadow: 0 0 0 0 var(--signal-glow);
+  animation: fs-pulse 2s ease-in-out infinite;
+}
+@keyframes fs-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--signal-glow); }
+  50%      { opacity: .55; box-shadow: 0 0 0 5px rgba(94,234,212,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live::before { animation: none; }
+}
+
+/* ---------- Relevance badge (per-product flag) ---------- */
+.relevance {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 20px; padding: 0 8px 0 7px;
+  font-size: 11px; font-weight: 600;
+  border-radius: var(--r-full);
+  background: var(--signal-tint); color: var(--signal);
+  border: 1px solid rgba(94,234,212,.25);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.relevance:hover { background: rgba(94,234,212,.18); }
+.relevance .diamond { width: 6px; height: 6px; background: currentColor; transform: rotate(45deg); }
+
+/* ---------- Triage chip (digest buckets) ---------- */
+.triage { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.triage::before { content: ''; width: 9px; height: 9px; border-radius: var(--r-full); }
+.triage-go::before   { background: var(--triage-go); }
+.triage-soon::before { background: var(--triage-soon); }
+.triage-hold::before { background: var(--triage-hold); }
+
+/* ---------- Logomark ---------- */
+.mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--iris); color: #fff;
+  border-radius: 7px; position: relative; overflow: hidden;
+}
+.mark.sm { width: 22px; height: 22px; border-radius: 5px; }
+.mark.md { width: 32px; height: 32px; border-radius: 7px; }
+.mark.lg { width: 56px; height: 56px; border-radius: 12px; }
+.mark svg { width: 64%; height: 64%; display: block; }

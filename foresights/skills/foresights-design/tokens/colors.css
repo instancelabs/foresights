@@ -1,0 +1,104 @@
+/* ============================================================
+ * Foresights — Color Tokens
+ * A product of Instance Labs. Inherits the cool near-black
+ * neutral ramp; promotes IRIS to primary (foresight, intelligence)
+ * and CYAN to the live-signal accent (the role lime plays for
+ * the parent). Orange + lime are retained ONLY as parent-endorsement
+ * references — never as a Foresights primary.
+ *
+ * Two surfaces are documented here:
+ *   :root        → dark brand (marketing, chrome, brand surfaces)
+ *   .fs-light    → light product (the generated dashboard output)
+ * ============================================================ */
+
+:root {
+  /* — Neutrals · cool near-black ramp (shared with Instance Labs) — */
+  --bg:          #08080A;
+  --bg-2:        #0D0D11;
+  --surface:     #121217;
+  --surface-2:   #16161C;
+  --hover:       #1D1D25;
+  --active:      #262630;
+  --line:        #1C1C23;
+  --line-bright: #2A2A34;
+
+  /* — Text — */
+  --text:        #F4F4F5;
+  --text-2:      #A3A3AC;
+  --text-3:      #6E6E78;
+  --text-4:      #4A4A53;
+
+  /* — Brand · Iris (PRIMARY — foresight, intelligence, depth) — */
+  --iris:        #7C6AFF;   /* primary brand + CTA */
+  --iris-2:      #6450E6;   /* hover / pressed */
+  --iris-dim:    #4A3CB0;   /* muted, borders */
+  --iris-soft:   #A89AFF;   /* text/icon on dark surfaces */
+  --iris-glow:   rgba(124,106,255,0.40);
+  --iris-tint:   rgba(124,106,255,0.12);
+
+  /* — Brand · Cyan (LIVE SIGNAL — telemetry, "live", focus-adjacent) — */
+  --signal:      #5EEAD4;
+  --signal-2:    #2DD4BF;
+  --signal-dim:  #1C8F80;
+  --signal-glow: rgba(94,234,212,0.35);
+  --signal-tint: rgba(94,234,212,0.10);
+
+  /* — Secondary accent ramp (relevance badges, variety) — */
+  --amber:       #FFB547;
+  --coral:       #FF6B8E;
+  --plum:        #C084FC;
+  --sky:         #60A5FA;
+  --lime:        #D4FF3A;   /* parent endorsement only */
+  --orange:      #F45A24;   /* parent endorsement only */
+
+  /* — Semantic (triage: green / amber / red) — */
+  --success:     #4ADE80;
+  --warning:     #FBBF24;
+  --error:       #FB7185;
+  --info:        #60A5FA;
+
+  /* — Triage buckets (digest 🟢🟡🔴) — */
+  --triage-go:     #4ADE80;
+  --triage-soon:   #FBBF24;
+  --triage-hold:   #FB7185;
+}
+
+/* ============================================================
+ * Light product surface — the generated dashboard.
+ * Apply `.fs-light` to a root container to flip into product mode.
+ * Mirrors the real dashboard.html token set, re-skinned to iris.
+ * ============================================================ */
+.fs-light {
+  color-scheme: light;
+  --bg:          #ffffff;
+  --bg-2:        #f7f8fa;
+  --surface:     #ffffff;
+  --surface-2:   #f7f8fa;
+  --surface-3:   #eef0f4;
+  --line:        #e3e6ec;
+  --line-bright: #cdd2dc;
+
+  --text:        #1a1f2b;
+  --text-2:      #5b6373;
+  --text-3:      #828a99;
+  --text-4:      #a3abba;
+
+  /* Iris becomes the product accent (darkened for AA on white) */
+  --accent:      #6450E6;
+  --accent-2:    #4f3dc9;
+  --accent-soft: #efeaff;
+  --accent-line: #d4c8f4;
+
+  --link:        #4f3dc9;
+  --link-hover:  #3a2aa6;
+
+  --code-bg:     #f4f4f8;
+  --shadow:      0 1px 2px rgba(20,25,35,.04), 0 4px 14px rgba(20,25,35,.05);
+
+  /* Light semantic soft pairs */
+  --green:       #1b8a3a; --green-soft:  #e6f5ec; --green-line:  #c6e8d2;
+  --amber-d:     #b46a00; --amber-soft:  #fff3df; --amber-line:  #f0d8a3;
+  --red:         #b6253b; --red-soft:    #fde8eb; --red-line:    #f1c5cd;
+  --purple:      #5c3bbb; --purple-soft: #efeaff; --purple-line: #d4c8f4;
+  --teal:        #0d8a7d; --teal-soft:   #e6f6f8; --teal-line:   #b5e3e0;
+}

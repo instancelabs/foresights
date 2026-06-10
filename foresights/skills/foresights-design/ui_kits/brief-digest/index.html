@@ -1,0 +1,260 @@
+<!-- @dsCard group="Dashboard" viewport="1180x900" name="Upgrade digest" subtitle="Triaged flagged items → ready-to-paste Claude Code prompts" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Last Command — Upgrade digest · Foresights</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    color-scheme: light;
+    --bg:#f3f4f7; --surface:#ffffff; --surface-2:#f7f8fa; --surface-3:#eef0f4;
+    --line:#e3e6ec; --line-strong:#cdd2dc;
+    --text:#1a1f2b; --text-2:#5b6373; --text-3:#828a99;
+    --accent:#6450E6; --accent-2:#4f3dc9; --accent-soft:#efeaff; --accent-line:#d4c8f4;
+    --go:#1b8a3a; --go-soft:#e6f5ec; --go-line:#c6e8d2;
+    --soon:#b46a00; --soon-soft:#fff3df; --soon-line:#f0d8a3;
+    --hold:#b6253b; --hold-soft:#fde8eb; --hold-line:#f1c5cd;
+    --code-bg:#13131a;
+    --shadow:0 1px 2px rgba(20,25,35,.04), 0 4px 14px rgba(20,25,35,.05);
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --serif:'Instrument Serif',Georgia,serif;
+    --ui:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',system-ui,sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 var(--ui); -webkit-font-smoothing:antialiased; }
+  code { font-family:var(--mono); background:var(--surface-3); padding:1px 5px; border-radius:4px; font-size:12.5px; }
+  .mono { font-family:var(--mono); }
+  .wrap { max-width:860px; margin:0 auto; padding:30px 24px 80px; }
+
+  /* header */
+  .dhead { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:6px; }
+  .dhead .eye { font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; display:flex; align-items:center; gap:7px; }
+  .dhead .eye .sq { width:18px; height:18px; border-radius:5px; background:linear-gradient(180deg,#8E7DFF,#6450E6); display:inline-flex; align-items:center; justify-content:center; }
+  .dhead .eye .sq svg { width:11px; height:11px; color:#fff; }
+  .dhead h1 { font-size:25px; margin:0 0 6px; letter-spacing:-.02em; }
+  .dhead .meta { color:var(--text-2); font-size:12.5px; }
+  .dhead .meta b { color:var(--text); }
+  .dhead .acts { display:flex; gap:8px; flex:none; }
+  .pbtn { font-family:var(--ui); font-size:12.5px; font-weight:600; padding:7px 13px; border-radius:7px; border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .pbtn.accent { background:var(--accent); color:#fff; border-color:var(--accent-2); }
+  .pbtn.accent:hover { background:var(--accent-2); box-shadow:0 4px 14px rgba(100,80,230,.3); }
+  .pbtn.ghost { background:#fff; color:var(--text); border-color:var(--line-strong); }
+  .pbtn.ghost:hover { background:var(--surface-2); }
+
+  .savepath { font-family:var(--mono); font-size:11.5px; color:var(--text-2); background:var(--surface-2); border:1px solid var(--line); border-radius:7px; padding:8px 12px; margin:16px 0 24px; display:flex; align-items:center; gap:8px; }
+  .savepath .arrow { color:var(--accent); }
+  .savepath b { color:var(--text); }
+
+  /* summary strip */
+  .summary { display:flex; gap:10px; margin-bottom:26px; }
+  .scount { flex:1; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:13px 16px; box-shadow:var(--shadow); }
+  .scount .n { font-family:var(--serif); font-size:34px; line-height:1; }
+  .scount .l { font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-2); margin-top:5px; display:flex; align-items:center; gap:6px; }
+  .scount.go .n { color:var(--go); } .scount.soon .n { color:var(--soon); } .scount.hold .n { color:var(--hold); }
+  .dot { width:9px; height:9px; border-radius:999px; display:inline-block; }
+  .dot.go{background:var(--go)} .dot.soon{background:var(--soon)} .dot.hold{background:var(--hold)}
+
+  /* buckets */
+  .bucket { margin-bottom:30px; }
+  .bhead { display:flex; align-items:center; gap:9px; margin:0 0 12px; }
+  .bhead h2 { font-size:13px; margin:0; letter-spacing:.06em; text-transform:uppercase; font-weight:750; }
+  .bhead .cnt { font-family:var(--mono); font-size:11px; color:var(--text-3); }
+  .bhead .rule { flex:1; height:1px; background:var(--line); }
+
+  .item { background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); margin-bottom:10px; overflow:hidden; }
+  .item .top { padding:14px 16px; cursor:pointer; display:flex; align-items:flex-start; gap:12px; }
+  .item .top:hover { background:var(--surface-2); }
+  .item .tdot { margin-top:5px; flex:none; }
+  .item .body { flex:1; }
+  .item .ititle { font-weight:650; font-size:14px; }
+  .item .ititle .ver { font-family:var(--mono); font-size:11.5px; font-weight:600; color:var(--accent-2); background:var(--accent-soft); padding:1px 7px; border-radius:5px; margin-left:6px; }
+  .item .irat { color:var(--text-2); font-size:12.5px; margin-top:4px; }
+  .item .chev { color:var(--text-3); flex:none; transition:transform .2s; margin-top:2px; }
+  .item.open .chev { transform:rotate(90deg); }
+
+  .prompt { display:none; border-top:1px solid var(--line); background:var(--surface-2); padding:14px 16px; }
+  .item.open .prompt { display:block; }
+  .prompt .plabel { font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-3); margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+  .copy { font-family:var(--ui); font-size:11px; font-weight:600; color:var(--accent); background:#fff; border:1px solid var(--accent-line); border-radius:6px; padding:3px 10px; cursor:pointer; }
+  .copy:hover { background:var(--accent-soft); }
+  .copy.done { color:var(--go); border-color:var(--go-line); background:var(--go-soft); }
+  .code-block { background:var(--code-bg); color:#e8e8ef; padding:14px 16px; border-radius:9px; overflow-x:auto; font-family:var(--mono); font-size:12px; line-height:1.65; white-space:pre-wrap; }
+  .code-block .c { color:#6b7280; } .code-block .p { color:#a89aff; } .code-block .s { color:#a7e58b; }
+
+  .foot-note { margin-top:34px; padding-top:18px; border-top:1px solid var(--line); color:var(--text-3); font-size:12px; line-height:1.6; }
+  .foot-note code { font-size:11.5px; }
+  .back { display:inline-flex; align-items:center; gap:6px; color:var(--accent); font-size:12.5px; font-weight:600; text-decoration:none; margin-bottom:20px; }
+
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:#16161c; color:#f4f4f5; padding:11px 18px; border-radius:9px; font-size:13px; box-shadow:0 12px 40px rgba(0,0,0,.4); opacity:0; pointer-events:none; transition:all .25s; display:flex; align-items:center; gap:10px; z-index:50; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast .ok { color:#5eead4; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../dashboard/index.html">← Back to dashboard</a>
+
+  <div class="dhead">
+    <div>
+      <div class="eye"><span class="sq"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.4" stroke-linecap="round" opacity="0.7"><line x1="7" y1="9" x2="17" y2="16"/><line x1="8" y1="24" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="9" r="2.3"/><circle cx="8" cy="24" r="2.3"/></g><circle cx="17" cy="16" r="3.6" fill="currentColor"/><path d="M21 16 H 28.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M25 12.5 L29 16 L25 19.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span> Foresights · upgrade digest</div>
+      <h1>Last Command — what to act on</h1>
+      <div class="meta">Generated <b>just now</b> from <b>node-ts-news</b> · 6 flagged items · 7-day window · grounded in <b>1,204</b> indexed files</div>
+    </div>
+    <div class="acts">
+      <button class="pbtn ghost" onclick="toast('Markdown copied to clipboard')">Copy markdown</button>
+      <button class="pbtn accent" onclick="toast('Saved → .claude/upgrade-digests/2026-06-10-last-command.md')">Save to repo</button>
+    </div>
+  </div>
+
+  <div class="savepath"><span class="arrow">→</span> Drops into <b>.claude/upgrade-digests/</b>2026-06-10-last-command.md — then run <code>/digest</code> in Claude Code to work through it.</div>
+
+  <div class="summary">
+    <div class="scount go"><div class="n">3</div><div class="l"><span class="dot go"></span>Go · safe to adopt</div></div>
+    <div class="scount soon"><div class="n">2</div><div class="l"><span class="dot soon"></span>Soon · plan it in</div></div>
+    <div class="scount hold"><div class="n">1</div><div class="l"><span class="dot hold"></span>Hold · breaking</div></div>
+  </div>
+
+  <!-- GO -->
+  <div class="bucket">
+    <div class="bhead"><span class="dot go"></span><h2 style="color:var(--go)">Go</h2><span class="cnt">3 items · low risk, do now</span><span class="rule"></span></div>
+
+    <div class="item">
+      <div class="top">
+        <span class="dot go tdot"></span>
+        <div class="body">
+          <div class="ititle">Switch the orchestrator to <code>node --run</code><span class="ver">node@22.12</span></div>
+          <div class="irat">Removes ~350ms of npm spawn overhead per invocation across 6 internal scripts.</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="prompt">
+        <div class="plabel">Ready-to-paste Claude Code prompt<button class="copy" onclick="cp(this)">Copy</button></div>
+        <div class="code-block"><span class="c"># Last Command · adopt node --run in the orchestrator</span>
+In <span class="p">src/orchestrator/run.ts</span>, replace each <span class="s">`npm run &lt;script&gt;`</span> exec with
+<span class="s">`node --run &lt;script&gt;`</span>. Gate on <span class="s">`process.versions.node &gt;= "22"`</span>;
+fall back to the npm path on older hosts. Keep the existing error handling.
+Add a unit test asserting the fallback fires when the version check fails.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="top">
+        <span class="dot go tdot"></span>
+        <div class="body">
+          <div class="ititle">Enable cached project references<span class="ver">typescript@5.9</span></div>
+          <div class="irat">Drops the CI typecheck step from ~38s toward ~23s. No config change beyond the upgrade.</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="prompt">
+        <div class="plabel">Ready-to-paste Claude Code prompt<button class="copy" onclick="cp(this)">Copy</button></div>
+        <div class="code-block"><span class="c"># Last Command · verify cached project references after TS 5.9 bump</span>
+Bump <span class="p">typescript</span> to ^5.9 in the root package.json. Confirm <span class="p">tsconfig.base.json</span>
+sets <span class="s">"composite": true</span> on all 11 referenced projects. Re-run <span class="s">`tsc --build`</span>
+and report the before/after timing of the typecheck job in CI.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="top">
+        <span class="dot go tdot"></span>
+        <div class="body">
+          <div class="ititle">Replace nodemon with <code>node --watch</code><span class="ver">node@22.12</span></div>
+          <div class="irat">Drops a dev dependency; identical restart behaviour for the CLI dev loop.</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="prompt">
+        <div class="plabel">Ready-to-paste Claude Code prompt<button class="copy" onclick="cp(this)">Copy</button></div>
+        <div class="code-block"><span class="c"># Last Command · migrate dev script off nodemon</span>
+Change the <span class="s">"dev"</span> script to <span class="s">`node --watch src/cli.ts`</span> and remove
+<span class="p">nodemon</span> from devDependencies and <span class="p">nodemon.json</span>. Verify the watch loop
+restarts on a source edit.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOON -->
+  <div class="bucket">
+    <div class="bhead"><span class="dot soon"></span><h2 style="color:var(--soon)">Soon</h2><span class="cnt">2 items · plan into a sprint</span><span class="rule"></span></div>
+
+    <div class="item">
+      <div class="top">
+        <span class="dot soon tdot"></span>
+        <div class="body">
+          <div class="ititle">Adopt <code>using</code> for resource cleanup<span class="ver">typescript@5.9</span></div>
+          <div class="irat">Touches the device layer — worth a focused PR with tests rather than a drive-by.</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="prompt">
+        <div class="plabel">Ready-to-paste Claude Code prompt<button class="copy" onclick="cp(this)">Copy</button></div>
+        <div class="code-block"><span class="c"># Last Command · introduce `using` in the resource layer</span>
+Audit <span class="p">src/orchestrator/</span> for manual try/finally cleanup of acquired
+resources. Where a resource has a clear release step, wrap it in an object with
+<span class="s">[Symbol.dispose]</span> and convert the call site to <span class="s">`using`</span>. Keep the target
+unchanged; add disposal tests covering the throw path.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="top">
+        <span class="dot soon tdot"></span>
+        <div class="body">
+          <div class="ititle">Evaluate tsgo as a pre-commit gate<span class="ver">preview</span></div>
+          <div class="irat">Fast local typecheck, but it's a preview — trial behind a flag before relying on it.</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="prompt">
+        <div class="plabel">Ready-to-paste Claude Code prompt<button class="copy" onclick="cp(this)">Copy</button></div>
+        <div class="code-block"><span class="c"># Last Command · trial tsgo locally (do not gate CI yet)</span>
+Add a <span class="s">"typecheck:fast"</span> script running <span class="s">`tsgo --noEmit`</span>. Wire it into the
+pre-commit hook as a warning (non-blocking). Leave the CI <span class="s">`tsc --build`</span> gate
+untouched. Document the diagnostic-parity caveat in CONTRIBUTING.md.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOLD -->
+  <div class="bucket">
+    <div class="bhead"><span class="dot hold"></span><h2 style="color:var(--hold)">Hold</h2><span class="cnt">1 item · breaking, needs a migration</span><span class="rule"></span></div>
+
+    <div class="item">
+      <div class="top">
+        <span class="dot hold tdot"></span>
+        <div class="body">
+          <div class="ititle">moduleResolution "node" removed<span class="ver">typescript@5.9</span></div>
+          <div class="irat">Hard build failure on upgrade — must move to <code>bundler</code> first, in its own PR.</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="prompt">
+        <div class="plabel">Ready-to-paste Claude Code prompt<button class="copy" onclick="cp(this)">Copy</button></div>
+        <div class="code-block"><span class="c"># Last Command · migrate moduleResolution BEFORE the TS 5.9 bump</span>
+Set <span class="s">"moduleResolution": "bundler"</span> in <span class="p">tsconfig.base.json</span> and every
+package tsconfig that overrides it. Do this on the CURRENT TS version first.
+Run a full <span class="s">`tsc --build`</span>, fix any newly-surfaced import errors, and land it
+as a standalone PR. Only then bump TypeScript to 5.9.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot-note">
+    Triage buckets and prompts are generated by <code>/setup-cc</code> wiring on the receiving repo. Each prompt is grounded in your indexed source — paths and call sites are real. Edit before pasting; Foresights never writes to your code.
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="ok">●</span><span id="toastMsg"></span></div>
+
+<script>
+  document.querySelectorAll('.item .top').forEach(t=>{
+    t.addEventListener('click', ()=> t.parentElement.classList.toggle('open'));
+  });
+  function cp(btn){ btn.textContent='Copied ✓'; btn.classList.add('done'); setTimeout(()=>{btn.textContent='Copy'; btn.classList.remove('done');}, 1600); }
+  let tt; function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toastMsg').textContent=msg; t.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),2400); }
+</script>
+</body>
+</html>

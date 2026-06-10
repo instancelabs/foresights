@@ -1,0 +1,157 @@
+<!-- @dsCard group="Brand" viewport="1180x860" name="Lens / pointed exploration" subtitle="Forward-pointing focal treatments — playing on 'foresight'" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Foresights — Lens, pointed</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --bg:#08080A; --surface:#121217; --line:#1C1C23; --line-bright:#2A2A34;
+    --text:#F4F4F5; --text-2:#A3A3AC; --text-3:#6E6E78;
+    --iris:#7C6AFF; --iris-soft:#A89AFF; --iris-dim:#4A3CB0; --iris-tint:rgba(124,106,255,.12); --signal:#5EEAD4;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace; --serif:'Instrument Serif',Georgia,serif;
+    --ui:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);
+    background-image:radial-gradient(ellipse 700px 420px at 82% -4%, rgba(124,106,255,.14), transparent 60%);}
+  .wrap{max-width:1140px;margin:0 auto;padding:56px 40px 96px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:var(--iris-soft);margin-bottom:14px;}
+  h1{font-size:38px;font-weight:500;letter-spacing:-.03em;margin:0 0 12px;}
+  h1 .serif{font-family:var(--serif);font-style:italic;color:var(--iris-soft);}
+  .lede{color:var(--text-2);max-width:690px;font-size:15px;line-height:1.6;margin:0;}
+  .note{margin-top:22px;padding:14px 16px;background:var(--iris-tint);border:1px solid rgba(124,106,255,.25);border-radius:8px;color:var(--text);font-size:13px;line-height:1.6;max-width:790px;}
+  .note b{color:var(--iris-soft);}
+
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:38px;}
+  .opt{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 20px 18px;position:relative;}
+  .opt.pick{border-color:var(--iris-dim);box-shadow:0 0 0 1px var(--iris-dim),0 0 40px rgba(124,106,255,.10);}
+  .opt .num{font-family:var(--mono);font-size:10px;color:var(--text-3);letter-spacing:.12em;}
+  .opt h3{font-size:14.5px;font-weight:600;margin:3px 0 0;letter-spacing:-.01em;}
+  .opt .picktag{position:absolute;top:16px;right:16px;font-family:var(--ui);font-size:10px;font-weight:600;color:var(--iris-soft);background:var(--iris-tint);border:1px solid rgba(124,106,255,.3);padding:2px 8px;border-radius:999px;}
+  .specimen{display:flex;align-items:center;gap:14px;margin:18px 0 14px;}
+  .sq{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#8E7DFF,#6450E6);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 24px rgba(124,106,255,.22);flex:none;}
+  .sq.lg{width:64px;height:64px;border-radius:15px;}
+  .sq.lg svg{width:40px;height:40px;}
+  .sq.fav{width:24px;height:24px;border-radius:6px;}
+  .sq.fav svg{width:16px;height:16px;}
+  .favwrap{display:flex;align-items:center;gap:8px;color:var(--text-3);font-family:var(--mono);font-size:9.5px;}
+  .desc{font-size:12px;color:var(--text-2);line-height:1.5;margin:0;min-height:54px;}
+  .distinct{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--signal);line-height:1.45;}
+  .distinct b{color:var(--text-2);font-weight:500;}
+
+  .stage{margin-top:46px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px 28px;}
+  .stage .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:20px;}
+  .stagerow{display:flex;align-items:center;gap:26px;flex-wrap:wrap;}
+  .lockup{display:flex;align-items:center;gap:14px;}
+  .lockup .wm{font-size:30px;font-weight:600;letter-spacing:-.03em;}
+  .lockup .wm .fore{color:#fff;} .lockup .wm .sights{color:var(--iris-soft);}
+  .scaleset{display:flex;align-items:flex-end;gap:18px;margin-left:auto;}
+  .scaleset .u{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .scaleset .cap{font-family:var(--mono);font-size:9.5px;color:var(--text-3);}
+
+  footer{margin-top:48px;padding-top:22px;border-top:1px solid var(--line);color:var(--text-3);font-size:12.5px;line-height:1.6;}
+  .mono{font-family:var(--mono);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">// foresights · brand · 005</div>
+  <h1>Lens, made <span class="serif">pointed</span></h1>
+  <p class="lede">Four ways to sharpen the emitted arc into a forward <b style="color:var(--text)">point</b> — leaning into <i>fore-<b style="color:var(--text)">sight</b></i>: the node doesn't just receive, it aims ahead. All keep the 3 directional source nodes feeding one focal node.</p>
+  <div class="note"><b>The play:</b> "sight" → an aiming point / sightline arrow. Two angular takes (caret, arrowhead) and two that keep a curved, tapered "comet" point so it still feels like a sweep.</div>
+
+  <div class="grid">
+
+    <!-- L1 Caret -->
+    <div class="opt">
+      <div class="num">L1</div><h3>Caret</h3>
+      <div class="specimen">
+        <span class="sq lg"><svg viewBox="0 0 32 32" fill="none">
+          <g stroke="currentColor" stroke-width="1.7" opacity=".6"><line x1="6" y1="8" x2="18" y2="16"/><line x1="5" y1="16.5" x2="18" y2="16"/><line x1="7" y1="25" x2="18" y2="16"/></g>
+          <g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g>
+          <circle cx="18.5" cy="16" r="3.6" fill="currentColor"/>
+          <path d="M23.5 11 L28.5 16 L23.5 21" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg></span>
+        <div class="favwrap"><span class="sq fav"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.4" opacity=".7"><line x1="7" y1="9" x2="18" y2="16"/><line x1="8" y1="24" x2="18" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="9" r="2.3"/><circle cx="8" cy="24" r="2.3"/></g><circle cx="18" cy="16" r="3.8" fill="currentColor"/><path d="M24 11 L29 16 L24 21" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>24px</div>
+      </div>
+      <p class="desc">An open caret <b>›</b> fires forward off the focal node — "what's next," lightweight and unmistakably forward.</p>
+      <div class="distinct"><b>Distinct:</b> open chevron = the same "forward" affordance used in the UI. Airy, scales well.</div>
+    </div>
+
+    <!-- L2 Arrowhead -->
+    <div class="opt pick">
+      <span class="picktag">pick</span>
+      <div class="num">L2</div><h3>Sightline</h3>
+      <div class="specimen">
+        <span class="sq lg"><svg viewBox="0 0 32 32" fill="none">
+          <g stroke="currentColor" stroke-width="1.7" opacity=".6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g>
+          <g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g>
+          <circle cx="17.5" cy="16" r="3.4" fill="currentColor"/>
+          <path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+          <path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg></span>
+        <div class="favwrap"><span class="sq fav"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.4" opacity=".7"><line x1="7" y1="9" x2="17" y2="16"/><line x1="8" y1="24" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="9" r="2.3"/><circle cx="8" cy="24" r="2.3"/></g><circle cx="17" cy="16" r="3.6" fill="currentColor"/><path d="M21 16 H 28.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M25 12.5 L29 16 L25 19.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>24px</div>
+      </div>
+      <p class="desc">A true sightline: the focal node fires a shaft + arrowhead dead ahead. Sources converge, then the eye looks <i>forward</i>.</p>
+      <div class="distinct"><b>Distinct:</b> the literal "line of sight" arrow nails the name; reads as aim/direction, never as a feed glyph.</div>
+    </div>
+
+    <!-- L3 Comet -->
+    <div class="opt">
+      <div class="num">L3</div><h3>Comet</h3>
+      <div class="specimen">
+        <span class="sq lg"><svg viewBox="0 0 32 32" fill="none">
+          <g stroke="currentColor" stroke-width="1.7" opacity=".6"><line x1="6" y1="8" x2="18" y2="16"/><line x1="5" y1="16.5" x2="18" y2="16"/><line x1="7" y1="25" x2="18" y2="16"/></g>
+          <g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g>
+          <circle cx="18.5" cy="16" r="3.7" fill="currentColor"/>
+          <path d="M22 13.4 Q 28.5 13.4 30 9.5 Q 26.5 16 22 16.5 Z" fill="currentColor"/>
+        </svg></span>
+        <div class="favwrap"><span class="sq fav"><svg viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.4" opacity=".7"><line x1="7" y1="9" x2="18" y2="16"/><line x1="8" y1="24" x2="18" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="9" r="2.3"/><circle cx="8" cy="24" r="2.3"/></g><circle cx="18" cy="16" r="4" fill="currentColor"/><path d="M22 13 Q 29 13 30.5 9 Q 26.5 16.5 22 16.5 Z" fill="currentColor"/></svg></span>24px</div>
+      </div>
+      <p class="desc">The emitted arc tapers to a sharp tip — a comet/swoosh that still curves, so it keeps the radar-sweep feel while ending in a point.</p>
+      <div class="distinct"><b>Distinct:</b> curved + pointed = a sweep with intent. Softest, most "motion," bridges the sweep idea.</div>
+    </div>
+
+    <!-- L4 Tapered crescent (lens) -->
+    <div class="opt">
+      <div class="num">L4</div><h3>Eye-point</h3>
+      <div class="specimen">
+        <span class="sq lg"><svg viewBox="0 0 32 32" fill="none">
+          <g stroke="currentColor" stroke-width="1.7" opacity=".6"><line x1="6" y1="8" x2="17.5" y2="16"/><line x1="5" y1="16.5" x2="17.5" y2="16"/><line x1="7" y1="25" x2="17.5" y2="16"/></g>
+          <g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g>
+          <path d="M16 16 Q 22 10 30 11 Q 23 16 30 21 Q 22 22 16 16 Z" fill="currentColor"/>
+          <circle cx="22" cy="16" r="1.7" fill="#6450E6"/>
+        </svg></span>
+        <div class="favwrap"><span class="sq fav"><svg viewBox="0 0 32 32" fill="none"><path d="M5 16 Q 16 9 29 11 Q 21 16 29 21 Q 16 23 5 16 Z" fill="currentColor"/><circle cx="17" cy="16" r="2.4" fill="#6450E6"/></svg></span>24px</div>
+      </div>
+      <p class="desc">The focal node opens into an <i>eye</i> — a lens shape pointed at both ends — with the convergence flowing into it. Foresight, made literal.</p>
+      <div class="distinct"><b>Distinct:</b> a pointed eye/lens is the strongest pun on "sight," and the pointed ends are inherent to the shape.</div>
+    </div>
+  </div>
+
+  <!-- LOCKUP STAGE -->
+  <div class="stage">
+    <div class="lbl">Pick L2 "Sightline" in context — lockup + scale</div>
+    <div class="stagerow">
+      <div class="lockup">
+        <span class="sq" style="width:46px;height:46px;border-radius:11px"><svg viewBox="0 0 32 32" fill="none" style="width:29px;height:29px"><g stroke="currentColor" stroke-width="1.8" opacity=".6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+        <span class="wm"><span class="fore">Fore</span><span class="sights">sights</span></span>
+      </div>
+      <div class="scaleset">
+        <div class="u"><span class="sq" style="width:44px;height:44px;border-radius:10px"><svg viewBox="0 0 32 32" fill="none" style="width:27px;height:27px"><g stroke="currentColor" stroke-width="1.8" opacity=".6"><line x1="6" y1="8" x2="17" y2="16"/><line x1="5" y1="16.5" x2="17" y2="16"/><line x1="7" y1="25" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="6" cy="8" r="2.1"/><circle cx="5" cy="16.5" r="1.5"/><circle cx="7" cy="25" r="2.6"/></g><circle cx="17.5" cy="16" r="3.4" fill="currentColor"/><path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span><span class="cap">44</span></div>
+        <div class="u"><span class="sq" style="width:32px;height:32px;border-radius:7px"><svg viewBox="0 0 32 32" fill="none" style="width:20px;height:20px"><g stroke="currentColor" stroke-width="2" opacity=".65"><line x1="7" y1="9" x2="17" y2="16"/><line x1="8" y1="24" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="9" r="2.3"/><circle cx="8" cy="24" r="2.3"/></g><circle cx="17" cy="16" r="3.6" fill="currentColor"/><path d="M21 16 H 28.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M25 12.5 L29 16 L25 19.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span><span class="cap">32</span></div>
+        <div class="u"><span class="sq" style="width:24px;height:24px;border-radius:6px"><svg viewBox="0 0 32 32" fill="none" style="width:16px;height:16px"><g stroke="currentColor" stroke-width="2.4" opacity=".7"><line x1="7" y1="9" x2="17" y2="16"/><line x1="8" y1="24" x2="17" y2="16"/></g><g fill="currentColor"><circle cx="7" cy="9" r="2.3"/><circle cx="8" cy="24" r="2.3"/></g><circle cx="17" cy="16" r="3.6" fill="currentColor"/><path d="M21 16 H 28.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M25 12.5 L29 16 L25 19.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span><span class="cap">24 · fav</span></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span class="mono">FORESIGHTS · INSTANCE LABS · 0x05</span><br/>
+    My pick: <b style="color:var(--iris-soft)">L2 Sightline</b> — the shaft+arrowhead is the most direct pun on the name (a literal line of sight aimed ahead) and stays legible to favicon size. <b style="color:var(--iris-soft)">L3 Comet</b> if you want it softer/curved; <b style="color:var(--iris-soft)">L4 Eye-point</b> if you want the boldest "sight" statement. Say which and I'll lock it across the whole system.
+  </footer>
+</div>
+</body>
+</html>
