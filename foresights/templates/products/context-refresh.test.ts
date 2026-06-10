@@ -37,6 +37,31 @@ describe('normaliseResponse — files', () => {
   });
 });
 
+describe('normaliseResponse — string file payloads (real GitHub MCP shape)', () => {
+  it('treats a bare string as file content', () => {
+    const e = normaliseResponse('CLAUDE.md', 'hello world');
+    expect(e.type).toBe('file');
+    expect(e.content).toBe('hello world');
+    expect(e.size).toBe(11);
+  });
+
+  it('strips the "successfully downloaded text file (SHA: …)" prefix', () => {
+    const raw =
+      'successfully downloaded text file (SHA: 91d5a119dc173ec5a267d762c7898e4f12f79e42)# CDK Insights\n\nbody';
+    const e = normaliseResponse('CLAUDE.md', raw);
+    expect(e.type).toBe('file');
+    expect(e.content).toBe('# CDK Insights\n\nbody');
+    expect(e.content?.startsWith('successfully downloaded')).toBe(false);
+  });
+
+  it('truncates a long string payload past the cap', () => {
+    const big = 'x'.repeat(FILE_CONTENT_CAP + 500);
+    const e = normaliseResponse('huge.md', big);
+    expect(e.content).toContain('(truncated at 16KB)');
+    expect(e.size).toBe(FILE_CONTENT_CAP + 500);
+  });
+});
+
 describe('normaliseResponse — directories', () => {
   it('treats a bare array as a directory listing with no content', () => {
     const e = normaliseResponse('src/rules', [{ name: 'b.ts' }, { name: 'a.ts' }]);

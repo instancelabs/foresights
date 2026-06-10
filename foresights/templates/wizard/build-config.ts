@@ -311,14 +311,6 @@ const stripTags = (s: string): string =>
 const regexLiteral = (source: string, flags = ''): string =>
   `new RegExp(${j(source)}${flags ? `, ${j(flags)}` : ''})`;
 
-/**
- * Escape a string so it's safe to inject as literal text inside a JS
- * backtick template literal at emit time. Handles backslashes, the
- * literal backtick, and `${` (which would otherwise start a substitution).
- */
-const escForBacktick = (s: string): string =>
-  s.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-
 /** Indent every line of `body` by 2 spaces. */
 const indent2 = (body: string): string =>
   body
@@ -516,15 +508,12 @@ export const genCcBuilders = (products: readonly WizardProduct[]): string => {
   }
   const entries = ccProducts
     .map((p) => {
-      const safeLabel = escForBacktick(p.label);
-      // Default body — emits a backtick template literal so biome's
-      // useTemplate rule doesn't trigger after substitution. The \${...}
-      // sequences are escaped in the generator's own template literal so
-      // they stay LITERAL in the emitted source (and interpolate at
-      // runtime inside the EMITTED backtick).
+      // Default body — hands the rich, self-contained prompt assembly to the
+      // tested `buildRichCcPrompt` helper (defined above the sentinel in
+      // cc-prompts.ts, so it's in scope for the emitted builders). The label
+      // is JSON-stringified so it stays safely quoted in the output.
       const body =
-        p.ccPromptBody ??
-        `const title = meta.title ?? meta.stableId;\nreturn \`# ${safeLabel}: \${title}\\n\\n\${brief.why}\\n\\nMode: \${mode}. ${safeLabel} repo guidance follows.\`;`;
+        p.ccPromptBody ?? `return buildRichCcPrompt(${j(p.label)}, { brief, meta, mode });`;
       return `  ${j(p.id)}: ({ brief, meta, mode }) => {\n${indent2(body)}\n  },`;
     })
     .join('\n');

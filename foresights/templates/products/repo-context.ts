@@ -12,12 +12,12 @@
  * prompt is emitted unchanged — behaviour is byte-identical to pre-context-
  * loop builds for any dashboard whose user hasn't clicked ↻.
  *
- * The block has two parts: a structural overview (one bullet per fetched
- * path, with type + size) and — for file entries that carried content —
- * a verbatim content section per file. Directory entries contribute only
- * the structural bullet. v0.4.1+ context-refresh captures file content
- * (capped, see context-refresh.ts FILE_CONTENT_CAP); a pre-v0.4.1 stored
- * layout with no `content` fields degrades gracefully to overview-only.
+ * The block is a structural overview: one bullet per fetched path, with
+ * type + size, plus an instruction to open the paths in the repo. We
+ * deliberately DON'T dump file bodies into the prompt — Claude Code has the
+ * repo and reads current files itself (and auto-loads CLAUDE.md), so a path
+ * list avoids prompt bloat and staleness. context-refresh.ts still captures
+ * file content for the change-detection fingerprint; it just isn't inlined.
  */
 
 import type { Deps } from '../types';
@@ -83,17 +83,10 @@ export const formatRepoContext = (
   const lines = [
     `## Repo context (refreshed ${refreshedOn})`,
     '',
-    'The Foresights dashboard last pulled this from the product repo. Treat it as the current repo state when planning — if anything here differs from what the prompt above assumes, the repo changed since that context was baked.',
+    'These are the product repo paths the Foresights dashboard tracks for this product. Open them in the repo to ground your work against the current source — they reflect the repo as of the refresh date above and may have changed since. Claude Code auto-loads CLAUDE.md.',
     '',
     ...paths.map((e) => `- ${describeEntry(e)}`),
   ];
-  // Verbatim content section per file entry that carried content. Directory
-  // and error entries contribute only the structural bullet above.
-  for (const e of paths) {
-    if (e.type === 'file' && e.content) {
-      lines.push('', `### \`${e.path}\``, '', e.content);
-    }
-  }
   return lines.join('\n');
 };
 

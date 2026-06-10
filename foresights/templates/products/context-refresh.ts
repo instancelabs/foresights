@@ -109,8 +109,30 @@ const capContent = (content: string): string =>
     ? `${content.slice(0, FILE_CONTENT_CAP)}\n…(truncated at ${FILE_CONTENT_CAP / 1024}KB)`
     : content;
 
+/**
+ * The GitHub MCP `get_file_contents` tool returns a fetched text file as a
+ * plain string, prefixed with a status line like
+ * `successfully downloaded text file (SHA: <sha>)`. Strip that prefix so the
+ * stored content is the file body alone.
+ */
+const DOWNLOAD_PREFIX = /^successfully downloaded[^\n]*?\(SHA:\s*[0-9a-f]+\)\s*/i;
+const stripDownloadPrefix = (raw: string): string => raw.replace(DOWNLOAD_PREFIX, '');
+
 /** Coerce an MCP `get_file_contents` response into a FetchedEntry. */
 export const normaliseResponse = (path: string, raw: unknown): FetchedEntry => {
+  // Text files come back from the GitHub MCP as a plain string (the call-tool
+  // unwrapper yields raw text whenever the payload isn't JSON). This is the
+  // common case for files — handle it before the object/array branches.
+  if (typeof raw === 'string') {
+    const content = stripDownloadPrefix(raw);
+    return {
+      path,
+      type: 'file',
+      hash: fingerprintOf(content),
+      size: content.length,
+      content: capContent(content),
+    };
+  }
   if (raw === null || typeof raw !== 'object') {
     return { path, type: 'error', hash: fingerprintOf('null'), size: 0 };
   }
