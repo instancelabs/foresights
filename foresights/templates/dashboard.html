@@ -186,13 +186,14 @@
   }
   .hero-main { display: flex; gap: 12px; align-items: flex-start; }
   .hero-glyph {
-    color: var(--accent);
     flex-shrink: 0;
-    margin-top: 2px;
+    margin-top: 1px;
     display: inline-flex;
     transition: transform .15s ease;
+    border-radius: 6px;
   }
-  .hero-glyph:hover { transform: translateX(2px); color: var(--link-hover); }
+  .hero-glyph:hover { transform: translateX(2px); }
+  .hero-glyph svg { display: block; }
   .hero-suffix {
     font-family: var(--font-serif);
     font-style: italic;
@@ -1086,20 +1087,29 @@
   <header class="hero">
     <div class="hero-main">
       <a class="hero-glyph" href="https://github.com/instancelabs/foresights" target="_blank" rel="noopener" title="Built with Foresights — github.com/instancelabs/foresights" aria-label="Foresights">
-        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" role="img" aria-hidden="true">
-          <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.6">
-            <line x1="6" y1="8" x2="17" y2="16"></line>
-            <line x1="5" y1="16.5" x2="17" y2="16"></line>
-            <line x1="7" y1="25" x2="17" y2="16"></line>
+        <svg width="26" height="26" viewBox="0 0 64 64" role="img" aria-hidden="true">
+          <defs>
+            <linearGradient id="fs-hero-mark" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#8E7DFF"></stop>
+              <stop offset="1" stop-color="#6450E6"></stop>
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" rx="16" fill="url(#fs-hero-mark)"></rect>
+          <g transform="translate(8,8) scale(1.5)" fill="none">
+            <g stroke="#fff" stroke-width="1.7" stroke-linecap="round" opacity="0.6">
+              <line x1="6" y1="8" x2="17" y2="16"></line>
+              <line x1="5" y1="16.5" x2="17" y2="16"></line>
+              <line x1="7" y1="25" x2="17" y2="16"></line>
+            </g>
+            <g fill="#fff">
+              <circle cx="6" cy="8" r="2.1"></circle>
+              <circle cx="5" cy="16.5" r="1.5"></circle>
+              <circle cx="7" cy="25" r="2.6"></circle>
+            </g>
+            <circle cx="17.5" cy="16" r="3.4" fill="#fff"></circle>
+            <path d="M22 16 H 28" stroke="#fff" stroke-width="1.7" stroke-linecap="round"></path>
+            <path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
           </g>
-          <g fill="currentColor">
-            <circle cx="6" cy="8" r="2.1"></circle>
-            <circle cx="5" cy="16.5" r="1.5"></circle>
-            <circle cx="7" cy="25" r="2.6"></circle>
-          </g>
-          <circle cx="17.5" cy="16" r="3.4" fill="currentColor"></circle>
-          <path d="M22 16 H 28" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"></path>
-          <path d="M25.5 12.8 L29 16 L25.5 19.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
         </svg>
       </a>
       <div>
