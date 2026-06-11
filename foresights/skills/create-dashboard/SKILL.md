@@ -151,7 +151,7 @@ In `outputMode: 'static'`, also fetch each GitHub source's **full** `list_<kind>
 
 You — the wizard agent, the very Claude reading this file — write each curated array yourself, drawing on the live data sample + your training knowledge. There is no separate Haiku call at wizard time; `askClaude` only exists inside the *built dashboard's* `window.cowork` bridge. Stash each array in the matching `WizardConfig` field before invoking the build:
 
-- 6 `spotlights` expanding the user's 2–3 seeds → `WizardConfig.spotlights`
+- 6 `spotlights` expanding the user's 2–3 seeds → `WizardConfig.spotlights`. When products are configured, set each spotlight's optional `productId` to the service it's "about" (you already know this from the synthesis pass). That forces a deterministic flag badge so the spotlight reliably opens a Claude Code brief for exactly that service, instead of relying on regex auto-matching the prose. Leave `productId` unset for product-less dashboards — the field is optional and omitted spotlights build byte-identically.
 - 6 `highlights` from live data → `WizardConfig.highlights`
 - 6 community-library / pattern cards → `WizardConfig.patterns`
 - 8 advanced tips → `WizardConfig.tips`

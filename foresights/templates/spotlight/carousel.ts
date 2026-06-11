@@ -174,11 +174,17 @@ export const renderSpotlight = (
       .replace(/[^\w]+/g, '-')
       .toLowerCase()
       .slice(0, 60)}`;
-    const flags = flagsForText(
-      matchText,
-      { section: 'spotlight', stableId, title: spotlight.title, url: spotlight.url },
-      products,
-    );
+    // When the spotlight declares a productId, force that product's flag
+    // deterministically — a curated spotlight is deliberately about one
+    // service, so regex auto-matching (which can miss or match several) is
+    // unreliable. Absent productId → unchanged regex auto-match.
+    const baseMeta = { section: 'spotlight', stableId, title: spotlight.title, url: spotlight.url };
+    const targeted = spotlight.productId
+      ? products.find((p) => p.id === spotlight.productId)
+      : undefined;
+    const flags = targeted
+      ? [{ ...baseMeta, productId: targeted.id, reason: 'Spotlight targets this service' }]
+      : flagsForText(matchText, baseMeta, products);
     flagsEl.innerHTML = flags
       .map((f) => {
         const product = products.find((p) => p.id === f.productId);

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Deps, Spotlight } from '../types';
+import type { Deps, Product, Spotlight } from '../types';
 import { createInMemoryStorage } from '../util/storage';
 import {
   autoRotationIndex,
@@ -172,6 +172,65 @@ describe('renderSpotlight', () => {
     if (!second) throw new Error('sampleSpotlights[1] missing');
     renderSpotlight(deps, second, 1, sampleSpotlights.length, []);
     expect(document.getElementById('sl-pager')?.textContent).toBe('2 / 3');
+  });
+});
+
+describe('renderSpotlight — productId targeting', () => {
+  let deps: Deps;
+
+  // STORM never matches via regex; ALLIANCE matches text containing "alliance".
+  const STORM: Product = { id: 'storm', label: 'Storm', cssMod: 'storm', match: () => null };
+  const ALLIANCE: Product = {
+    id: 'alliance',
+    label: 'Alliance',
+    cssMod: 'alliance',
+    match: (t) => (/alliance/i.test(t) ? 'mentions alliance' : null),
+  };
+
+  const badges = (): readonly Element[] =>
+    Array.from(document.getElementById('sl-flags')?.children ?? []);
+
+  beforeEach(() => {
+    deps = buildDeps();
+    setupDom();
+  });
+
+  it('forces exactly one badge for the mapped product even when its regex does not match', () => {
+    const base = sampleSpotlights[0];
+    if (!base) throw new Error('sampleSpotlights[0] missing');
+    // Prose contains neither "storm" nor "alliance", so regex auto-match would
+    // emit zero badges — but productId pins it to STORM.
+    const sp: Spotlight = { ...base, productId: 'storm' };
+    renderSpotlight(deps, sp, 0, 1, [STORM, ALLIANCE]);
+    expect(badges()).toHaveLength(1);
+    expect(badges()[0]?.textContent).toBe('Storm');
+    expect(badges()[0]?.className).toContain('storm');
+  });
+
+  it('regex auto-matches when no productId is set (behaviour unchanged)', () => {
+    const base = sampleSpotlights[0];
+    if (!base) throw new Error('sampleSpotlights[0] missing');
+    // No productId; prose mentions "alliance" so only ALLIANCE flags.
+    const sp: Spotlight = { ...base, title: 'Cross-server alliance scrim' };
+    renderSpotlight(deps, sp, 0, 1, [STORM, ALLIANCE]);
+    expect(badges()).toHaveLength(1);
+    expect(badges()[0]?.textContent).toBe('Alliance');
+  });
+
+  it('emits no badge when no productId is set and nothing matches', () => {
+    const base = sampleSpotlights[0];
+    if (!base) throw new Error('sampleSpotlights[0] missing');
+    renderSpotlight(deps, base, 0, 1, [STORM, ALLIANCE]);
+    expect(badges()).toHaveLength(0);
+  });
+
+  it('falls back to regex auto-match when productId names an unknown product', () => {
+    const base = sampleSpotlights[0];
+    if (!base) throw new Error('sampleSpotlights[0] missing');
+    const sp: Spotlight = { ...base, title: 'Cross-server alliance scrim', productId: 'ghost' };
+    renderSpotlight(deps, sp, 0, 1, [STORM, ALLIANCE]);
+    expect(badges()).toHaveLength(1);
+    expect(badges()[0]?.textContent).toBe('Alliance');
   });
 });
 

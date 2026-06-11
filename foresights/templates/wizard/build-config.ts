@@ -99,6 +99,12 @@ export interface WizardSpotlight {
   readonly code: string;
   readonly why: string;
   readonly url: string;
+  /**
+   * Optional product id this spotlight maps to. Emitted into the generated
+   * `Spotlight` literal only when present, so spotlights without it build
+   * byte-identically to pre-existing output.
+   */
+  readonly productId?: string;
 }
 
 /** One matcher rule for a product. `source`/`flags` are the RegExp inputs. */
@@ -372,17 +378,20 @@ export const genSpotlightsConst = (spotlights: readonly WizardSpotlight[]): stri
     return '\nexport const SPOTLIGHTS: readonly Spotlight[] = [];\n';
   }
   const entries = spotlights
-    .map(
-      (sp) => `  {
+    .map((sp) => {
+      // productId is emitted ONLY when present, so a spotlight without it is
+      // byte-identical to pre-productId output.
+      const pid = sp.productId ? `\n    productId: ${j(sp.productId)},` : '';
+      return `  {
     tag: ${j(sp.tag)},
     title: ${j(sp.title)},
     summary: ${j(sp.summary)},
     trick: ${j(sp.trick)},
     code: ${j(sp.code)},
     why: ${j(sp.why)},
-    url: ${j(sp.url)},
-  },`,
-    )
+    url: ${j(sp.url)},${pid}
+  },`;
+    })
     .join('\n');
   return `\nexport const SPOTLIGHTS: readonly Spotlight[] = [\n${entries}\n];\n`;
 };

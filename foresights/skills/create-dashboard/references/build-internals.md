@@ -29,7 +29,7 @@ The wizard agent (you) synthesizes each of these arrays before invoking `build.t
 
 | Field | Count | Per-entry JSON shape |
 |---|---|---|
-| `spotlights` | 6 | `{tag, title, summary, trick, code, why, url}` — see "SPOTLIGHTS_CONST" below |
+| `spotlights` | 6 | `{tag, title, summary, trick, code, why, url, productId?}` — see "SPOTLIGHTS_CONST" below; `productId` (optional) pins the spotlight's flag badge to that product |
 | `highlights` | 6 | `{tag, title, body, url, cta?}` — `cta` defaults to "GitHub" for github.com URLs |
 | `patterns`   | 6 | `{tag, title, body, url, cta?}` — same shape as highlights |
 | `tips`       | 8 | `{title, why?, body, code?}` — `code` is pre-rendered HTML with `<span class="k">` / `<span class="s">` / `<span class="t">` |
@@ -154,6 +154,7 @@ A typed `SPOTLIGHTS` JS const inside `<script>`. Each entry:
 - `code` — array of strings joined with `'\n'`. Each line is HTML with `<span class="k">` / `<span class="s">` / `<span class="t">` for syntax tokens. The template ships with `.sl-code` styling; do not introduce a stray `<pre>`.
 - `why` — 1–2 sentences explaining why it matters (spotlight footer)
 - `url` — the canonical link
+- `productId` *(optional)* — the id of the product this spotlight is "about". When set, the spotlight renders a deterministic flag badge for that product (instead of regex auto-matching its prose), so clicking it opens a Claude Code brief for exactly that service. Emitted into the literal only when present, so omitted spotlights build byte-identically.
 
 **Critical escaping:** the `code` field uses backslash-escaped single quotes (`<span class="s">\'github.com/...\'</span>`) because each line is a JS string literal. Escape `'` inside string-class spans before emitting.
 

@@ -163,6 +163,35 @@ describe('genSpotlightsConst', () => {
     expect(out).toContain('why: "Why it matters."');
     expect(out).toContain('url: "https://example.com"');
   });
+
+  it('emits productId only when present', () => {
+    const withId = genSpotlightsConst([
+      {
+        tag: 'T',
+        title: 'Targeted',
+        summary: 's',
+        trick: 't',
+        code: 'c',
+        why: 'w',
+        url: 'https://example.com',
+        productId: 'storm',
+      },
+    ]);
+    expect(withId).toContain('productId: "storm"');
+
+    const withoutId = genSpotlightsConst([
+      {
+        tag: 'T',
+        title: 'Untargeted',
+        summary: 's',
+        trick: 't',
+        code: 'c',
+        why: 'w',
+        url: 'https://example.com',
+      },
+    ]);
+    expect(withoutId).not.toContain('productId');
+  });
 });
 
 describe('genProductsConst', () => {

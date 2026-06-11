@@ -161,6 +161,14 @@ export interface Spotlight {
   readonly why: string;
   /** Canonical link. */
   readonly url: string;
+  /**
+   * Optional product id this spotlight maps to. When set, the spotlight
+   * renders a deterministic flag badge for that product (instead of regex
+   * auto-matching), so clicking it opens the action panel — e.g. a Claude
+   * Code brief — for exactly that service. Absent → regex auto-match, so
+   * pre-existing dashboards build byte-identically.
+   */
+  readonly productId?: string;
 }
 
 /**
