@@ -2,7 +2,7 @@ import { JSDOM } from 'jsdom';
 import { describe, expect, it, vi } from 'vitest';
 import type { Deps, Product, RssItem } from '../types';
 import { createInMemoryStorage } from '../util/storage';
-import { renderRssItems } from './rss';
+import { renderRssItems, snippet } from './rss';
 
 const buildDeps = (): Deps => {
   const dom = new JSDOM('<!doctype html><div id="updates-body"></div>');
@@ -133,5 +133,35 @@ describe('renderRssItems', () => {
     const html = deps.document.getElementById('updates-body')?.innerHTML ?? '';
     expect(html).toContain('rss:https-example-com-no-guid');
     expect(html).toContain('rss:tag-example-2026-item-with-guid');
+  });
+});
+
+describe('snippet', () => {
+  it('decodes entities and strips Reddit boilerplate', () => {
+    const raw =
+      '<div><p>We&#39;re here​</p></div> ' +
+      'submitted by <a href="...">/u/x</a> <a href="...">[link]</a> <a>[comments]</a>';
+    expect(snippet(raw)).toBe("We're here");
+  });
+
+  it('decodes numeric, hex, and named entities', () => {
+    expect(snippet('a&#32;b&#x26;c &amp; &quot;q&quot; &lt;t&gt; &nbsp;end')).toBe(
+      'a b&c & "q" <t> end',
+    );
+  });
+
+  it('strips zero-width chars and bare preview.redd.it URLs', () => {
+    const raw = 'Cool build​ here https://preview.redd.it/abc123.png?width=640';
+    expect(snippet(raw)).toBe('Cool build here');
+  });
+
+  it('leaves non-Reddit (Substack) bodies unchanged apart from tag-stripping', () => {
+    const raw = '<p>A useful summary of the post.</p>';
+    expect(snippet(raw)).toBe('A useful summary of the post.');
+  });
+
+  it('still truncates long decoded text with an ellipsis', () => {
+    expect(snippet('x'.repeat(500))).toHaveLength(221);
+    expect(snippet('x'.repeat(500)).endsWith('…')).toBe(true);
   });
 });

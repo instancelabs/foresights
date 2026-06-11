@@ -19,13 +19,40 @@ import { escHtml, safeHref } from '../util/escape';
 import { rssUnits } from './flag-units';
 import { appendToSection } from './section';
 
-/** Trim and collapse whitespace in a description for the card snippet. */
-const snippet = (description: string, maxLen = 220): string => {
-  // Strip embedded tags — Substack and similar embed full HTML in description.
-  const stripped = description
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+/** Decode the HTML entities feeds (esp. Reddit, which double-encodes) leave behind. */
+const decodeEntities = (s: string): string =>
+  s
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m, h) => String.fromCodePoint(Number.parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_m, d) => String.fromCodePoint(Number.parseInt(d, 10)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&');
+
+/**
+ * Trim, de-noise, and collapse a feed description into a clean card snippet.
+ *
+ * Order matters: strip tags → decode entities → drop zero-width chars → strip
+ * boilerplate → collapse → truncate. `escHtml()` still runs at the call site, so
+ * output stays XSS-safe (a decoded `'` is re-encoded to a renderable `&#39;`).
+ * Exported for unit testing.
+ */
+export const snippet = (description: string, maxLen = 220): string => {
+  // Strip embedded tags — Substack/Reddit embed full HTML in the body.
+  let s = description.replace(/<[^>]+>/g, ' ');
+  // Decode entities (Reddit double-encodes: &#39; &#32; &#x200B; etc.).
+  s = decodeEntities(s);
+  // Drop zero-width / format characters Reddit sprinkles in.
+  s = s.replace(/​|‌|‍|﻿/g, '');
+  // Strip Reddit boilerplate: "submitted by /u/… [link] [comments]", bare
+  // tokens, and preview-image URLs that otherwise dump into the snippet.
+  s = s
+    .replace(/\s*submitted by\s+\/u\/\S+.*$/i, '')
+    .replace(/\[link\]|\[comments\]/gi, '')
+    .replace(/https?:\/\/(?:preview|i|external-preview)\.redd\.it\/\S+/gi, '');
+  const stripped = s.replace(/\s+/g, ' ').trim();
   if (stripped.length <= maxLen) return stripped;
   return `${stripped.slice(0, maxLen).trimEnd()}…`;
 };
