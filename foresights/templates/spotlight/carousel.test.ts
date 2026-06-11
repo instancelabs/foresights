@@ -232,6 +232,22 @@ describe('renderSpotlight — productId targeting', () => {
     expect(badges()).toHaveLength(1);
     expect(badges()[0]?.textContent).toBe('Alliance');
   });
+
+  it('uses the product matcher reason on the forced flag when the regex hits', () => {
+    const base = sampleSpotlights[0];
+    if (!base) throw new Error('sampleSpotlights[0] missing');
+    const sp: Spotlight = { ...base, title: 'Cross-server alliance scrim', productId: 'alliance' };
+    renderSpotlight(deps, sp, 0, 1, [STORM, ALLIANCE]);
+    expect(badges()[0]?.getAttribute('title')).toContain('mentions alliance');
+  });
+
+  it('uses a product-named fallback reason when the regex misses', () => {
+    const base = sampleSpotlights[0];
+    if (!base) throw new Error('sampleSpotlights[0] missing');
+    const sp: Spotlight = { ...base, productId: 'storm' }; // STORM.match always returns null
+    renderSpotlight(deps, sp, 0, 1, [STORM, ALLIANCE]);
+    expect(badges()[0]?.getAttribute('title')).toContain('Curated spotlight for Storm');
+  });
 });
 
 describe('initSpotlight', () => {

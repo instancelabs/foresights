@@ -231,6 +231,21 @@ export const briefFromReason = (flag: Flag, item: BriefItem): Brief => ({
  * response, the non-model floor (`briefFromReason`). It does not throw for
  * those cases — it always resolves to a `Brief`.
  */
+/**
+ * Output-shape contract appended to every brief request. The product
+ * `systemPrompt` supplies the domain substance + quality guidance; this line
+ * guarantees the model returns the exact `{ why, integrations }` JSON shape
+ * `parseBriefJson` expects. Without it, a domain-only `systemPrompt` (the SKILL
+ * calls it an "architecture / domain summary") makes the model reply in prose,
+ * `parseBriefJson` throws, and the brief silently falls back to the matcher
+ * reason — the cause of shallow, one-line briefs on such dashboards.
+ */
+const BRIEF_OUTPUT_CONTRACT =
+  '\n\nRespond with ONLY a JSON object (no markdown fences, no prose) of exactly this shape: ' +
+  '{"why": "<1-2 sentences on why this item matters to the product above>", ' +
+  '"integrations": [{"title": "<short imperative>", "detail": "<1-2 sentences referencing concrete repo paths / services / conventions>"}]}. ' +
+  'Provide 1-3 integrations. Be technical and specific; avoid generic platitudes.';
+
 export const fetchBrief = async (
   deps: Pick<Deps, 'storage' | 'askClaude'>,
   args: FetchBriefArgs,
@@ -269,7 +284,7 @@ export const fetchBrief = async (
   let brief: Brief;
   try {
     const raw = await deps.askClaude(
-      `${prompt}\n\nITEM:\n${JSON.stringify(itemPayload, null, 2)}`,
+      `${prompt}\n\nITEM:\n${JSON.stringify(itemPayload, null, 2)}${BRIEF_OUTPUT_CONTRACT}`,
       [itemPayload],
     );
     brief = parseBriefJson(normalizeAskClaudeResult(raw));

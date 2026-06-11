@@ -183,7 +183,16 @@ export const renderSpotlight = (
       ? products.find((p) => p.id === spotlight.productId)
       : undefined;
     const flags = targeted
-      ? [{ ...baseMeta, productId: targeted.id, reason: 'Spotlight targets this service' }]
+      ? [
+          {
+            ...baseMeta,
+            productId: targeted.id,
+            // Prefer the product's own matcher reason (meaningful, item-specific);
+            // fall back to a product-named line only when the regex genuinely
+            // misses — the case productId-forcing exists to cover.
+            reason: targeted.match(matchText) ?? `Curated spotlight for ${targeted.label}`,
+          },
+        ]
       : flagsForText(matchText, baseMeta, products);
     flagsEl.innerHTML = flags
       .map((f) => {

@@ -461,3 +461,21 @@ describe('fetchBrief — storage quirks', () => {
     expect(brief.why).toContain('Mixins change');
   });
 });
+
+describe('fetchBrief — output contract', () => {
+  it('appends the JSON output-shape contract so a contract-less prompt still parses', async () => {
+    const askClaude = vi.fn<AskClaude>().mockResolvedValue(validResponse);
+    const deps = makeDeps(askClaude);
+    await fetchBrief(deps, {
+      flag: FLAG,
+      prompt: 'Last Command is a SaaS. Frame the post as a feature for lc-storm-service.',
+      fingerprint: FINGERPRINT,
+      topicSlug: TOPIC_SLUG,
+      item: ITEM,
+    });
+    const promptArg = askClaude.mock.calls[0]?.[0] ?? '';
+    expect(promptArg).toContain('"why"');
+    expect(promptArg).toContain('"integrations"');
+    expect(promptArg.toLowerCase()).toContain('json object');
+  });
+});
