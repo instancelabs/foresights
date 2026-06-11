@@ -66,11 +66,7 @@ export const safeUrl = (u: unknown): string => {
   if (trimmed.length === 0) return '#';
   if (trimmed.startsWith('#') || trimmed.startsWith('/')) return trimmed;
   const lower = trimmed.toLowerCase();
-  if (
-    lower.startsWith('http://') ||
-    lower.startsWith('https://') ||
-    lower.startsWith('mailto:')
-  ) {
+  if (lower.startsWith('http://') || lower.startsWith('https://') || lower.startsWith('mailto:')) {
     return trimmed;
   }
   return '#';

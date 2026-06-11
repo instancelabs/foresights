@@ -51,9 +51,7 @@ describe('safeHref', () => {
   });
 
   it('allows https URLs', () => {
-    expect(safeHref('https://example.com/path?q=1#frag')).toBe(
-      'https://example.com/path?q=1#frag',
-    );
+    expect(safeHref('https://example.com/path?q=1#frag')).toBe('https://example.com/path?q=1#frag');
   });
 
   it('allows mailto URLs', () => {
@@ -114,17 +112,13 @@ describe('safeHref', () => {
   });
 
   it('preserves case in the path of allowed URLs', () => {
-    expect(safeHref('https://Example.COM/PathWithCase')).toBe(
-      'https://Example.COM/PathWithCase',
-    );
+    expect(safeHref('https://Example.COM/PathWithCase')).toBe('https://Example.COM/PathWithCase');
   });
 });
 
 describe('safeUrl', () => {
   it('returns the original URL (un-escaped) for allowed schemes', () => {
-    expect(safeUrl('https://example.com/?q=<x>&y="z"')).toBe(
-      'https://example.com/?q=<x>&y="z"',
-    );
+    expect(safeUrl('https://example.com/?q=<x>&y="z"')).toBe('https://example.com/?q=<x>&y="z"');
   });
 
   it('returns "#" for javascript:', () => {
