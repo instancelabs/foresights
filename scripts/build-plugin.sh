@@ -51,15 +51,21 @@ trap 'rm -rf "$STAGE"' EXIT
 # `wizard/refresh.js`) and the vendored `esbuild-wasm` package are present in
 # the source tree before we stage. The plugin ships them so the user runs
 # `node wizard/build.js` directly — no `tsx`, no `npm install` at install
-# time, no native esbuild binary required. Skipped if both are already built.
-if [[ ! -f "$SRC/templates/wizard/build.js" ]] \
-   || [[ ! -f "$SRC/templates/wizard/refresh.js" ]] \
-   || [[ ! -d "$SRC/templates/node_modules/esbuild-wasm" ]]; then
-  echo "-> Bootstrap: npm install + prebuild-wizard in $SRC/templates"
+# time, no native esbuild binary required.
+#
+# `wizard/build.js` / `refresh.js` are gitignored, bundled from the `.ts`
+# sources by `prebuild-wizard`. They must be REBUILT on every package, not just
+# when absent: a stale `build.js` left in a dev checkout would otherwise ship a
+# bundle that predates the current `.ts` sources, silently dropping source
+# fixes (incl. the security preflight) from the release. prebuild-wizard is
+# ~200ms, so always run it.
+if [[ ! -d "$SRC/templates/node_modules/esbuild-wasm" ]]; then
+  echo "-> npm install in $SRC/templates (vendoring esbuild-wasm)"
   ( cd "$SRC/templates" \
-    && npm install --prefer-offline --no-audit --no-fund >/dev/null \
-    && npm run prebuild-wizard >/dev/null )
+    && npm install --prefer-offline --no-audit --no-fund >/dev/null )
 fi
+echo "-> Rebuild wizard entrypoints from source (prebuild-wizard)"
+( cd "$SRC/templates" && npm run prebuild-wizard >/dev/null )
 
 echo "-> Staging plugin v$VERSION at $STAGE"
 

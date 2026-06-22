@@ -1,6 +1,6 @@
 ---
 name: create-dashboard
-description: Wizard that builds a live, product-customised news dashboard. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, or set up Foresights — and also whenever they describe wanting to keep up with, stay on top of, stay current on, follow what's new in, or stop falling behind on a technology, library, framework, tool, or ecosystem. Asks 6 questions, then ships a Cowork dashboard artifact.
+description: Wizard that builds a live, product-customised news dashboard. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, or set up Foresights — and also whenever they describe wanting to keep up with, stay on top of, stay current on, follow what's new in, or stop falling behind on a technology, library, framework, tool, or ecosystem. Asks 6 questions, then ships the dashboard — a live Cowork artifact in the Cowork desktop app, or a standalone HTML file in Claude Code. Works in both.
 ---
 
 # Create Dashboard
@@ -9,7 +9,7 @@ description: Wizard that builds a live, product-customised news dashboard. Use w
 
 ## What this skill does
 
-Walks the user through ~7 questions, then generates a fully-populated dashboard: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder. Ships as a Cowork live artifact by default, or as a standalone HTML file (`outputMode: 'static'`).
+Walks the user through ~7 questions, then generates a fully-populated dashboard: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder. Ships the right way for the host — a live Cowork artifact in the Cowork desktop app, or a self-contained standalone HTML file (`outputMode: 'static'`) in Claude Code. Step 0a detects which automatically.
 
 ## Wizard flow
 
@@ -83,17 +83,26 @@ Omit `cadence` for `daily` so a daily dashboard's build output stays byte-identi
 
 ### 7. Output mode
 
-Most dashboards are live Cowork artifacts — the default; don't ask about it. Choose `outputMode: 'static'` when the user says their environment has no live-artifacts feature, or asks for a portable / downloadable dashboard. Static dashboards run as standalone HTML files with no `window.cowork` — see `references/static-mode.md` for the full static path (fetching baked GitHub data, the two-pass brief + triage flow, file output).
+**Already decided by the Step 0a host probe — don't ask.** Cowork (the `mcp__cowork__create_artifact` tool is present) → `outputMode: 'artifact'`. Claude Code / any other host (that tool absent) → `outputMode: 'static'`. Only override when the user explicitly asks for the other kind — e.g. a Cowork user who wants a portable, downloadable file should get `static`.
+
+Static dashboards run as standalone HTML files with no `window.cowork`: every section (GitHub data, RSS, briefs, digest triage) is baked at build time, so the file opens and works in any browser with no host bridge. See `references/static-mode.md` for the full static path (fetching baked GitHub data, the two-pass brief + triage flow, file output). This is the path that makes `/create-dashboard` work in Claude Code.
 
 ## Wizard outputs
 
 ### 0. Detect the environment *(do this first)*
 
-Three quick probes that jointly decide the data-fetch strategy for the rest of the wizard. Total runtime under 10 seconds. (For a full report instead of just routing, the user can invoke `/foresights-doctor` — same checks, formatted output.)
+Four quick probes that jointly decide the host output mode + the data-fetch strategy for the rest of the wizard. Total runtime under 10 seconds. (For a full report instead of just routing, the user can invoke `/foresights-doctor` — same checks, formatted output.)
 
-**0a. GitHub MCP detection.** Scan your tool list for a `*__list_releases` tool. The matching prefix (e.g. `mcp__github` or `mcp__<uuid>`) is the `ghServer`.
+**0a. Host detection (Cowork vs Claude Code) — sets the output mode.** Scan your tool list for `mcp__cowork__create_artifact`.
 
-**0b. Node outbound fetch reachability.**
+- **Present → Cowork desktop app.** Default to `outputMode: 'artifact'` — a live Cowork artifact (GitHub sections re-fetch on every open via the `window.cowork` bridge). This is the richest experience.
+- **Absent → Claude Code (or any non-Cowork host).** Default to `outputMode: 'static'` — a self-contained HTML file with every section baked at build time (no `window.cowork` runtime dependency, opens in any browser). **Do not** attempt `mcp__cowork__create_artifact` — it isn't there; the build writes a file and you report its path (Step 6).
+
+This is a capability check, not a question — don't ask the user which host they're in. Only revisit the mode if the user explicitly asks for the other kind (e.g. a Cowork user who wants a portable file → `static`). The rest of the wizard is identical either way; only Step 1's GitHub-data handling (live vs baked) and Step 6's ship step differ.
+
+**0b. GitHub MCP detection.** Scan your tool list for a `*__list_releases` tool. The matching prefix (e.g. `mcp__github` or `mcp__<uuid>`) is the `ghServer`.
+
+**0c. Node outbound fetch reachability.**
 
 ```bash
 node -e "fetch('https://example.com', { signal: AbortSignal.timeout(8000) }).then(r => console.log('node-fetch:' + r.status)).catch(e => { console.error('error:' + (e && e.message)); process.exit(1); })"
@@ -101,7 +110,7 @@ node -e "fetch('https://example.com', { signal: AbortSignal.timeout(8000) }).the
 
 PASS if it prints `node-fetch:200`.
 
-**0c. WebFetch reachability.** Use your own `WebFetch` tool against `https://example.com`. PASS if it returns content; FAIL on any error or block message.
+**0d. WebFetch reachability.** Use your own `WebFetch` tool against `https://example.com`. PASS if it returns content; FAIL on any error or block message.
 
 **Strategy by probe result:**
 
@@ -180,12 +189,15 @@ Run the built bundle in Node with stubbed `window` / `document` / `localStorage`
 
 ### 6. Ship
 
-- **Artifact mode** — call `mcp__cowork__create_artifact` with the built HTML, the `mcp_tools` the dashboard actually uses (one `${ghServer}__list_<kind>` per distinct GitHub kind in use, plus `__get_file_contents` + `__search_repositories` when products are configured for context refresh; RSS sources need no entry), and the orchestrator's `artifact.description`.
-- **Static mode** — write the built HTML into the user's working folder as a file. Do **not** call `create_artifact`. See `references/static-mode.md`.
+- **Artifact mode (Cowork)** — call `mcp__cowork__create_artifact` with the built HTML, the `mcp_tools` the dashboard actually uses (one `${ghServer}__list_<kind>` per distinct GitHub kind in use, plus `__get_file_contents` + `__search_repositories` when products are configured for context refresh; RSS sources need no entry), and the orchestrator's `artifact.description`.
+- **Static mode (Claude Code / non-Cowork)** — write the built HTML into a **discoverable location in the user's working directory**, not `/tmp`. Pass `--out "$(pwd)/<topicSlug>-dashboard.html"` (or a folder the user named) so the final artifact lands where they can find it — `/tmp` files are easy to lose and get cleaned up. Do **not** call `create_artifact` (it isn't available). See `references/static-mode.md`.
 
 ### 7. Report
 
-Report the dashboard URL / file path. Suggest `/setup-cc` **only when the dashboard has at least one `claude-code` product** — the `/digest` slash-command workflow it installs is Claude-Code-specific.
+- **Artifact mode** — report the dashboard opened as a live Cowork artifact.
+- **Static mode** — report the **absolute file path** of the written HTML and tell the user how to open it: "Open it in your browser (`open <path>` on macOS, `xdg-open <path>` on Linux) — it's a self-contained file, no server needed." Mention that live sections are a point-in-time snapshot baked at build (re-run `/refresh-dashboard` to update them), since a standalone file can't re-fetch.
+
+Suggest `/setup-cc` **only when the dashboard has at least one `claude-code` product** — the `/digest` slash-command workflow it installs is Claude-Code-specific.
 
 ## Build step
 
@@ -209,6 +221,8 @@ cd "$FORESIGHTS_TPL" && node wizard/build.js \
   --out    /tmp/foresights-dashboard.html \
   --fast
 ```
+
+> **`--out` location.** Artifact mode (Cowork) can stage the HTML in `/tmp` — it's handed straight to `create_artifact`. **Static mode (Claude Code) must write the final file somewhere the user can find it** — set `--out "$(pwd)/<topicSlug>-dashboard.html"` (or a user-named folder), not `/tmp`. See Step 6.
 
 Key flags (`--config`, `--out`, `--fast`, `--templates`, `--with-tests`, `--emit-flags`) and the full 8-step pipeline are documented in `references/build-internals.md` → "Build invocation" and "Pipeline guarantees".
 

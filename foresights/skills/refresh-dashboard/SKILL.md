@@ -64,12 +64,27 @@ the request to often arrive in exactly that `for <topic>` form.
 
 ## Step 1 — Identify the target dashboard
 
-Call `mcp__cowork__list_artifacts`. It returns each artifact's `id`, `name`,
-and `path`. Match the dashboard the user means by name / topic slug. If two or
-more could match, ask which. If none look like a Foresights dashboard, tell the
-user to build one first with `/create-dashboard`, and stop.
+First detect the host: scan your tool list for `mcp__cowork__list_artifacts`.
 
-`Read` the matched artifact's `path` to get its current HTML.
+**Cowork desktop app (`mcp__cowork__list_artifacts` present).** Call it — it
+returns each artifact's `id`, `name`, and `path`. Match the dashboard the user
+means by name / topic slug. If two or more could match, ask which. If none look
+like a Foresights dashboard, tell the user to build one first with
+`/create-dashboard`, and stop. `Read` the matched artifact's `path` to get its
+current HTML.
+
+**Claude Code / non-Cowork host (that tool absent).** The dashboard is a plain
+HTML file on disk (a `static`-mode build). Locate it:
+
+- If the user gave a path, use it.
+- Otherwise look for `*-dashboard.html` / `*-news.html` files in the working
+  directory (`ls` + grep the file for `id="foresights-config"` to confirm it's
+  a Foresights dashboard). If exactly one matches, use it; if several, ask
+  which; if none, tell the user to build one with `/create-dashboard` (or pass
+  the path explicitly), and stop.
+
+`Read` the file to get its current HTML. Remember its absolute path — Step 5
+writes the refreshed HTML straight back to it (there is no `update_artifact`).
 
 ## Step 2 — Recover the build config
 
@@ -120,20 +135,27 @@ fresh curation is grounded in.
 3. **Splice.** Run the refresh orchestrator:
 
    ```bash
-   cd "${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates"
-   npx tsx wizard/refresh.ts \
+   # Stage a writable copy once (the plugin dir is read-only) — same as
+   # create-dashboard's Build step.
+   FORESIGHTS_TPL=/tmp/foresights-templates
+   if [ ! -f "$FORESIGHTS_TPL/wizard/refresh.js" ]; then
+     rm -rf "$FORESIGHTS_TPL"
+     cp -R "${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates" "$FORESIGHTS_TPL"
+     chmod -R u+w "$FORESIGHTS_TPL"
+   fi
+   # Zero-install — runs the pre-bundled wizard/refresh.js, no npm install and
+   # no tsx, same as the build step.
+   cd "$FORESIGHTS_TPL" && node wizard/refresh.js \
      --artifact /tmp/foresights-current.html \
      --config   /tmp/foresights-refresh-config.json \
      --out      /tmp/foresights-refreshed.html
    ```
 
-   (`refresh.ts` reuses the same markup generators as the build, so the
+   (`refresh.js` reuses the same markup generators as the build, so the
    spliced cards are shape-identical to a freshly-built dashboard. It also
    rewrites the embedded `foresights-config` block from the config you pass,
    so the artifact stays self-describing and the next refresh recovers
    accurate "previous content" — pass the whole updated config.)
-   If `node_modules/` is missing, run `npm install` in that directory once
-   first — same as `/create-dashboard`.
 
 ## Step 4b — Full rebuild (when spotlights / sources / products change)
 
@@ -156,12 +178,17 @@ Before shipping, verify the refreshed HTML:
   bundle changed. A **section splice** leaves the bundle untouched, so a boot
   smoke-test isn't needed; the structural checks above are enough.
 
-Then write the refreshed HTML to a file and call
-`mcp__cowork__update_artifact` with the artifact `id`, that `html_path`, and a
-one-line `update_summary` of what was refreshed.
+Then ship the refresh — by the same host split as Step 1:
 
-**Don't skip the `update_artifact` call** — editing a temp file changes
-nothing the user sees. The update is what ships the refresh.
+- **Cowork.** Write the refreshed HTML to a file and call
+  `mcp__cowork__update_artifact` with the artifact `id`, that `html_path`, and a
+  one-line `update_summary` of what was refreshed. **Don't skip the
+  `update_artifact` call** — editing a temp file changes nothing the user sees;
+  the update is what ships the refresh.
+- **Claude Code / non-Cowork host.** Write the refreshed HTML **back to the
+  dashboard's own file path** (the one you `Read` in Step 1), overwriting it.
+  There is no `update_artifact`. Then tell the user to reload the file in their
+  browser to see the new content.
 
 ## Notes
 
