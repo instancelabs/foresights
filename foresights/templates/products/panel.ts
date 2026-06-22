@@ -25,7 +25,7 @@
 
 import type { ActionTypeId, ActionTypeSpec, Brief, Deps, Flag, Product } from '../types';
 import { escHtml, safeHref } from '../util/escape';
-import { ACTION_TYPES } from './actions';
+import { ACTION_TYPES, coerceActionType } from './actions';
 import { type BriefItem, fetchBrief } from './brief';
 import type { CcPromptBuilder } from './cc-prompts';
 import { appendRepoContext, formatRepoContext } from './repo-context';
@@ -156,7 +156,7 @@ export const renderBriefHtml = (
   const integrations = brief.integrations
     .map((i) => `<li><strong>${escHtml(i.title)}</strong> — ${escHtml(i.detail)}</li>`)
     .join('');
-  const at = actionType ?? 'claude-code';
+  const at = coerceActionType(actionType);
   let ccBlock: string;
   if (at === 'claude-code') {
     ccBlock = hasCcBuilder
@@ -213,9 +213,9 @@ export const initBriefPanel = (deps: Deps, opts: InitBriefPanelOpts): PanelHandl
   /** Look up the brief by briefId — used by cc-prompt handlers. */
   const lookupBrief = (briefId: string): BriefEntry | undefined => briefStore.get(briefId);
 
-  /** The product's action type — absent → `'claude-code'` (the default). */
+  /** The product's action type — absent / invalid → `'claude-code'`. */
   const actionTypeFor = (productId: string): ActionTypeId =>
-    opts.products.find((p) => p.id === productId)?.actionType ?? 'claude-code';
+    coerceActionType(opts.products.find((p) => p.id === productId)?.actionType);
 
   /**
    * Build the action text for an entry. claude-code → the per-product CC

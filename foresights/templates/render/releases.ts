@@ -144,7 +144,7 @@ export const renderReleases = (
       return `<div class="card">
         <div class="card-row">
           <div class="release-version">
-            <span class="ver">${escHtml(rel.tag_name || rel.name)}</span>
+            <span class="ver">${escHtml(rel.tag_name || rel.name || 'untagged')}</span>
             ${breakingBadge}
           </div>
           <div class="card-meta">${escHtml(fmtDate(rel.published_at))} · <a href="${safeHref(rel.html_url)}" target="_blank" rel="noopener">notes ↗</a></div>

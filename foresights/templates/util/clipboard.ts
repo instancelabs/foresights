@@ -31,17 +31,19 @@ export const writeToClipboard = async (deps: Deps, text: string): Promise<boolea
     }
   }
   // Fallback for restricted contexts.
+  const ta = deps.document.createElement('textarea');
   try {
-    const ta = deps.document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';
     ta.style.opacity = '0';
     deps.document.body.appendChild(ta);
     ta.select();
-    const ok = deps.document.execCommand?.('copy') ?? false;
-    deps.document.body.removeChild(ta);
-    return ok;
+    return deps.document.execCommand?.('copy') ?? false;
   } catch {
     return false;
+  } finally {
+    // Always detach — if execCommand throws mid-copy the textarea would
+    // otherwise leak into the DOM on every failed copy.
+    if (ta.parentNode) ta.parentNode.removeChild(ta);
   }
 };

@@ -160,6 +160,25 @@ describe('renderDigestMarkdown — green/yellow detail block', () => {
     expect(md).toContain('**Triage rationale:** high-impact for the static analyser');
   });
 
+  it('drops a Source whose URL uses a dangerous scheme', () => {
+    // The digest markdown is copied/saved into other renderers (GitHub, Claude
+    // Code) where a `<javascript:…>` autolink can go live — safeUrl filters it.
+    const md = renderDigestMarkdown({
+      ...BASE,
+      entries: [
+        {
+          flag: flag({ url: 'javascript:alert(1)' }),
+          item: item(),
+          brief: brief(),
+        },
+      ],
+      triaged: [triaged('release:v1:features:add-foo', 'green')],
+      ccBuilder,
+    });
+    expect(md).not.toContain('javascript:');
+    expect(md).not.toContain('**Source:**');
+  });
+
   it('omits Source when flag.url is empty', () => {
     const md = renderDigestMarkdown({
       ...BASE,

@@ -18,11 +18,12 @@
  * an explicit `triaged: TriagedItem[]` array and joins by stableId.
  */
 
-import { ACTION_TYPES } from '../products/actions';
+import { ACTION_TYPES, coerceActionType } from '../products/actions';
 import type { BriefItem } from '../products/brief';
 import type { CcPromptBuilder } from '../products/cc-prompts';
 import { appendRepoContext } from '../products/repo-context';
 import type { ActionTypeId, Brief, Flag, TriageBucket, TriagedItem } from '../types';
+import { safeUrl } from '../util/escape';
 
 /**
  * One row in the digest: the flag + the brief item the user clicked + the
@@ -116,7 +117,13 @@ const renderDetailed = (
     lines.push(`### ${idx + 1}. ${titleText}`);
     lines.push('');
 
-    if (entry.flag.url) lines.push(`**Source:** <${entry.flag.url}>`);
+    // Scheme-validate the URL: this markdown is copied/saved into other
+    // renderers (GitHub, Claude Code) where a `<javascript:…>` autolink could
+    // go live. safeUrl degrades a disallowed scheme to `#`.
+    if (entry.flag.url) {
+      const srcUrl = safeUrl(entry.flag.url);
+      if (srcUrl !== '#') lines.push(`**Source:** <${srcUrl}>`);
+    }
     if (entry.item.version) lines.push(`**Version:** ${entry.item.version}`);
     lines.push(`**Why it matters:** ${entry.brief.why}`);
     if (triage?.reasoning) lines.push(`**Triage rationale:** ${triage.reasoning}`);
@@ -187,7 +194,7 @@ const renderRedOneLiners = (
  */
 export const renderDigestMarkdown = (args: RenderDigestArgs): string => {
   const { productLabel, productSlug, date, entries, triaged, ccBuilder, repoContext } = args;
-  const actionType: ActionTypeId = args.actionType ?? 'claude-code';
+  const actionType: ActionTypeId = coerceActionType(args.actionType);
   const triageById = new Map<string, TriagedItem>(triaged.map((t) => [t.stableId, t]));
 
   const buckets: Record<TriageBucket, BucketRow[]> = { green: [], yellow: [], red: [] };

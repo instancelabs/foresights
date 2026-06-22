@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FlagMeta, Product } from '../types';
-import { flagsForText } from './matcher';
+import { MAX_MATCH_LEN, flagsForText } from './matcher';
 
 const META: FlagMeta = {
   section: 'releases',
@@ -135,5 +135,37 @@ describe('flagsForText', () => {
       if (first) first.section = 'mutated';
     }).not.toThrow();
     expect(META.section).toBe('releases');
+  });
+
+  it('caps the body length the matcher runs against (ReDoS guard)', () => {
+    // The matcher should only ever see at most MAX_MATCH_LEN chars, so a rule
+    // can't be made to backtrack over an unbounded crafted body.
+    let seenLen = -1;
+    const spy: Product = {
+      id: 'spy',
+      label: 'Spy',
+      cssMod: '',
+      match: (text) => {
+        seenLen = text.length;
+        return null;
+      },
+    };
+    flagsForText('a'.repeat(MAX_MATCH_LEN + 5000), META, [spy]);
+    expect(seenLen).toBe(MAX_MATCH_LEN);
+  });
+
+  it('leaves short bodies untouched', () => {
+    let seenLen = -1;
+    const spy: Product = {
+      id: 'spy',
+      label: 'Spy',
+      cssMod: '',
+      match: (text) => {
+        seenLen = text.length;
+        return null;
+      },
+    };
+    flagsForText('short body', META, [spy]);
+    expect(seenLen).toBe('short body'.length);
   });
 });

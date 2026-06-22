@@ -313,9 +313,32 @@ const stripTags = (s: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
+/**
+ * Strip the stateful regex flags `g` / `y`. `RegExp.prototype.test` on a
+ * shared (compiled-once) RegExp with these flags advances `lastIndex`, so the
+ * same rule intermittently returns false on inputs it should match depending
+ * on prior calls. Product matchers only ever ask "does this body match?", for
+ * which `g`/`y` are meaningless — drop them so matching is deterministic.
+ */
+export const sanitizeRegexFlags = (flags: string): string => flags.replace(/[gy]/g, '');
+
 /** Stringify a JS RegExp literal. Empty flags → no trailing flag chars. */
-const regexLiteral = (source: string, flags = ''): string =>
-  `new RegExp(${j(source)}${flags ? `, ${j(flags)}` : ''})`;
+const regexLiteral = (source: string, flags = ''): string => {
+  const f = sanitizeRegexFlags(flags);
+  return `new RegExp(${j(source)}${f ? `, ${j(f)}` : ''})`;
+};
+
+/**
+ * Escape a string for safe insertion *inside* a `"..."` JSON string that lives
+ * in an inline `<script type="application/json">` block (the cowork-artifact
+ * meta + MCP-tool list in dashboard.html). `JSON.stringify` neutralises quotes
+ * / backslashes / control chars; stripping the outer quotes leaves a body that
+ * drops into the template's existing `"..."`; and `<` → `<` stops a value
+ * containing `</script>` from closing the block early. The result is still
+ * valid JSON (`<` decodes back to `<`).
+ */
+const jsonStringBody = (s: string): string =>
+  JSON.stringify(s).slice(1, -1).replace(/</g, '\\u003c');
 
 /** Indent every line of `body` by 2 spaces. */
 const indent2 = (body: string): string =>
@@ -772,7 +795,7 @@ export const genSectionNav = (sources: readonly WizardSource[]): string => {
   const sections = distinctSections(sources);
   if (sections.length === 0) return '\n';
   const buttons = sections
-    .map((id) => `    <a href="#${id}" class="nav-btn">${titleCase(id)}</a>`)
+    .map((id) => `    <a href="#${escHtml(id)}" class="nav-btn">${escHtml(titleCase(id))}</a>`)
     .join('\n');
   return `\n${buttons}\n`;
 };
@@ -782,11 +805,11 @@ export const genSectionMarkupAboveHighlights = (sources: readonly WizardSource[]
   const sections = distinctSections(sources);
   if (sections.length === 0) return '\n';
   const blocks = sections.map(
-    (id) => `  <section id="${id}" class="data-section">
+    (id) => `  <section id="${escHtml(id)}" class="data-section">
     <div class="section-header">
-      <h2>${titleCase(id)}</h2>
+      <h2>${escHtml(titleCase(id))}</h2>
     </div>
-    <div class="section-body skeleton" id="${id}-body">
+    <div class="section-body skeleton" id="${escHtml(id)}-body">
       <div class="card skeleton-card">Loading…</div>
     </div>
   </section>`,
@@ -920,13 +943,13 @@ export const genProductUiBars = (products: readonly WizardProduct[]): string => 
   const briefBtns = products
     .map(
       (p) =>
-        `    <button id="brief-all-btn-${p.id}" class="brief-all-btn brief-all-btn-${p.cssMod || p.id}" type="button" data-product-id="${p.id}">${p.label}</button>`,
+        `    <button id="brief-all-btn-${p.id}" class="brief-all-btn brief-all-btn-${p.cssMod || p.id}" type="button" data-product-id="${p.id}">${escHtml(p.label)}</button>`,
     )
     .join('\n');
   const digestBtns = products
     .map(
       (p) =>
-        `    <button id="digest-btn-${p.id}" class="digest-btn" type="button" data-product-id="${p.id}">${p.label} digest</button>`,
+        `    <button id="digest-btn-${p.id}" class="digest-btn" type="button" data-product-id="${p.id}">${escHtml(p.label)} digest</button>`,
     )
     .join('\n');
   // Context-refresh bars — one PER product that opted in (mirrors v0.1's
@@ -943,7 +966,7 @@ export const genProductUiBars = (products: readonly WizardProduct[]): string => 
     .map(
       (p) =>
         `  <div id="context-bar-${p.id}" class="context-bar">
-    <span class="context-label">${p.label} context:</span>
+    <span class="context-label">${escHtml(p.label)} context:</span>
     <span class="context-status" id="context-status-${p.id}">…</span>
     <button class="context-btn" id="context-refresh-btn-${p.id}" type="button" data-product-id="${p.id}">↻ Refresh from repo</button>
   </div>`,
@@ -1084,16 +1107,25 @@ export const deriveSentinelMap = (config: WizardConfig): SentinelMap => ({
 
 /** Build the full placeholder-value map from a wizard config. */
 export const derivePlaceholderMap = (config: WizardConfig, compiledJs: string): PlaceholderMap => ({
-  TOPIC: config.topic,
+  // HTML text / double-quoted-attribute contexts in dashboard.html (`<title>`,
+  // `<h1>`, hero `<div>`, button `title="…"`) — escHtml is safe for both.
+  TOPIC: escHtml(config.topic),
   TOPIC_SLUG: config.topicSlug,
-  TAGLINE_SUFFIX: config.taglineSuffix,
-  TAGLINE_SUB: config.taglineSub,
+  TAGLINE_SUFFIX: escHtml(config.taglineSuffix),
+  TAGLINE_SUB: escHtml(config.taglineSub),
+  // CSS-value contexts (`--accent: …`) — validated to a safe colour grammar by
+  // validateChromeColors (build.ts preflight); escHtml does NOT neutralise a
+  // CSS-context payload, so validation is the guard here.
   ACCENT: config.accent,
   ACCENT_SOFT: config.accentSoft,
-  FOOTER_NOTE: config.footerNote,
-  ARTIFACT_NAME: config.artifactName,
-  ARTIFACT_DESCRIPTION: config.artifactDescription,
-  GH_SERVER: config.ghServer,
+  FOOTER_NOTE: escHtml(config.footerNote),
+  // Inside `"…"` JSON strings in an inline <script> — JSON-body escape +
+  // `</script>` neutralisation.
+  ARTIFACT_NAME: jsonStringBody(config.artifactName),
+  ARTIFACT_DESCRIPTION: jsonStringBody(config.artifactDescription),
+  GH_SERVER: jsonStringBody(config.ghServer),
+  // Pre-rendered anchor HTML — allowlist-validated by validateHeaderSourcesLinks
+  // (build.ts preflight), so only safe `<a>` links survive into the artifact.
   HEADER_SOURCES_LINKS: config.headerSourcesLinks,
   COMPILED_JS: compiledJs,
   FORESIGHTS_CONFIG_JSON: genForesightsConfigJson(config),
@@ -1136,7 +1168,9 @@ const compileProduct = (p: WizardProduct): Product => ({
   cssMod: p.cssMod,
   match: (text: string): string | null => {
     for (const r of p.rules) {
-      if (new RegExp(r.source, r.flags ?? '').test(text)) return r.reason;
+      // Mirror the generated dashboard matcher: strip stateful g/y flags so
+      // the manifest flags exactly what the live dashboard flags.
+      if (new RegExp(r.source, sanitizeRegexFlags(r.flags ?? '')).test(text)) return r.reason;
     }
     return null;
   },

@@ -171,7 +171,9 @@ const buildTriageInputs = (entries: readonly DigestEntry[]): readonly TriageInpu
  * Install per-product digest button click handlers. Returns `{ dispose }`.
  */
 export const initDigestBar = (deps: Deps, opts: InitDigestBarOpts): DigestBarHandle => {
-  const concurrency = opts.concurrency ?? 3;
+  // Clamp to ≥1 — a 0 / negative override would make `workerCount` zero,
+  // spawn no workers, and silently produce an empty digest even with items.
+  const concurrency = Math.max(1, opts.concurrency ?? 3);
   const ac = new AbortController();
   const dateFn = opts.dateFn ?? (() => todayLocalDate(deps.now));
   const ccBuilders = opts.ccBuilders ?? {};

@@ -25,6 +25,17 @@ const slug = (s: string): string =>
 
 const collapseWs = (s: string): string => s.replace(/\s+/g, ' ').trim();
 
+/**
+ * Escape a value for safe interpolation into a `[attr="…"]` CSS selector.
+ * Product ids are charset-validated at build time, but this keeps the runtime
+ * `querySelector` from throwing a `SyntaxError` on any unexpected value.
+ */
+const cssAttr = (s: string): string => {
+  // biome-ignore lint/suspicious/noExplicitAny: globalThis.CSS may be absent in old runtimes.
+  const css = (globalThis as any).CSS as { escape?: (s: string) => string } | undefined;
+  return css?.escape ? css.escape(s) : s.replace(/["\\]/g, '\\$&');
+};
+
 /** Pull the visible text of an element, stripping any nested .insights-tag children. */
 const textWithoutBadges = (el: Element | null): string => {
   if (!el) return '';
@@ -65,7 +76,9 @@ export const upgradeHighlightBadges = (deps: Deps, products: readonly Product[])
     );
 
     for (const f of flags) {
-      const existing = titleEl.querySelector(`.insights-tag[data-product-id="${f.productId}"]`);
+      const existing = titleEl.querySelector(
+        `.insights-tag[data-product-id="${cssAttr(f.productId)}"]`,
+      );
       if (existing) continue;
       const product = products.find((p) => p.id === f.productId);
       const cssMod = product?.cssMod ?? '';

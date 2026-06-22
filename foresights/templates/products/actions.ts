@@ -89,3 +89,15 @@ export const ACTION_TYPES: Readonly<Record<ActionTypeId, ActionTypeSpec>> = {
   summary: summarySpec,
   task: taskSpec,
 };
+
+/**
+ * Coerce an arbitrary `actionType` value to a registered `ActionTypeId`,
+ * defaulting to `'claude-code'`. Guards every `ACTION_TYPES[at]` lookup: the
+ * value originates in the (untrusted) wizard config, so an absent OR invalid
+ * `actionType` must fall back to the default rather than index to `undefined`
+ * and crash the brief / digest render on `.build` / `.actionLabel`.
+ */
+export const coerceActionType = (raw: unknown): ActionTypeId =>
+  typeof raw === 'string' && Object.hasOwn(ACTION_TYPES, raw)
+    ? (raw as ActionTypeId)
+    : 'claude-code';

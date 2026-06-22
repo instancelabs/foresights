@@ -10,6 +10,7 @@
 import { askClaude, parseJsonResponse } from '../mcp/ask-claude';
 import { callTool } from '../mcp/call-tool';
 import type { Deps, Source, Spotlight } from '../types';
+import { validateTrustedHtml } from '../wizard/trusted-html';
 
 export interface RefreshConfig {
   readonly topic: string;
@@ -81,11 +82,45 @@ export const buildRefreshPrompt = (
 };
 
 /**
+ * Coerce one raw parsed entry into a typed `Spotlight`, dropping any field
+ * that isn't a string. Crucially, the four fields the carousel renders via
+ * `innerHTML` (`summary` / `trick` / `code` / `why`) are run through the same
+ * build-time tag allowlist (`validateTrustedHtml`) used at wizard time — so
+ * even if this live-refresh output is ever wired into the live carousel, a
+ * prompt-injected Haiku response can't smuggle an `onerror=` payload into a
+ * stored-XSS sink. Throws (field-named) on a disallowed tag.
+ */
+const toValidatedSpotlight = (raw: unknown, i: number): Spotlight => {
+  if (typeof raw !== 'object' || raw === null) {
+    throw new Error(`refreshSpotlightsViaHaiku: entry[${i}] is not an object`);
+  }
+  const o = raw as Record<string, unknown>;
+  const str = (k: string): string => (typeof o[k] === 'string' ? (o[k] as string) : '');
+  const pid = str('productId');
+  const sp: Spotlight = {
+    tag: str('tag'),
+    title: str('title'),
+    summary: str('summary'),
+    trick: str('trick'),
+    code: str('code'),
+    why: str('why'),
+    url: str('url'),
+    ...(pid ? { productId: pid } : {}),
+  };
+  validateTrustedHtml(`spotlight[${i}].summary`, sp.summary);
+  validateTrustedHtml(`spotlight[${i}].trick`, sp.trick);
+  validateTrustedHtml(`spotlight[${i}].code`, sp.code);
+  validateTrustedHtml(`spotlight[${i}].why`, sp.why);
+  return sp;
+};
+
+/**
  * Fetch fresh data from each source, send to Haiku with the existing
  * spotlights as reference, parse the response, return 6 fresh entries.
  *
  * Throws if any source fetch fails fatally, the Haiku response is malformed,
- * or the parsed JSON doesn't decode to an array of Spotlight-shaped objects.
+ * the parsed JSON doesn't decode to an array of Spotlight-shaped objects, or
+ * any entry's trusted-HTML field carries a tag outside the allowlist.
  * Callers should handle errors and surface them in the UI.
  */
 export const refreshSpotlightsViaHaiku = async (
@@ -111,5 +146,5 @@ export const refreshSpotlightsViaHaiku = async (
   if (!Array.isArray(parsed)) {
     throw new Error('refreshSpotlightsViaHaiku: Haiku response was not a JSON array');
   }
-  return parsed as readonly Spotlight[];
+  return parsed.map(toValidatedSpotlight);
 };

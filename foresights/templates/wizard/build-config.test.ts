@@ -24,6 +24,7 @@ import {
   genSourcesConst,
   genSpotlightsConst,
   genTipsMarkup,
+  sanitizeRegexFlags,
 } from './build-config';
 
 const source = (overrides: Partial<WizardSource> = {}): WizardSource => ({
@@ -827,6 +828,77 @@ describe('action types — genProductsConst + genCcBuilders', () => {
     expect(out).toContain(
       'export const CC_PROMPT_BUILDERS: Readonly<Record<string, CcPromptBuilder>> = {}',
     );
+  });
+});
+
+describe('chrome escaping (placeholder map)', () => {
+  it('HTML-escapes TOPIC / taglines / footer (HTML text + attribute contexts)', () => {
+    const map = derivePlaceholderMap(
+      config({
+        topic: 'CDK <script>alert(1)</script>',
+        taglineSuffix: 'a"b',
+        footerNote: 'x<y>z',
+      }),
+      '// bundle',
+    );
+    expect(map.TOPIC).toBe('CDK &lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(map.TAGLINE_SUFFIX).toBe('a&quot;b');
+    expect(map.FOOTER_NOTE).toBe('x&lt;y&gt;z');
+  });
+
+  it('JSON-body-escapes ARTIFACT_NAME and neutralises </script> (inline <script> JSON)', () => {
+    const map = derivePlaceholderMap(
+      config({ artifactName: 'Evil</script><img src=x onerror=alert(1)>"' }),
+      '// bundle',
+    );
+    // No raw `</script>` survives, and the value stays inside its "..." (the
+    // embedded quote is backslash-escaped, the `<` is unicode-escaped).
+    expect(map.ARTIFACT_NAME).not.toContain('</script>');
+    expect(map.ARTIFACT_NAME).toContain('\\u003c');
+    expect(map.ARTIFACT_NAME).toContain('\\"');
+    // Round-trips back to the original when parsed as a JSON string body.
+    expect(JSON.parse(`"${map.ARTIFACT_NAME}"`)).toBe('Evil</script><img src=x onerror=alert(1)>"');
+  });
+});
+
+describe('chrome escaping (markup generators)', () => {
+  it('escapes product.label in the UI bars', () => {
+    const out = genProductUiBars([product({ label: '<img src=x onerror=alert(1)>' })]);
+    expect(out).not.toContain('<img src=x');
+    expect(out).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  });
+
+  it('escapes section ids + titles in nav and section markup', () => {
+    const evil = source({ kind: 'rss', section: 'x"><script>alert(1)</script>' });
+    const nav = genSectionNav([evil]);
+    const markup = genSectionMarkupAboveHighlights([evil]);
+    for (const out of [nav, markup]) {
+      expect(out).not.toContain('<script>alert(1)');
+      expect(out).toContain('&lt;script&gt;');
+    }
+  });
+});
+
+describe('sanitizeRegexFlags + emitted matchers', () => {
+  it('strips stateful g / y flags but keeps i / m / s / u', () => {
+    expect(sanitizeRegexFlags('gi')).toBe('i');
+    expect(sanitizeRegexFlags('y')).toBe('');
+    expect(sanitizeRegexFlags('gimsu')).toBe('imsu');
+    expect(sanitizeRegexFlags('')).toBe('');
+  });
+
+  it('never emits a g/y flag into the generated PRODUCTS matcher', () => {
+    const out = genProductsConst([
+      product({ rules: [{ source: 'cdk', flags: 'gi', reason: 'r' }] }),
+    ]);
+    expect(out).toContain('new RegExp("cdk", "i")');
+    expect(out).not.toMatch(/new RegExp\("cdk", "[a-z]*g/);
+  });
+
+  it('never emits a g/y flag into the generated RULES record', () => {
+    const out = genRules([product({ rules: [{ source: 'cdk', flags: 'gy', reason: 'r' }] })]);
+    // 'gy' → '' → no flags arg at all.
+    expect(out).toContain('new RegExp("cdk")');
   });
 });
 

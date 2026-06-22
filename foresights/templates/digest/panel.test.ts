@@ -113,6 +113,30 @@ describe('mdToHtml', () => {
     expect(out).not.toContain('<script>');
     expect(out).toContain('&lt;script&gt;');
   });
+
+  it('restores the digest <details>/<summary> structure lines', () => {
+    const out = mdToHtml(
+      '<details>\n<summary>Claude Code prompt (click to expand)</summary>\n\nbody\n</details>',
+    );
+    expect(out).toContain('<details>');
+    expect(out).toContain('<summary>Claude Code prompt (click to expand)</summary>');
+    expect(out).toContain('</details>');
+  });
+
+  it('does NOT restore an inline <details> embedded in untrusted prose', () => {
+    // A brief/triage string that mentions `<details>` mid-line must stay
+    // escaped — only standalone structure lines are un-escaped.
+    const out = mdToHtml('**Why it matters:** use <details> for collapsible sections');
+    expect(out).toContain('&lt;details&gt;');
+    expect(out).not.toContain('<details>');
+  });
+
+  it('does NOT restore a <summary> with injected attributes', () => {
+    const out = mdToHtml('<summary onclick="alert(1)">x</summary>');
+    // Not a bare `<summary>…</summary>` line → stays escaped.
+    expect(out).not.toContain('<summary onclick');
+    expect(out).toContain('&lt;summary');
+  });
 });
 
 describe('initDigestPanel — open / close', () => {

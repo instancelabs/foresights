@@ -52,6 +52,44 @@ const LOOPBACK_V4 = /^127\./;
 const LINK_LOCAL_V4 = /^169\.254\./;
 
 /**
+ * Classify a dotted-quad IPv4 string. Shared by the direct-v4 path and the
+ * IPv4-mapped-IPv6 path so `169.254.169.254` and its `[::ffff:169.254.169.254]`
+ * disguise are treated identically.
+ */
+const classifyV4 = (v4: string, via: string): string | null => {
+  if (LOOPBACK_V4.test(v4)) return `loopback (127.0.0.0/8${via})`;
+  if (LINK_LOCAL_V4.test(v4)) return `link-local (169.254.0.0/16 — cloud metadata${via})`;
+  if (RFC1918_10.test(v4)) return `private (10.0.0.0/8${via})`;
+  if (RFC1918_172.test(v4)) return `private (172.16.0.0/12${via})`;
+  if (RFC1918_192.test(v4)) return `private (192.168.0.0/16${via})`;
+  if (v4 === '0.0.0.0') return `unspecified (0.0.0.0${via})`;
+  return null;
+};
+
+/**
+ * Extract the embedded IPv4 from an IPv4-mapped / IPv4-compatible IPv6 host,
+ * in dotted-quad form, or null if the host isn't one. Node's `URL` parser
+ * normalises the mapped suffix to hex (`::ffff:7f00:1` for `127.0.0.1`,
+ * `::ffff:a9fe:a9fe` for the `169.254.169.254` cloud-metadata address), so we
+ * cover both the hex and the dotted spellings. Without this, a mapped address
+ * smuggles a loopback / link-local / RFC1918 v4 straight past the dotted-quad
+ * checks above.
+ */
+const embeddedV4 = (host: string): string | null => {
+  // Dotted form: `::ffff:127.0.0.1` or the deprecated `::127.0.0.1`.
+  const dotted = host.match(/^::(?:ffff:)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i);
+  if (dotted?.[1]) return dotted[1];
+  // Hex form: `::ffff:7f00:1` → 0x7f00, 0x0001 → 127.0.0.1.
+  const hex = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (hex?.[1] && hex[2]) {
+    const hi = Number.parseInt(hex[1], 16);
+    const lo = Number.parseInt(hex[2], 16);
+    return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+  }
+  return null;
+};
+
+/**
  * Classify a hostname. The host comes from `URL.hostname`, which has
  * already lowercased it and stripped any port. Returns the reason string
  * if the host is private; null otherwise.
@@ -69,11 +107,16 @@ const classifyHost = (rawHost: string): string | null => {
   if (host === 'localhost' || host.endsWith('.localhost')) return 'loopback (localhost)';
   if (host === '::1') return 'loopback (::1)';
   // IPv4 dotted-quad.
-  if (LOOPBACK_V4.test(host)) return 'loopback (127.0.0.0/8)';
-  if (LINK_LOCAL_V4.test(host)) return 'link-local (169.254.0.0/16 — cloud metadata)';
-  if (RFC1918_10.test(host)) return 'private (10.0.0.0/8)';
-  if (RFC1918_172.test(host)) return 'private (172.16.0.0/12)';
-  if (RFC1918_192.test(host)) return 'private (192.168.0.0/16)';
+  const v4 = classifyV4(host, '');
+  if (v4) return v4;
+  // IPv4-mapped / -compatible IPv6 (`::ffff:169.254.169.254`) — unwrap the
+  // embedded v4 and re-check, so the metadata / loopback addresses can't slip
+  // past in IPv6 disguise.
+  const mapped = embeddedV4(host);
+  if (mapped) {
+    const reason = classifyV4(mapped, ' via IPv4-mapped IPv6');
+    if (reason) return reason;
+  }
   // IPv6 link-local — `fe80::*`.
   if (host.startsWith('fe80:') || host.startsWith('fe80::')) {
     return 'link-local (fe80::/10)';

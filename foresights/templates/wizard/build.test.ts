@@ -187,10 +187,13 @@ describe('injectBundleAndSubstitute (unit)', () => {
     expect(out).toContain('<script>/* my bundle */</script>');
   });
 
-  it('substitutes all the standard placeholders', () => {
+  it('substitutes all the standard placeholders (HTML-escaping chrome text)', () => {
     const html = '<title>{{TOPIC}} — {{TAGLINE_SUFFIX}}</title>';
     const out = injectBundleAndSubstitute(html, '', minimalConfig);
-    expect(out).toBe("<title>AWS CDK — what's new</title>");
+    // TOPIC / TAGLINE_SUFFIX land in HTML text/attribute contexts, so the
+    // placeholder map escHtml-escapes them — the apostrophe becomes `&#39;`
+    // (renders identically, but neutralises any injected markup).
+    expect(out).toBe('<title>AWS CDK — what&#39;s new</title>');
   });
 
   it('leaves unknown placeholders untouched (non-strict by default)', () => {

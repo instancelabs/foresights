@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Brief, BuildActionArgs, FlagMeta } from '../types';
-import { ACTION_TYPES } from './actions';
+import { ACTION_TYPES, coerceActionType } from './actions';
 
 const brief = (overrides: Partial<Brief> = {}): Brief => ({
   why: 'Mixins reshape construct composition.',
@@ -112,5 +112,31 @@ describe('claude-code fallback builder', () => {
 
   it('defaults the mode to plan when none is supplied', () => {
     expect(ACTION_TYPES['claude-code'].build(args())).toContain('Mode: plan.');
+  });
+});
+
+describe('coerceActionType', () => {
+  it('passes through every registered id', () => {
+    expect(coerceActionType('claude-code')).toBe('claude-code');
+    expect(coerceActionType('summary')).toBe('summary');
+    expect(coerceActionType('task')).toBe('task');
+  });
+
+  it('defaults to claude-code when absent', () => {
+    expect(coerceActionType(undefined)).toBe('claude-code');
+    expect(coerceActionType(null)).toBe('claude-code');
+  });
+
+  it('defaults to claude-code on an invalid (not merely absent) value', () => {
+    // The crash this guards: ACTION_TYPES['bogus'] is undefined → .build throws.
+    expect(coerceActionType('bogus')).toBe('claude-code');
+    expect(coerceActionType('__proto__')).toBe('claude-code');
+    expect(coerceActionType(42)).toBe('claude-code');
+  });
+
+  it('never resolves to an id missing from the registry', () => {
+    for (const probe of ['claude-code', 'summary', 'task', 'nope', '', 'constructor']) {
+      expect(Object.hasOwn(ACTION_TYPES, coerceActionType(probe))).toBe(true);
+    }
   });
 });

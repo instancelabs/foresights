@@ -86,6 +86,33 @@ describe('classifyFetchUrl — rejected hosts (IPv6)', () => {
   });
 });
 
+describe('classifyFetchUrl — IPv4-mapped IPv6 (SSRF disguise)', () => {
+  // Node's URL parser normalises the mapped suffix to hex
+  // (`[::ffff:169.254.169.254]` → hostname `::ffff:a9fe:a9fe`), which slipped
+  // straight past the dotted-quad checks before the embeddedV4 unwrap.
+  it.each([
+    ['http://[::ffff:127.0.0.1]/x', /loopback.*IPv4-mapped/],
+    ['http://[::ffff:169.254.169.254]/latest/meta-data/', /link-local.*IPv4-mapped/],
+    ['http://[::ffff:10.0.0.1]/x', /10\.0\.0\.0\/8.*IPv4-mapped/],
+    ['http://[::ffff:192.168.1.1]/x', /192\.168\.0\.0\/16.*IPv4-mapped/],
+    ['http://[::ffff:172.16.0.1]/x', /172\.16\.0\.0\/12.*IPv4-mapped/],
+  ])('rejects %s', (url, pattern) => {
+    const r = classifyFetchUrl(url);
+    expect(r.safe).toBe(false);
+    expect(r.reason).toMatch(pattern);
+  });
+
+  it('still accepts a public IPv4-mapped address', () => {
+    expect(classifyFetchUrl('http://[::ffff:93.184.216.34]/x').safe).toBe(true);
+  });
+
+  it('also catches decimal / hex / octal IPv4 (URL parser normalises these)', () => {
+    expect(classifyFetchUrl('http://2130706433/x').safe).toBe(false); // 127.0.0.1
+    expect(classifyFetchUrl('http://0x7f000001/x').safe).toBe(false);
+    expect(classifyFetchUrl('http://017700000001/x').safe).toBe(false);
+  });
+});
+
 describe('classifyFetchUrl — unparseable', () => {
   it('rejects garbage', () => {
     expect(classifyFetchUrl('not a url').safe).toBe(false);

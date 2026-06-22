@@ -44,6 +44,7 @@ import {
 import { hydrateRssSources } from './fetch-feeds';
 import { substituteAll } from './substitute';
 import { validateAllTrustedHtml } from './trusted-html';
+import { validateChrome } from './validate-chrome';
 import { stressTestProductRegexes } from './validate-regexes';
 
 const execFileAsync = promisify(execFile);
@@ -302,6 +303,23 @@ export const build = async (opts: BuildOpts): Promise<BuildResult> => {
   // the artifact. See `trusted-html.ts` (finding H2) and
   // `validate-regexes.ts` (finding M1).
   validateAllTrustedHtml(opts.config);
+  // Chrome fields (product id/cssMod/colours, accent colours, headerSourcesLinks)
+  // land in CSS / attribute / raw-HTML contexts escHtml can't make safe — fail
+  // the build on an unsafe value rather than ship an injection into the artifact.
+  validateChrome(
+    opts.config as {
+      readonly accent?: string;
+      readonly accentSoft?: string;
+      readonly headerSourcesLinks?: string;
+      readonly products?: ReadonlyArray<{
+        readonly id?: string;
+        readonly cssMod?: string;
+        readonly badgeColor?: string;
+        readonly badgeColorSoft?: string;
+        readonly badgeBorderColor?: string;
+      }>;
+    },
+  );
   const regexReport = stressTestProductRegexes({
     products: opts.config.products as ReadonlyArray<{
       readonly id: string;
