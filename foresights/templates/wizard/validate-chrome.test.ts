@@ -81,6 +81,19 @@ describe('validateHeaderSourcesLinks', () => {
     expect(() => validateHeaderSourcesLinks('<img src=x onerror=alert(1)>')).toThrow(/not allowed/);
   });
 
+  it('rejects an unterminated <img …// (no closing >)', () => {
+    // Bypass class: completes against the hero `</div>` downstream.
+    expect(() => validateHeaderSourcesLinks('<img src=x onerror=alert(1)//')).toThrow(
+      /unterminated "<"/,
+    );
+  });
+
+  it('rejects a safe anchor followed by an unterminated <', () => {
+    expect(() => validateHeaderSourcesLinks('<a href="/x">ok</a><img onerror=alert(1)//')).toThrow(
+      /unterminated "<"/,
+    );
+  });
+
   it('rejects an anchor with an event handler', () => {
     expect(() =>
       validateHeaderSourcesLinks('<a href="https://x" onclick="alert(1)">x</a>'),

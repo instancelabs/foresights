@@ -94,6 +94,29 @@ describe('validateTrustedHtml — rejected inputs', () => {
     );
   });
 
+  it('rejects an unterminated <img …// (no closing >)', () => {
+    // Bypass class: TAG_RE only matches a complete <...>, so this yields no
+    // match — but spliced into `<pre …>…</pre>` the trailing </pre> supplies
+    // the `>` and the tag fires. Must be rejected.
+    expect(() => validateTrustedHtml('f', '<img src=x onerror=alert(1)//')).toThrowError(
+      /unterminated "<"/,
+    );
+  });
+
+  it('rejects a complete-tag prefix followed by an unterminated <', () => {
+    expect(() => validateTrustedHtml('f', '<code>ok</code><img onerror=alert(1)//')).toThrowError(
+      /unterminated "<"/,
+    );
+  });
+
+  it('rejects a bare unterminated < after valid content', () => {
+    expect(() => validateTrustedHtml('f', 'a < b')).toThrowError(/unterminated "<"/);
+  });
+
+  it('still accepts content whose every < is closed', () => {
+    expect(() => validateTrustedHtml('f', '<code>a</code> then <em>b</em>')).not.toThrow();
+  });
+
   it('includes the field name in the error message', () => {
     expect(() => validateTrustedHtml('spotlights[2].code', '<script>x</script>')).toThrowError(
       /spotlights\[2\]\.code/,

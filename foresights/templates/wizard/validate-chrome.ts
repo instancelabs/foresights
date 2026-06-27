@@ -175,6 +175,16 @@ export const validateHeaderSourcesLinks = (value: unknown): void => {
     }
     m = TAG_RE.exec(value);
   }
+  // Reject an unterminated `<` (no matching `>` after it). TAG_RE only matches
+  // a complete `<...>`, so a trailing `<img src=x onerror=…//` yields no match
+  // above. headerSourcesLinks is spliced raw into the hero `<div>…</div>`, so
+  // the closing `</div>` would supply the `>` and complete the attacker's tag.
+  // Same blind spot as trusted-html.ts — see the note there.
+  if (value.lastIndexOf('<') > value.lastIndexOf('>')) {
+    throw new Error(
+      `validateChrome: headerSourcesLinks contains an unterminated "<" (no matching ">"). Spliced into the hero markup this completes into a tag against downstream HTML. Encode a literal "<" as "&lt;".`,
+    );
+  }
 };
 
 /** Run every chrome validation. Called from `wizard/build.ts` preflight. */

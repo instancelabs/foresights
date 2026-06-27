@@ -105,11 +105,7 @@ export const validateTrustedHtml = (fieldName: string, value: unknown): void => 
   }
   if (value.length === 0) return;
   // Walk the string, scanning every `<...>` slice. The TAG_RE pattern
-  // greedily matches up to the first `>` — a value like `<span class="k"`
-  // (unterminated) yields no match here, so its `<` survives into the
-  // emitted HTML and the browser parser will see it as text. That's safe
-  // by the same logic as `escHtml` text-content: a stray `<` without a
-  // matching `>` is not a tag.
+  // greedily matches up to the first `>`.
   let m: RegExpExecArray | null;
   TAG_RE.lastIndex = 0;
   m = TAG_RE.exec(value);
@@ -121,6 +117,21 @@ export const validateTrustedHtml = (fieldName: string, value: unknown): void => 
       );
     }
     m = TAG_RE.exec(value);
+  }
+  // Reject an UNTERMINATED `<` — a `<` with no `>` after it anywhere. TAG_RE
+  // only matches a complete `<...>`, so a trailing `<img src=x onerror=…//`
+  // (no `>`) yields no match above and would slip past. The old contract
+  // claimed that was safe ("a stray `<` is text"), but that only holds when
+  // the value is a *complete* innerHTML assignment. These fields are spliced
+  // into the MIDDLE of surrounding markup (`<pre class="code-block">…</pre>`),
+  // so the trailing `</pre>` supplies the `>` and completes the attacker's
+  // tag. Any `<` not closed within the field itself is therefore a tag-open
+  // the browser will finish against downstream markup — reject it. Literal
+  // `<` in trusted HTML must be written as `&lt;`.
+  if (value.lastIndexOf('<') > value.lastIndexOf('>')) {
+    throw new Error(
+      `validateTrustedHtml: field "${fieldName}" contains an unterminated "<" (no matching ">"). Spliced into surrounding markup this completes into a tag against downstream HTML. Encode a literal "<" as "&lt;", or route the value through escHtml() upstream.`,
+    );
   }
 };
 
