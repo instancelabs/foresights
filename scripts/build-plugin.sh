@@ -129,7 +129,7 @@ for required in \
   "node_modules/esbuild-wasm/lib/main.js" \
   "node_modules/esbuild-wasm/esbuild.wasm"; do
   if [[ ! -f "$TPL/$required" ]]; then
-    echo "   !! $required missing — `npm run prebuild-wizard` or the esbuild-wasm vendor copy failed" >&2
+    echo "   !! $required missing — 'npm run prebuild-wizard' or the esbuild-wasm vendor copy failed" >&2
     exit 1
   fi
 done
