@@ -22,12 +22,6 @@ When something is worth acting on, click through to a Haiku-generated brief grou
   <img src="foresights/assets/screenshot-digest.png"    width="32%" alt="An upgrade digest with triaged items">
 </p>
 
-## What's different
-
-- **Renovate / Dependabot** auto-PR dep bumps. Foresights doesn't touch deps — it surfaces news and patterns relevant to your product, with editorial curation.
-- **daily.dev** is a firehose. Foresights is filtered by *your* product's surface area.
-- **PageCrawl / Dependency-Track** monitor releases but don't recommend what to do. Foresights closes the loop from "X just shipped" → "here's the PR".
-
 ## Install
 
 ### In Claude Code
