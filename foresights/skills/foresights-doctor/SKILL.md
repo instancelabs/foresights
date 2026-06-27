@@ -5,7 +5,7 @@ description: Diagnostic skill that probes the Foresights install + the current e
 
 # Foresights Doctor
 
-Probes the Foresights install + the current execution environment, then prints a structured PASS / WARN / FAIL report. The single most useful diagnostic is whether **Node's outbound `fetch` actually works** vs whether `WebFetch` is the only path through — that one bit routes `/create-dashboard` to the right RSS-hydration code path and prevents the "dashboard with all sections empty" failure mode that v0.8.4's dogfood report hit.
+Probes the Foresights install + the current execution environment, then prints a structured PASS / WARN / FAIL report. The single most useful diagnostic is whether **Node's outbound `fetch` actually works** vs whether `WebFetch` is the only path through — that one bit routes `/create-dashboard` to the right RSS-hydration code path and prevents the "dashboard with all sections empty" failure mode that v0.8.4 fixed.
 
 ## When to invoke
 

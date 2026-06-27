@@ -5,11 +5,11 @@ description: Wizard that builds a live, product-customised news dashboard. Use w
 
 # Create Dashboard
 
-> **Status:** v0.9.2 — environment-aware wizard. Step 0 now runs three quick probes (GH MCP, Node fetch, WebFetch) before any data fetching and routes the rest of the wizard accordingly. When all three fail — fully sandboxed environment, the case Lee's work Mac hit — Step 0 offers a **curated-only** mode that ships a dashboard with no live data sections, just the synthesized spotlights/highlights/patterns/tips/resources. v0.9.1 added `/foresights-doctor` and structured `zero-items:` warnings; v0.9.0 made the orchestrator zero-install via vendored `esbuild-wasm`; v0.8.4 made `jsdom` lazy and slimmed this SKILL.md. Every artifact-mode dashboard keeps building byte-for-byte identically. Full history in `references/implementation-status.md`.
+> **Status:** v0.9.2 — environment-aware wizard. Step 0 now runs three quick probes (GH MCP, Node fetch, WebFetch) before any data fetching and routes the rest of the wizard accordingly. When all three fail — a fully sandboxed environment, e.g. a locked-down corporate machine — Step 0 offers a **curated-only** mode that ships a dashboard with no live data sections, just the synthesized spotlights/highlights/patterns/tips/resources. v0.9.1 added `/foresights-doctor` and structured `zero-items:` warnings; v0.9.0 made the orchestrator zero-install via vendored `esbuild-wasm`; v0.8.4 made `jsdom` lazy and slimmed this SKILL.md. Every artifact-mode dashboard keeps building byte-for-byte identically. Full history in `references/implementation-status.md`.
 
 ## What this skill does
 
-Walks the user through ~7 questions, then generates a fully-populated dashboard: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder. Ships the right way for the host — a live Cowork artifact in the Cowork desktop app, or a self-contained standalone HTML file (`outputMode: 'static'`) in Claude Code. Step 0a detects which automatically.
+Walks the user through ~6 questions (output mode is auto-detected, not asked), then generates a fully-populated dashboard: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder. Ships the right way for the host — a live Cowork artifact in the Cowork desktop app, or a self-contained standalone HTML file (`outputMode: 'static'`) in Claude Code. Step 0a detects which automatically.
 
 ## Wizard flow
 

@@ -6,15 +6,14 @@
 
 <p align="center">
   News that affects your stack — before it lands.<br/>
-  A Cowork & Claude Code plugin by <a href="https://instancelabs.dev">Instance Labs</a>.
+  A Claude Code &amp; Cowork plugin by <a href="https://instancelabs.dev">Instance Labs</a>.
 </p>
 
 ---
 
-Foresights spins up a live news dashboard customised to your product in about 15 minutes. It shows just the GitHub releases, PRs, RFCs, and RSS items that touch *your* stack — plus curated highlights, a rotating spotlight, and per-product relevance flagging so you see what matters immediately.
+Foresights spins up a news dashboard customised to your product in about 15 minutes. It shows just the GitHub releases, PRs, RFCs, and RSS items that touch *your* stack — plus curated highlights, a rotating spotlight, and per-product relevance flagging so you see what matters immediately.
 
 When something is worth acting on, click through to a Haiku-generated brief grounded in *your* codebase, then generate a self-contained Claude Code prompt to implement it — or batch everything into a triaged upgrade digest that drops into your repo's `.claude/upgrade-digests/` folder.
-
 
 <p align="center">
   <img src="assets/screenshot-dashboard.png" width="32%" alt="A live Foresights dashboard with product badges">
@@ -22,50 +21,55 @@ When something is worth acting on, click through to a Haiku-generated brief grou
   <img src="assets/screenshot-digest.png"    width="32%" alt="An upgrade digest with triaged items">
 </p>
 
-## What's different
+## See it first
 
-- **Renovate / Dependabot** auto-PR dep bumps. Foresights doesn't touch deps — it surfaces news and patterns relevant to your product, with editorial curation.
-- **daily.dev** is a firehose. Foresights is filtered by *your* product's surface area.
-- **PageCrawl / Dependency-Track** monitor releases but don't recommend what to do. Foresights closes the loop from "X just shipped" → "here's the PR".
+▶ **[Open the live demo in your browser](https://htmlpreview.github.io/?https://github.com/instancelabs/foresights/blob/main/foresights/demo/static-aws-cdk-news.html)** — a self-contained AWS CDK news dashboard, nothing to install. It's a structural preview; the live data, brief panels, and digest workflow fire once you build your own with `/create-dashboard`.
 
-## Install
+## Requirements
+
+- **[Claude Code](https://claude.com/claude-code)** (the CLI) **or Cowork** (the Claude desktop app's workspace for live, interactive artifacts) — Foresights runs in either.
+- **Node ≥ 20** — the wizard compiles your dashboard locally. `/foresights-doctor` verifies this for you.
+- A connected **GitHub MCP server** *if* you want live GitHub release / PR / issue data — optional; RSS-only and curated-only dashboards work without it.
+- Brief generation uses **Claude Haiku**, so expect a small amount of model usage.
+
+## Install &amp; first run
 
 ### In Claude Code
-
-Install from the Instance Labs marketplace:
 
 ```
 /plugin marketplace add instancelabs/foresights
 /plugin install foresights@instancelabs
 ```
 
+Then run **`/create-dashboard`** and answer ~6 quick questions (topic, accent, data sources, products to flag, spotlight seeds, cadence). You get a **self-contained static HTML dashboard** that opens in any browser.
+
 ### In Cowork
 
-Install the latest `.plugin` file from this repo's [releases page](https://github.com/instancelabs/foresights/releases) (or build it yourself with `scripts/build-plugin.sh`).
+Install the latest `.plugin` from this repo's [releases page](https://github.com/instancelabs/foresights/releases) (or build it yourself with `scripts/build-plugin.sh`), then run **`/create-dashboard`**. In Cowork you get a **live artifact** that re-fetches GitHub / RSS data every time you open it.
 
-Then run `/create-dashboard` and answer ~7 questions — the wizard builds a dashboard customised to your topic, sources, and products in about 15 minutes.
+> **Two output modes, picked automatically.** Cowork → a live artifact that re-fetches on open. Claude Code → a static HTML file baked once, portable and shareable. The wizard detects your host; you can force either.
+
+On a locked-down or corporate machine? Run **`/foresights-doctor`** first — it probes your environment and routes the wizard to the data path that works there.
 
 ## What's installed
 
+**Start with `/create-dashboard`** — the rest support it.
+
 | Skill | What it does |
 |---|---|
-| `/create-dashboard` | Wizard that asks ~7 questions (topic, accent, sources, products to flag, spotlight seeds, cadence, output mode) then generates a fully-populated dashboard. Ships as a Cowork live artifact by default, or as a standalone static HTML file. |
+| **`/create-dashboard`** | *Start here.* Wizard (~6 questions) that generates your dashboard — live ecosystem news, curated highlights, a rotating spotlight, per-product relevance flagging, briefs, and the upgrade-digest builder. |
 | `/refresh-dashboard` | Re-curate the highlights, patterns, tips, and resources on an existing dashboard against the latest live data via a fast section-splice path. Escalates to a full rebuild when the spotlight, data sources, or products need to change. |
 | `/setup-cc` | Generate `CLAUDE.md` additions, `.claude/upgrade-digests/` scaffold, and `/digest` + `/digest-save` slash commands for a target repo — closes the loop from dashboard digest to Claude Code to PR. |
-| `/foresights-doctor` | Diagnostic. Seven cheap checks (Node version, wizard entrypoints, vendored esbuild-wasm, canned no-source build, Node fetch reachability, WebFetch reachability, GitHub MCP detection) confirm the install is healthy and route `/create-dashboard` to the right data-fetch path for the current environment. Run it before `/create-dashboard` in a new sandbox. |
-| `/foresights-design` | The Foresights brand + product design system as an invokable skill — drop-in tokens, components, brand guidelines, and UI-kit references for building on-brand dashboards or marketing material. |
+| `/foresights-doctor` | Diagnostic. Seven cheap checks (Node version, wizard entrypoints, vendored esbuild-wasm, canned no-source build, network reachability, GitHub MCP detection) confirm the install is healthy and route `/create-dashboard` to the right data-fetch path. Run it before `/create-dashboard` in a new sandbox. |
+| `/foresights-design` | *(For builders.)* The Foresights brand + product design system as an invokable skill — drop-in tokens, components, brand guidelines, and UI-kit references for building on-brand dashboards or marketing material. |
 
 Each product can carry one of three **action types**: `claude-code` (default — ready-to-run handoff prompt + upgrade-digest workflow, for products with a code repo), `summary` (plain-prose summary, for research or marketing products with no repo), or `task` (tracker-ready item with a checklist). Pick the type per product during the wizard.
 
-## Try it without installing
+## How it works — the 5-layer architecture
 
-Drop `foresights/demo/static-aws-cdk-news.html` into a browser — that's a self-contained, no-Cowork-runtime demo dashboard showing the curated-content layout (spotlights, highlights, patterns, tips, resources) for the AWS CDK ecosystem. It's a structural preview; the live data, brief panels, and digest workflow only fire when you generate a real dashboard via `/create-dashboard`.
+Every generated dashboard follows the same proven pattern:
 
-## The 5-layer architecture
-
-Every generated dashboard follows the proven pattern:
-
-1. **Live data** — GitHub releases / PRs / issues via Cowork's MCP bridge, plus RSS / Atom feeds baked at build time. Refreshed each time you open the dashboard (artifact mode) or pre-baked into the file (static mode).
+1. **Live data** — GitHub releases / PRs / issues via the MCP bridge, plus RSS / Atom feeds baked at build time. Refreshed each time you open the dashboard (artifact mode) or pre-baked into the file (static mode).
 2. **Curated content** — hand-picked highlights, a rotating spotlight (daily / weekly / on-demand), community libs, tips, and resources. Each section has a `↻ Refresh content` button.
 3. **Relevance flagging** — regex matchers per product flag items that affect *your* stack. Items can carry multiple product badges; matchers stress-tested at build time for catastrophic-backtracking patterns.
 4. **Brief panel** — click any badge → Haiku-generated "why relevant" + "how it could integrate" with specific src paths from your repo, cached locally by content hash.
@@ -85,6 +89,6 @@ All local-only — nothing is exfiltrated, no telemetry, no analytics. Worth bei
 
 ## Status
 
-**v0.9.5** — brand rollout (v0.9.4 design-system tokens across templates and READMEs; v0.9.5 locked the hero mark to the iris-gradient brand mark so identity reads consistently across topic accents). Sits on top of the v0.9.3 security pass: `safeHref` at every `<a href>`, build-time XSS allowlist on trusted-HTML fields, regex-DoS smoke check, build-time SSRF guard, digest-save slug tightening, `vitest 4.1.8` clears all `npm audit`. See the [releases page](https://github.com/instancelabs/foresights/releases) for the full per-version writeups.
+**v0.9.9 — actively maintained.** Latest: Claude Code (static-output) support alongside Cowork, plus a security-hardening pass — `safeHref` on every link, a build-time XSS allowlist on trusted-HTML fields, an SSRF guard on feed fetches, and a regex-DoS smoke check; `npm audit` is clean. See the [releases page](https://github.com/instancelabs/foresights/releases) for the full per-version writeups.
 
 Author: [Instance Labs Ltd](https://instancelabs.dev). Licensed under [MIT](../LICENSE).
