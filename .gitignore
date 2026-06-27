@@ -1,4 +1,5 @@
 .DS_Store
+.vscode/
 reference/
 
 # Build artifacts (scripts/build-plugin.sh output) — distributed via GitHub Releases
