@@ -23,7 +23,7 @@ When something is worth acting on, click through to a Haiku-generated brief grou
 
 ## See it first
 
-▶ **[Open the live demo in your browser](https://htmlpreview.github.io/?https://github.com/instancelabs/foresights/blob/main/foresights/demo/static-aws-cdk-news.html)** — a self-contained AWS CDK news dashboard, nothing to install. (Or open `foresights/demo/static-aws-cdk-news.html` locally.)
+▶ **[Open the live demo in your browser](https://instancelabs.github.io/foresights/foresights/demo/static-aws-cdk-news.html)** — a self-contained AWS CDK news dashboard, nothing to install. (Or open `foresights/demo/static-aws-cdk-news.html` locally.)
 
 It's a structural preview — the live data, brief panels, and digest workflow fire once you build your own with `/create-dashboard`.
 
