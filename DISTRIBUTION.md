@@ -42,6 +42,16 @@ separate submissions:
 2. Submit the repository plugin and listing through the OpenAI plugin submission portal. OpenAI
    publishes an accepted plugin once to the universal directory shared by ChatGPT and Codex.
 
+Each `v*` tag runs `.github/workflows/release.yml` and publishes:
+
+- `foresights-<version>.plugin` — direct Claude app / Cowork upload.
+- `foresights-<version>-openai.zip` — final skills-only bundle for the OpenAI submission portal.
+- `SHA256SUMS` — checksums for both packages.
+
+The GitHub Release makes both tested packages available immediately. It does not bypass either
+provider's review: submit the Claude asset through Anthropic's form and the OpenAI asset through the
+OpenAI Platform portal.
+
 Before submission, prepare stable public URLs for the product website, support, privacy policy, and
 terms. The source package already contains the listing copy, starter prompts, icon assets, and skills.
 

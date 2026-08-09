@@ -110,7 +110,7 @@ Every generated dashboard follows the same proven pattern:
 
 ## Status
 
-**v0.10.0 — release candidate.** Adds shared Claude and OpenAI plugin packaging, a unified Claude Code/Codex installer, and more conservative evidence-aware briefs and upgrade digests. See the [changelog](./CHANGELOG.md) for the complete release notes.
+**v0.10.0 — current.** Adds shared Claude and OpenAI plugin packaging, a unified Claude Code/Codex installer, and more conservative evidence-aware briefs and upgrade digests. See the [changelog](./CHANGELOG.md) for the complete release notes.
 
 ## Building from source
 
@@ -121,7 +121,7 @@ npm run preflight
 bash scripts/build-plugin.sh
 ```
 
-Produces `foresights-<version>.plugin` at the repo root. Version comes from `foresights/.claude-plugin/plugin.json`; override with a positional arg (`bash scripts/build-plugin.sh 0.9.4-pre`).
+Produces `foresights-<version>.plugin` for Claude and `foresights-<version>-openai.zip` for the OpenAI submission portal. Version comes from `foresights/.claude-plugin/plugin.json`; override with a positional argument.
 
 See [DISTRIBUTION.md](./DISTRIBUTION.md) for app-directory publishing, marketplace structure, and maintainer validation.
 

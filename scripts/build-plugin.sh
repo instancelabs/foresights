@@ -13,8 +13,9 @@
 #   bash scripts/build-plugin.sh           # uses version from plugin.json
 #   bash scripts/build-plugin.sh 0.6.0     # override version suffix
 #
-# Output:
-#   foresights-<version>.plugin            # at the repo root
+# Outputs at the repo root:
+#   foresights-<version>.plugin            # Claude app / Cowork
+#   foresights-<version>-openai.zip        # ChatGPT / Codex submission bundle
 
 set -euo pipefail
 
@@ -169,25 +170,43 @@ fi
 echo "   import-complete ✓"
 echo
 
-OUT="$REPO_ROOT/foresights-$VERSION.plugin"
-rm -f "$OUT"
+CLAUDE_OUT="$REPO_ROOT/foresights-$VERSION.plugin"
+OPENAI_OUT="$REPO_ROOT/foresights-$VERSION-openai.zip"
+rm -f "$CLAUDE_OUT" "$OPENAI_OUT"
 
-( cd "$STAGE" && zip -rq "$OUT" . )
+( cd "$STAGE" && zip -rq "$CLAUDE_OUT" . )
+( cd "$STAGE" && zip -rq "$OPENAI_OUT" .codex-plugin README.md CHANGELOG.md LICENSE skills assets )
 
-echo "-> Built $OUT ($(du -h "$OUT" | cut -f1))"
+echo "-> Built $CLAUDE_OUT ($(du -h "$CLAUDE_OUT" | cut -f1))"
+echo "-> Built $OPENAI_OUT ($(du -h "$OPENAI_OUT" | cut -f1))"
 echo
 echo "Sanity-check:"
 # `node_modules` is intentionally present in v0.9.0+ to vendor esbuild-wasm —
 # the rest of the cruft patterns stay banned. The follow-up check below
 # confirms `node_modules/` carries only `esbuild-wasm/`.
-unzip -l "$OUT" \
-  | grep -E '(setup-claude-code|DS_Store|tmp-wizard-test|tmp-wizard-refresh-test|tmp-zero-install-test|_smoke|coverage/|tsbuildinfo|timestamp-)' \
-  && { echo "!! cruft leaked"; exit 1; } \
-  || echo "   clean ✓"
+for archive in "$CLAUDE_OUT" "$OPENAI_OUT"; do
+  archive_entries="$(unzip -Z1 "$archive")"
+  if grep -Eq '(setup-claude-code|DS_Store|tmp-wizard-test|tmp-wizard-refresh-test|tmp-zero-install-test|_smoke|coverage/|tsbuildinfo|timestamp-)' <<< "$archive_entries"; then
+    echo "!! cruft leaked into $archive" >&2
+    exit 1
+  fi
+  echo "   $(basename "$archive") clean ✓"
+done
+
+openai_entries="$(unzip -Z1 "$OPENAI_OUT")"
+if ! grep -Fqx '.codex-plugin/plugin.json' <<< "$openai_entries"; then
+  echo "!! .codex-plugin/plugin.json missing from the OpenAI submission bundle" >&2
+  exit 1
+fi
+if grep -Fq '.claude-plugin/' <<< "$openai_entries"; then
+  echo "!! Claude metadata leaked into the OpenAI submission bundle" >&2
+  exit 1
+fi
+echo "   OpenAI bundle contains only its host manifest ✓"
 
 # Confirm node_modules contains only esbuild-wasm — any other package would
 # inflate the .plugin without being needed at run time.
-nm_others="$(unzip -l "$OUT" \
+nm_others="$(unzip -l "$CLAUDE_OUT" \
   | awk '/node_modules\// { sub(/.*node_modules\//, ""); sub(/\/.*/, ""); print }' \
   | sort -u \
   | grep -vE '^(esbuild-wasm)?$' || true)"
@@ -198,4 +217,4 @@ fi
 echo "   only esbuild-wasm in node_modules ✓"
 
 echo "
-Install $OUT in Cowork, or install the repository marketplace plugin in ChatGPT/Codex."
+Install $CLAUDE_OUT in Claude/Cowork. Upload $OPENAI_OUT as the final skills-only plugin bundle in the OpenAI submission portal."

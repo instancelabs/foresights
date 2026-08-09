@@ -1,0 +1,95 @@
+name: Release plugins
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            foresights/templates/package-lock.json
+
+      - name: Validate tag and package versions
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node -e '
+            const fs = require("node:fs");
+            const expected = process.argv[1];
+            const files = [
+              "package.json",
+              "foresights/.claude-plugin/plugin.json",
+              "foresights/.codex-plugin/plugin.json",
+            ];
+            for (const file of files) {
+              const actual = JSON.parse(fs.readFileSync(file, "utf8")).version;
+              if (actual !== expected) {
+                throw new Error(`${file} is ${actual}, expected ${expected} from the tag`);
+              }
+            }
+          ' "$VERSION"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix foresights/templates
+
+      - name: Validate distribution
+        run: npm run preflight
+
+      - name: Validate dashboard templates
+        run: |
+          npm --prefix foresights/templates run lint
+          npm --prefix foresights/templates run typecheck
+          npm --prefix foresights/templates run prebuild-wizard
+          npm --prefix foresights/templates test -- --maxWorkers=2
+
+      - name: Build host packages
+        run: npm run build:plugin
+
+      - name: Prepare release files
+        shell: bash
+        run: |
+          test -f "foresights-$VERSION.plugin"
+          test -f "foresights-$VERSION-openai.zip"
+          sha256sum \
+            "foresights-$VERSION.plugin" \
+            "foresights-$VERSION-openai.zip" \
+            > SHA256SUMS
+          awk \
+            -v version="$VERSION" \
+            '$0 ~ ("^## \\[" version "\\]") { capture=1; next }
+             capture && /^## / { exit }
+             capture { print }' \
+            CHANGELOG.md > release-notes.md
+          test -s release-notes.md
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "foresights-$VERSION.plugin#Claude app / Cowork plugin" \
+            "foresights-$VERSION-openai.zip#ChatGPT / Codex plugin bundle" \
+            "SHA256SUMS#SHA-256 checksums" \
+            --verify-tag \
+            --title "Foresights $GITHUB_REF_NAME — Claude + ChatGPT/Codex" \
+            --notes-file release-notes.md
