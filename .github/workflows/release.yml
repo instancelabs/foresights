@@ -50,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npm ci --prefix foresights/templates
+          npm ci --legacy-peer-deps --prefix foresights/templates
 
       - name: Validate distribution
         run: npm run preflight
