@@ -80,13 +80,20 @@ const SECTION_INTRO: Record<TriageBucket, string> = {
   red: "One-liners only — these don't warrant action right now.",
 };
 
-/** Strip leading "**scope:**" and bracketed tag prefixes from the item text. */
-const cleanTitle = (text: string): string =>
-  text
-    .replace(/\*\*[^*]+:\*\*/, '')
+/** Convert release-note markdown into a readable, bounded heading. */
+const cleanTitle = (text: string): string => {
+  const cleaned = text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/[`*_]/g, '')
     .replace(/^\[[^\]]+\]\s*/, '')
-    .slice(0, 120)
+    .replace(/\s+/g, ' ')
     .trim();
+  if (cleaned.length <= 180) return cleaned;
+  const bounded = cleaned.slice(0, 177);
+  const wordBoundary = bounded.lastIndexOf(' ');
+  return `${wordBoundary > 120 ? bounded.slice(0, wordBoundary) : bounded}…`;
+};
 
 /** Strip just the leading bracketed tag from the item text. */
 const stripTagPrefix = (text: string): string => text.replace(/^\[[^\]]+\]\s*/, '');
@@ -113,7 +120,12 @@ const renderDetailed = (
   actionType: ActionTypeId,
 ): void => {
   rows.forEach(({ entry, triage }, idx) => {
-    const titleText = cleanTitle(entry.item.text);
+    const sourceTitle = entry.flag.title || entry.item.text;
+    const cleanedTitle = cleanTitle(sourceTitle);
+    const titleText =
+      entry.item.kind === 'release-breaking' && !/^breaking\b/i.test(cleanedTitle)
+        ? `BREAKING: ${cleanedTitle}`
+        : cleanedTitle;
     lines.push(`### ${idx + 1}. ${titleText}`);
     lines.push('');
 
@@ -147,7 +159,7 @@ const renderDetailed = (
         const fence = fenceFor(prompt);
         lines.push('');
         lines.push('<details>');
-        lines.push('<summary>Claude Code prompt (click to expand)</summary>');
+        lines.push('<summary>Coding agent prompt (click to expand)</summary>');
         lines.push('');
         lines.push(fence);
         lines.push(prompt);
@@ -183,7 +195,7 @@ const renderRedOneLiners = (
   for (const { entry, triage } of rows) {
     // Use `||` so an empty reasoning falls through to the fallback (matches v0.1).
     const reason = triage?.reasoning || `Low impact for ${productLabel}.`;
-    const text = stripTagPrefix(entry.item.text).slice(0, 90);
+    const text = cleanTitle(entry.flag.title || stripTagPrefix(entry.item.text));
     lines.push(`- **${text}** — ${reason}`);
   }
   lines.push('');
@@ -233,7 +245,7 @@ export const renderDigestMarkdown = (args: RenderDigestArgs): string => {
   lines.push('---');
   lines.push('');
   lines.push(
-    `*Save to \`.claude/upgrade-digests/${date}-${productSlug}-upgrade-digest.md\` and run with Claude Code in the relevant repo.*`,
+    `*Suggested filename: \`${date}-${productSlug}-upgrade-digest.md\`. Review with your coding agent in the relevant repo; verify source status and current code before implementation.*`,
   );
 
   return lines.join('\n');

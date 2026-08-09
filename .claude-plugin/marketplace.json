@@ -4,12 +4,12 @@
   "owner": {
     "name": "Instance Labs Ltd"
   },
-  "description": "Plugins from Instance Labs. Foresights — live news dashboards customised to your product, with built-in Claude Code integration.",
+  "description": "Plugins from Instance Labs. Foresights builds product-specific news dashboards with evidence-aware briefs and coding-agent handoffs.",
   "plugins": [
     {
       "name": "foresights",
       "source": "./foresights",
-      "description": "Spin up a live news dashboard customised to your product. GitHub releases, RSS feeds, curated highlights, per-product flagging, brief-all + digest bars, and context refresh — with built-in Claude Code integration for action.",
+      "description": "Build a product-specific GitHub and RSS dashboard with evidence-aware briefs, conservative upgrade digests, and handoffs for ChatGPT/Codex or Claude Code.",
       "category": "developer-tools",
       "tags": [
         "dashboard",
@@ -18,6 +18,8 @@
         "github",
         "rss",
         "claude-code",
+        "chatgpt",
+        "codex",
         "digest",
         "upgrades"
       ]

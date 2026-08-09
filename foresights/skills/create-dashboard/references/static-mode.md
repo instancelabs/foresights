@@ -55,7 +55,7 @@ Collect into `WizardConfig.briefs`, keyed `productId → stableId → Brief`. Ke
 
 #### Triage each product's flagged items
 
-For each product, bucket every flagged item into 🟢 `green` / 🟡 `yellow` / 🔴 `red`. Be ruthless — the criteria in `templates/digest/triage.ts` `buildTriagePrompt` apply (most items are red). Use the entry's `text` plus the brief's `why` as context. Collect into `WizardConfig.triage`, keyed `productId → stableId → {stableId, bucket, reasoning}`.
+For each product, bucket every flagged item into 🟢 `green` / 🟡 `yellow` / 🔴 `red`. Be ruthless — the criteria in `templates/digest/triage.ts` `buildTriagePrompt` apply (most items are red). Treat entry title/text/kind/version as source evidence and the brief as a hypothesis. Collect into `WizardConfig.triage`, keyed `productId → stableId → {stableId, bucket, reasoning, evidenceBasis}`. `evidenceBasis` is `source`, `inference`, or `unknown`; only source-grounded shipped/merged changes may be green. Reject correlated revert pairs.
 
 #### Pass 2 — the real build
 

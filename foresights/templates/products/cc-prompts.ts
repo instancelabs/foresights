@@ -12,11 +12,11 @@ import type { BuildCcPromptArgs } from '../types';
 export type CcPromptBuilder = (args: BuildCcPromptArgs) => string;
 
 /**
- * Default rich prompt body shared by every product's generated CC builder
+ * Default rich prompt body shared by every product's generated coding-agent builder
  * (products that don't override with `ccPromptBody`). Makes the pasted-into-
  * Claude-Code prompt self-contained: the source link, the reason Foresights
  * flagged the item, the Haiku "why", and the concrete integration ideas —
- * so Claude Code plans from the handoff instead of rediscovering it.
+ * so the receiving agent verifies the handoff against the current repo.
  *
  * `meta` is typed `FlagMeta` (title/url), but the brief panel passes the full
  * `Flag` at runtime, which also carries `reason`; we read it defensively.
@@ -40,7 +40,7 @@ export const buildRichCcPrompt = (
   const verb = mode === 'implement' ? 'changes' : 'plan';
   lines.push(
     '',
-    `Mode: ${mode}. ${label} repo guidance follows. The repo context below lists the product's key files — open them in the repo to ground your ${verb} against the current source before proposing edits. (Claude Code auto-loads CLAUDE.md.)`,
+    `Mode: ${mode}. Treat the source item and suggested integrations as leads, not verified requirements. Open the source URL when browsing is available, check whether the change shipped or was reverted, and inspect the current repository before proposing edits. The repo context below lists paths to start from; repository instructions such as AGENTS.md or CLAUDE.md take precedence. Ground your ${verb} in observable code or synthesized configuration, call out uncertainty, and avoid implementing claims that the source does not support.`,
   );
   return lines.join('\n');
 };

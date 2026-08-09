@@ -273,10 +273,19 @@ export interface ActionTypeSpec {
 
 export type TriageBucket = 'green' | 'yellow' | 'red';
 
+/**
+ * What the triage verdict is grounded in. `source` means the supplied release
+ * note / merged PR explicitly supports the conclusion; `inference` means the
+ * model had to extrapolate; `unknown` means the evidence was insufficient.
+ * Optional for backwards compatibility with dashboards built before v0.10.
+ */
+export type TriageEvidenceBasis = 'source' | 'inference' | 'unknown';
+
 export interface TriagedItem {
   readonly stableId: string;
   readonly bucket: TriageBucket;
   readonly reasoning: string;
+  readonly evidenceBasis?: TriageEvidenceBasis;
 }
 
 // ---------------------------------------------------------------------------

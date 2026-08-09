@@ -17,7 +17,7 @@
  */
 
 import { ASK_CLAUDE_BATCH_SIZE, askClaude } from '../mcp/ask-claude';
-import type { Deps, TriageBucket, TriagedItem } from '../types';
+import type { Deps, TriageBucket, TriageEvidenceBasis, TriagedItem } from '../types';
 
 /**
  * Pre-baked digest triage — the `BAKED_TRIAGE` sentinel.
@@ -38,18 +38,24 @@ const BAKED_TRIAGE: Readonly<Record<string, Readonly<Record<string, TriagedItem>
 export interface TriageInput {
   /** Stable identifier — used to key the response back to the input. */
   readonly stableId: string;
-  /** Item text — what the item is. Truncated to 140 chars before sending. */
+  /** Item text — what the item is. Truncated to 420 chars before sending. */
   readonly text: string;
-  /** Brief.why — adds product-context. Truncated to 180 chars. */
+  /** Structured title, kept separate so markdown/truncation cannot hide it. */
+  readonly title?: string;
+  /** Source kind, e.g. release-breaking, release-alpha, pr, rfc, rss. */
+  readonly kind?: string;
+  /** Release version when available. */
+  readonly version?: string;
+  /** Brief.why — earlier model context, not evidence. Truncated to 320 chars. */
   readonly why?: string;
-  /** Concatenated integration titles. Truncated to 90 chars. */
+  /** Earlier integration hypotheses, not evidence. Truncated to 180 chars. */
   readonly ints?: string;
 }
 
 export interface TriageOpts {
   /** Wizard-injected product description, e.g. `"CDK Insights — an AWS CDK ..."`. */
   readonly productDescriptor: string;
-  /** Items per Haiku call — defaults to ASK_CLAUDE_BATCH_SIZE (10). */
+  /** Items per Haiku call — defaults to 6 to leave room for evidence fields. */
   readonly batchSize?: number;
   /**
    * Product id — keys the `BAKED_TRIAGE` lookup. Pass it (the digest bar
@@ -70,14 +76,22 @@ export const buildTriagePrompt = (productDescriptor: string): string =>
     `You triage news items for ${productDescriptor}.`,
     '',
     'For each item, classify it into ONE bucket:',
-    '- "green": Implement now. Genuinely high-impact, well-scoped, low-risk. Small handful at most.',
+    '- "green": Implement now. The supplied source explicitly shows a shipped/merged, active change; the product impact and action are directly supported; no material verification remains. Small handful at most.',
     '- "yellow": Worth considering. Useful but needs human judgment, has dependencies, or could wait.',
     '- "red": Skip. Low impact, redundant, premature, or out of scope.',
+    '',
+    'Evidence rules:',
+    '- title/txt/kind/version are source evidence. why/ints are earlier model hypotheses and MUST NOT be treated as evidence.',
+    '- Set basis="source" only when source fields directly establish the verdict. Otherwise use "inference" or "unknown".',
+    '- Alpha/preview work, RFCs/issues, open proposals, and changes needing source or repo verification cannot be green.',
+    '- Documentation/chore changes are usually red unless they expose a specific existing product bug; then yellow.',
+    '- Compare items in this batch. If one reverts or supersedes another, do not recommend implementing the withdrawn change.',
+    '- Never invent security impact, pricing, defaults, APIs, permissions, resource properties, or implementation status.',
     '',
     'Be ruthless. Most items should be RED. Only the top ~15% deserve GREEN.',
     '',
     'Respond with JSON ONLY — one entry per input item, same order:',
-    '[{"id":"...","bucket":"green"|"yellow"|"red","reason":"1-sentence justification"}]',
+    '[{"id":"...","bucket":"green"|"yellow"|"red","basis":"source"|"inference"|"unknown","reason":"1-sentence justification"}]',
     '',
     'NO PROSE, NO MARKDOWN FENCES.',
   ].join('\n');
@@ -90,6 +104,9 @@ export const buildTriagePrompt = (productDescriptor: string): string =>
 export interface TrimmedTriageItem {
   readonly id: string;
   readonly txt: string;
+  readonly ttl?: string;
+  readonly kind?: string;
+  readonly ver?: string;
   readonly why?: string;
   readonly ints?: string;
 }
@@ -98,12 +115,15 @@ export interface TrimmedTriageItem {
 export const trimTriageItem = (input: TriageInput): TrimmedTriageItem => {
   const base = {
     id: input.stableId,
-    txt: (input.text ?? '').replace(/\s+/g, ' ').slice(0, 140),
+    txt: (input.text ?? '').replace(/\s+/g, ' ').slice(0, 420),
   };
   return {
     ...base,
-    ...(input.why ? { why: input.why.slice(0, 180) } : {}),
-    ...(input.ints ? { ints: input.ints.slice(0, 90) } : {}),
+    ...(input.title ? { ttl: input.title.replace(/\s+/g, ' ').slice(0, 180) } : {}),
+    ...(input.kind ? { kind: input.kind.slice(0, 40) } : {}),
+    ...(input.version ? { ver: input.version.slice(0, 40) } : {}),
+    ...(input.why ? { why: input.why.slice(0, 320) } : {}),
+    ...(input.ints ? { ints: input.ints.slice(0, 180) } : {}),
   };
 };
 
@@ -154,7 +174,13 @@ const parseTriageBatch = (text: string): Map<string, TriagedItem> => {
   if (!Array.isArray(parsed)) return out;
   for (const t of parsed) {
     if (t == null || typeof t !== 'object') continue;
-    const o = t as { id?: unknown; stableId?: unknown; bucket?: unknown; reason?: unknown };
+    const o = t as {
+      id?: unknown;
+      stableId?: unknown;
+      bucket?: unknown;
+      basis?: unknown;
+      reason?: unknown;
+    };
     const id =
       typeof o.id === 'string' && o.id.length > 0
         ? o.id
@@ -166,9 +192,90 @@ const parseTriageBatch = (text: string): Map<string, TriagedItem> => {
       stableId: id,
       bucket: coerceBucket(o.bucket),
       reasoning: typeof o.reason === 'string' ? o.reason : '',
+      evidenceBasis:
+        o.basis === 'source' || o.basis === 'inference' || o.basis === 'unknown'
+          ? (o.basis as TriageEvidenceBasis)
+          : 'unknown',
     });
   }
   return out;
+};
+
+const referencesIn = (input: TriageInput): ReadonlySet<string> => {
+  const refs = new Set<string>();
+  const text = `${input.title ?? ''} ${input.text}`;
+  for (const match of text.matchAll(/(?:#|\/(?:issues|pull)\/)(\d{2,})/gi)) {
+    if (match[1]) refs.add(match[1]);
+  }
+  return refs;
+};
+
+const isRevert = (input: TriageInput): boolean =>
+  /\b(?:revert(?:ed|s|ing)?|roll(?:ed)?\s*back|withdrawn)\b/i.test(
+    `${input.title ?? ''} ${input.text}`,
+  );
+
+const withDowngrade = (item: TriagedItem, bucket: TriageBucket, reason: string): TriagedItem => ({
+  ...item,
+  bucket,
+  reasoning: reason,
+});
+
+/**
+ * Deterministic safety net after model triage. It prevents the most damaging
+ * false-positive classes even when the model ignores the prompt: unsupported
+ * green verdicts, proposals/alpha APIs promoted as ready, and changes that a
+ * related source item explicitly says were reverted.
+ */
+export const applyTriageAccuracyGuards = (
+  inputs: readonly TriageInput[],
+  triaged: readonly TriagedItem[],
+): readonly TriagedItem[] => {
+  const inputById = new Map(inputs.map((input) => [input.stableId, input]));
+  const revertedIds = new Set<string>();
+  const refsById = new Map(inputs.map((input) => [input.stableId, referencesIn(input)]));
+
+  for (const input of inputs.filter(isRevert)) {
+    revertedIds.add(input.stableId);
+    const refs = refsById.get(input.stableId) ?? new Set<string>();
+    if (refs.size === 0) continue;
+    for (const candidate of inputs) {
+      if (candidate.stableId === input.stableId) continue;
+      const candidateRefs = refsById.get(candidate.stableId) ?? new Set<string>();
+      if ([...refs].some((ref) => candidateRefs.has(ref))) revertedIds.add(candidate.stableId);
+    }
+  }
+
+  return triaged.map((item) => {
+    const input = inputById.get(item.stableId);
+    if (!input) return item;
+    if (revertedIds.has(item.stableId)) {
+      return withDowngrade(
+        item,
+        'red',
+        'A supplied source item reports this change as reverted or withdrawn; do not implement against it.',
+      );
+    }
+    const kind = input.kind?.toLowerCase() ?? '';
+    if (
+      item.bucket === 'green' &&
+      (kind === 'rfc' || kind === 'issue' || kind.includes('alpha') || kind.includes('proposal'))
+    ) {
+      return withDowngrade(
+        item,
+        'yellow',
+        'This is alpha or proposal-stage work, so implementation should wait for a stable shipped contract.',
+      );
+    }
+    if (item.bucket === 'green' && item.evidenceBasis !== 'source') {
+      return withDowngrade(
+        item,
+        'yellow',
+        'The implementation case is inferred rather than established by the supplied source; verify it first.',
+      );
+    }
+    return item;
+  });
 };
 
 /**
@@ -190,7 +297,9 @@ export const triageItems = async (
   opts: TriageOpts,
 ): Promise<readonly TriagedItem[]> => {
   if (items.length === 0) return [];
-  const batchSize = opts.batchSize ?? ASK_CLAUDE_BATCH_SIZE;
+  // Richer evidence fields need smaller batches to stay below Cowork's ~8KB
+  // IPC ceiling. Custom callers can still override this explicitly.
+  const batchSize = opts.batchSize ?? Math.min(6, ASK_CLAUDE_BATCH_SIZE);
   if (batchSize <= 0) {
     throw new Error(`triageItems: batchSize must be positive, got ${batchSize}`);
   }
@@ -236,7 +345,7 @@ export const triageItems = async (
     }
   }
 
-  return items.map(
+  const ordered = items.map(
     (it) =>
       baked[it.stableId] ??
       triageById.get(it.stableId) ?? {
@@ -245,4 +354,5 @@ export const triageItems = async (
         reasoning: TRIAGE_FAIL_REASON,
       },
   );
+  return applyTriageAccuracyGuards(items, ordered);
 };

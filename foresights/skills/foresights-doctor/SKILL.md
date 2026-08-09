@@ -33,8 +33,10 @@ PASS if output starts with `v20.` or higher. FAIL otherwise (Foresights needs No
 ### Check 2 — Templates dir + pre-bundled wizard JS
 
 ```bash
-# Resolve the templates dir
-TEMPLATES="${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates"
+# Resolve the templates dir. Use the packaged `../create-dashboard/templates`
+# path first, then `../../templates` in a source checkout. Claude installs may
+# also expose `${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates`.
+TEMPLATES="<resolved absolute templates path>"
 ls "$TEMPLATES/wizard/build.js" "$TEMPLATES/wizard/refresh.js"
 ```
 
@@ -98,7 +100,7 @@ PASS if output is `status:200`. WARN otherwise. The warn message is the critical
 
 ### Check 6 — WebFetch reachability
 
-Use the agent's own `WebFetch` tool against the same URL (`https://example.com`).
+Use the host's web browsing/fetch capability against the same URL (`https://example.com`). It may be named `WebFetch`, `web`, or Browser.
 
 PASS if WebFetch returns content. WARN if it fails. The combination with check 5 is what matters:
 

@@ -126,7 +126,7 @@ describe('renderBriefHtml (pure)', () => {
 
   it('shows the cc-prompt button only when hasCcBuilder=true', () => {
     const withCc = renderBriefHtml({ why: 'w', integrations: [] }, 'CDK Insights', '', 'b1', true);
-    expect(withCc).toContain('Generate Claude Code prompt');
+    expect(withCc).toContain('Generate coding agent prompt');
     expect(withCc).toContain('brief-cc-panel');
 
     const without = renderBriefHtml(
@@ -136,7 +136,7 @@ describe('renderBriefHtml (pure)', () => {
       'b1',
       false,
     );
-    expect(without).not.toContain('Generate Claude Code prompt');
+    expect(without).not.toContain('Generate coding agent prompt');
     expect(without).not.toContain('brief-cc-panel');
   });
 
@@ -374,7 +374,7 @@ describe('initBriefPanel — cc-prompt UI', () => {
     await flush();
 
     const ccBtn = card.querySelector('.brief-cc-btn') as HTMLElement;
-    expect(ccBtn.textContent).toBe('Generate Claude Code prompt');
+    expect(ccBtn.textContent).toBe('Generate coding agent prompt');
     click(ccBtn);
 
     const ccPanel = card.querySelector('.brief-cc-panel') as HTMLElement;

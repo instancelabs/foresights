@@ -1,0 +1,41 @@
+{
+  "name": "@instancelabs/foresights",
+  "version": "0.10.0",
+  "description": "Installer and distribution tooling for the Foresights plugin.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "foresights": "./bin/foresights.mjs"
+  },
+  "files": [
+    "bin",
+    "scripts/cli",
+    "CHANGELOG.md",
+    "DISTRIBUTION.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/instancelabs/foresights.git"
+  },
+  "scripts": {
+    "build:plugin": "bash scripts/build-plugin.sh",
+    "test": "node --test test/*.test.mjs",
+    "validate:distribution": "node scripts/validate-distribution.mjs",
+    "preflight": "npm test && npm run validate:distribution"
+  },
+  "keywords": [
+    "claude",
+    "chatgpt",
+    "codex",
+    "plugin",
+    "foresights"
+  ]
+}

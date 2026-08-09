@@ -34,14 +34,17 @@ describe('buildRichCcPrompt', () => {
     expect(out).toContain('## Suggested integrations');
     expect(out).toContain('- **Add an Aspect rule** — Extend src/aspects/ with a new check.');
     expect(out).toContain('- **Surface in SARIF** — Emit the finding via cdk-insights-action.');
-    expect(out).toContain('Mode: plan. CDK Insights repo guidance follows.');
+    expect(out).toContain(
+      'Mode: plan. Treat the source item and suggested integrations as leads, not verified requirements.',
+    );
+    expect(out).toContain('check whether the change shipped or was reverted');
   });
 
   it('reflects implement mode in the closing instruction', () => {
     const args = { ...baseArgs(), mode: 'implement' as const };
     const out = buildRichCcPrompt('CDK Insights', args);
     expect(out).toContain('Mode: implement.');
-    expect(out).toContain('ground your changes');
+    expect(out).toContain('Ground your changes');
   });
 
   it('falls back to stableId when title is absent and omits empty sections', () => {

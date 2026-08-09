@@ -478,4 +478,20 @@ describe('fetchBrief — output contract', () => {
     expect(promptArg).toContain('"integrations"');
     expect(promptArg.toLowerCase()).toContain('json object');
   });
+
+  it('forbids invented implementation details and allows a verification-only result', async () => {
+    const askClaude = vi.fn<AskClaude>().mockResolvedValue(validResponse);
+    const deps = makeDeps(askClaude);
+    await fetchBrief(deps, {
+      flag: FLAG,
+      prompt: PROMPT,
+      fingerprint: FINGERPRINT,
+      topicSlug: TOPIC_SLUG,
+      item: ITEM,
+    });
+    const promptArg = askClaude.mock.calls[0]?.[0] ?? '';
+    expect(promptArg).toContain('Do not invent APIs');
+    expect(promptArg).toContain('Treat only ITEM fields as source evidence');
+    expect(promptArg).toContain('return zero integrations or a single verification step');
+  });
 });

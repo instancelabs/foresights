@@ -3,6 +3,7 @@ import type { Deps } from '../types';
 import {
   TRIAGE_FAIL_REASON,
   type TriageInput,
+  applyTriageAccuracyGuards,
   buildTriagePrompt,
   triageItems,
   trimTriageItem,
@@ -23,8 +24,13 @@ const item = (id: string, extra: Partial<TriageInput> = {}): TriageInput => ({
 });
 
 const triageResponse = (
-  entries: ReadonlyArray<{ id: string; bucket: string; reason: string }>,
-): string => JSON.stringify(entries);
+  entries: ReadonlyArray<{
+    id: string;
+    bucket: string;
+    reason: string;
+    basis?: 'source' | 'inference' | 'unknown';
+  }>,
+): string => JSON.stringify(entries.map((entry) => ({ basis: 'source', ...entry })));
 
 describe('buildTriagePrompt', () => {
   it('embeds the product descriptor', () => {
@@ -46,6 +52,13 @@ describe('buildTriagePrompt', () => {
     expect(buildTriagePrompt(PROD_DESCRIPTOR)).toMatch(/Be ruthless/);
   });
 
+  it('separates source evidence from earlier model hypotheses', () => {
+    const p = buildTriagePrompt(PROD_DESCRIPTOR);
+    expect(p).toContain('why/ints are earlier model hypotheses');
+    expect(p).toContain('MUST NOT be treated as evidence');
+    expect(p).toContain('reverts or supersedes');
+  });
+
   it('demands JSON-only / no fences', () => {
     const p = buildTriagePrompt(PROD_DESCRIPTOR);
     expect(p).toMatch(/JSON ONLY/);
@@ -58,10 +71,10 @@ describe('trimTriageItem', () => {
     expect(trimTriageItem({ stableId: 'release:v1', text: 'x' }).id).toBe('release:v1');
   });
 
-  it('collapses whitespace + truncates text to 140 chars', () => {
+  it('collapses whitespace + truncates text to 420 chars', () => {
     const long = 'a '.repeat(200); // 400 chars with single spaces — trimmed below
     const trimmed = trimTriageItem({ stableId: 's', text: long });
-    expect(trimmed.txt?.length).toBeLessThanOrEqual(140);
+    expect(trimmed.txt?.length).toBeLessThanOrEqual(420);
     expect(trimmed.txt).not.toMatch(/\s{2,}/);
   });
 
@@ -70,14 +83,26 @@ describe('trimTriageItem', () => {
     expect(trimmed.txt).toBe('foo bar baz');
   });
 
-  it('truncates why to 180 chars', () => {
+  it('truncates why to 320 chars', () => {
     const why = 'w'.repeat(500);
-    expect(trimTriageItem({ stableId: 's', text: 't', why }).why?.length).toBe(180);
+    expect(trimTriageItem({ stableId: 's', text: 't', why }).why?.length).toBe(320);
   });
 
-  it('truncates ints to 90 chars', () => {
+  it('truncates ints to 180 chars', () => {
     const ints = 'i'.repeat(500);
-    expect(trimTriageItem({ stableId: 's', text: 't', ints }).ints?.length).toBe(90);
+    expect(trimTriageItem({ stableId: 's', text: 't', ints }).ints?.length).toBe(180);
+  });
+
+  it('keeps structured title, kind, and version evidence', () => {
+    expect(
+      trimTriageItem({
+        stableId: 's',
+        text: 'body',
+        title: 'A title',
+        kind: 'release-breaking',
+        version: 'v2.0.0',
+      }),
+    ).toMatchObject({ ttl: 'A title', kind: 'release-breaking', ver: 'v2.0.0' });
   });
 
   it('omits why and ints when not provided', () => {
@@ -109,9 +134,9 @@ describe('triageItems — happy path', () => {
       productDescriptor: PROD_DESCRIPTOR,
     });
     expect(out).toEqual([
-      { stableId: 'a', bucket: 'green', reasoning: 'big win' },
-      { stableId: 'b', bucket: 'red', reasoning: 'not relevant' },
-      { stableId: 'c', bucket: 'yellow', reasoning: 'maybe' },
+      { stableId: 'a', bucket: 'green', reasoning: 'big win', evidenceBasis: 'source' },
+      { stableId: 'b', bucket: 'red', reasoning: 'not relevant', evidenceBasis: 'source' },
+      { stableId: 'c', bucket: 'yellow', reasoning: 'maybe', evidenceBasis: 'source' },
     ]);
   });
 
@@ -155,14 +180,14 @@ describe('triageItems — happy path', () => {
 });
 
 describe('triageItems — batching', () => {
-  it('splits into ceil(items / batchSize) calls (default batch size 10)', async () => {
+  it('splits into conservative six-item batches by default', async () => {
     const askClaude = vi.fn<AskClaude>().mockImplementation(async (_p, data) => {
       const batch = (data?.[0] as Array<{ id: string }>) ?? [];
       return triageResponse(batch.map((b) => ({ id: b.id, bucket: 'red', reason: 'r' })));
     });
     const items = Array.from({ length: 25 }, (_, i) => item(`i${i}`));
     await triageItems(makeDeps(askClaude), items, { productDescriptor: PROD_DESCRIPTOR });
-    expect(askClaude).toHaveBeenCalledTimes(3); // ceil(25/10) = 3
+    expect(askClaude).toHaveBeenCalledTimes(5); // ceil(25/6) = 5
   });
 
   it('respects a custom batchSize', async () => {
@@ -315,6 +340,80 @@ describe('triageItems — baked tier (BAKED_TRIAGE)', () => {
       productId: 'cdki',
     });
     expect(askClaude).toHaveBeenCalledTimes(1);
-    expect(out).toEqual([{ stableId: 'a', bucket: 'green', reasoning: 'big win' }]);
+    expect(out).toEqual([
+      {
+        stableId: 'a',
+        bucket: 'green',
+        reasoning: 'big win',
+        evidenceBasis: 'source',
+      },
+    ]);
+  });
+});
+
+describe('applyTriageAccuracyGuards', () => {
+  it('demotes an unsupported green verdict', () => {
+    const out = applyTriageAccuracyGuards(
+      [item('a', { kind: 'release-features' })],
+      [
+        {
+          stableId: 'a',
+          bucket: 'green',
+          reasoning: 'sounds useful',
+          evidenceBasis: 'inference',
+        },
+      ],
+    );
+    expect(out[0]?.bucket).toBe('yellow');
+    expect(out[0]?.reasoning).toContain('inferred');
+  });
+
+  it('caps RFC and alpha work at yellow even when the model says green', () => {
+    const out = applyTriageAccuracyGuards(
+      [item('rfc', { kind: 'rfc' }), item('alpha', { kind: 'release-alpha' })],
+      [
+        {
+          stableId: 'rfc',
+          bucket: 'green',
+          reasoning: 'ship it',
+          evidenceBasis: 'source',
+        },
+        {
+          stableId: 'alpha',
+          bucket: 'green',
+          reasoning: 'ship it',
+          evidenceBasis: 'source',
+        },
+      ],
+    );
+    expect(out.map((entry) => entry.bucket)).toEqual(['yellow', 'yellow']);
+  });
+
+  it('rejects both sides of a correlated revert pair', () => {
+    const out = applyTriageAccuracyGuards(
+      [
+        item('feature', { title: 'feat: ALB integration (#36247)', kind: 'release-features' }),
+        item('revert', {
+          title: 'revert ALB integration (#38305), closes #36247',
+          kind: 'release-fixes',
+        }),
+      ],
+      [
+        {
+          stableId: 'feature',
+          bucket: 'green',
+          reasoning: 'new feature',
+          evidenceBasis: 'source',
+        },
+        {
+          stableId: 'revert',
+          bucket: 'yellow',
+          reasoning: 'revert',
+          evidenceBasis: 'source',
+        },
+      ],
+    );
+    expect(out.map((entry) => entry.bucket)).toEqual(['red', 'red']);
+    expect(out[0]?.reasoning).toContain('reverted or withdrawn');
   });
 });

@@ -73,7 +73,7 @@ like a Foresights dashboard, tell the user to build one first with
 `/create-dashboard`, and stop. `Read` the matched artifact's `path` to get its
 current HTML.
 
-**Claude Code / non-Cowork host (that tool absent).** The dashboard is a plain
+**ChatGPT/Codex, Claude Code, or another non-Cowork host (that tool absent).** The dashboard is a plain
 HTML file on disk (a `static`-mode build). Locate it:
 
 - If the user gave a path, use it.
@@ -140,7 +140,8 @@ fresh curation is grounded in.
    FORESIGHTS_TPL=/tmp/foresights-templates
    if [ ! -f "$FORESIGHTS_TPL/wizard/refresh.js" ]; then
      rm -rf "$FORESIGHTS_TPL"
-     cp -R "${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates" "$FORESIGHTS_TPL"
+     # Resolve templates as create-dashboard/SKILL.md describes, then:
+     cp -R "$FORESIGHTS_TEMPLATE_SOURCE" "$FORESIGHTS_TPL"
      chmod -R u+w "$FORESIGHTS_TPL"
    fi
    # Zero-install — runs the pre-bundled wizard/refresh.js, no npm install and
@@ -185,7 +186,7 @@ Then ship the refresh — by the same host split as Step 1:
   one-line `update_summary` of what was refreshed. **Don't skip the
   `update_artifact` call** — editing a temp file changes nothing the user sees;
   the update is what ships the refresh.
-- **Claude Code / non-Cowork host.** Write the refreshed HTML **back to the
+- **ChatGPT/Codex, Claude Code, or another non-Cowork host.** Write the refreshed HTML **back to the
   dashboard's own file path** (the one you `Read` in Step 1), overwriting it.
   There is no `update_artifact`. Then tell the user to reload the file in their
   browser to see the new content.

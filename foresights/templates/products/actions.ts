@@ -49,9 +49,9 @@ const buildGenericCcPrompt = ({ brief, meta, mode }: BuildActionArgs): string =>
 
 const claudeCodeSpec: ActionTypeSpec = {
   id: 'claude-code',
-  actionLabel: 'Generate Claude Code prompt',
+  actionLabel: 'Generate coding agent prompt',
   hideLabel: 'Hide prompt',
-  panelTitle: 'Claude Code prompt',
+  panelTitle: 'Coding agent prompt',
   hasMode: true,
   usesRepoContext: true,
   copyFormats: ['prompt', 'task'],

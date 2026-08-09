@@ -133,18 +133,43 @@ describe('renderDigestMarkdown — green/yellow detail block', () => {
     (args: BuildCcPromptArgs) => `MODE=${args.mode} STABLE=${args.meta.stableId}`,
   );
 
-  it('renders the cleaned title as an H3 with a 1-based index', () => {
+  it('renders the structured source title as an H3 with a 1-based index', () => {
     const md = renderDigestMarkdown({
       ...BASE,
       entries: [
-        entry('a', { text: '[Feature] **core:** add a thing' }),
-        entry('b', { text: 'second item' }),
+        {
+          ...entry('a', { text: '[Feature] **wrong:** ignored matcher text' }),
+          flag: flag({ stableId: 'a', title: '**core:** add a thing' }),
+        },
+        {
+          ...entry('b', { text: 'second item' }),
+          flag: flag({ stableId: 'b', title: 'second item' }),
+        },
       ],
       triaged: [triaged('a', 'green'), triaged('b', 'green')],
       ccBuilder,
     });
-    expect(md).toContain('### 1. add a thing');
+    expect(md).toContain('### 1. core: add a thing');
     expect(md).toContain('### 2. second item');
+  });
+
+  it('keeps markdown link labels, removes URLs, and adds a breaking prefix', () => {
+    const md = renderDigestMarkdown({
+      ...BASE,
+      entries: [
+        {
+          ...entry('a', { kind: 'release-breaking' }),
+          flag: flag({
+            stableId: 'a',
+            title: '**core:** changed API ([#123](https://github.com/o/r/pull/123))',
+          }),
+        },
+      ],
+      triaged: [triaged('a', 'yellow')],
+      ccBuilder,
+    });
+    expect(md).toContain('### 1. BREAKING: core: changed API (#123)');
+    expect(md).not.toContain('### 1. BREAKING: core: changed API ([#123](');
   });
 
   it('emits Source / Version / Why it matters / Triage rationale lines', () => {
@@ -233,7 +258,7 @@ describe('renderDigestMarkdown — green/yellow detail block', () => {
     expect(md).not.toContain('**Integration plan:**');
   });
 
-  it('embeds the Claude Code prompt inside a <details> block with ``` fence', () => {
+  it('embeds the coding agent prompt inside a <details> block with ``` fence', () => {
     const md = renderDigestMarkdown({
       ...BASE,
       entries: [entry('a')],
@@ -241,7 +266,7 @@ describe('renderDigestMarkdown — green/yellow detail block', () => {
       ccBuilder,
     });
     expect(md).toContain('<details>');
-    expect(md).toContain('<summary>Claude Code prompt (click to expand)</summary>');
+    expect(md).toContain('<summary>Coding agent prompt (click to expand)</summary>');
     // entry('a') overrides stableId to 'a', so the cc builder sees stableId=a.
     expect(md).toMatch(/```\nMODE=plan STABLE=a\n```/);
     expect(md).toContain('</details>');
@@ -354,8 +379,14 @@ describe('renderDigestMarkdown — red one-liners', () => {
     const md = renderDigestMarkdown({
       ...BASE,
       entries: [
-        entry('a', { text: '[Tag] short red item' }),
-        entry('b', { text: 'another red one' }),
+        {
+          ...entry('a', { text: '[Tag] short red item' }),
+          flag: flag({ stableId: 'a', title: '[Tag] short red item' }),
+        },
+        {
+          ...entry('b', { text: 'another red one' }),
+          flag: flag({ stableId: 'b', title: 'another red one' }),
+        },
       ],
       triaged: [triaged('a', 'red', 'low impact'), triaged('b', 'red', 'redundant')],
     });
@@ -366,7 +397,12 @@ describe('renderDigestMarkdown — red one-liners', () => {
   it('falls back to "Low impact for <productLabel>" when the reason is missing', () => {
     const md = renderDigestMarkdown({
       ...BASE,
-      entries: [entry('a', { text: 'red orphan' })],
+      entries: [
+        {
+          ...entry('a', { text: 'red orphan' }),
+          flag: flag({ stableId: 'a', title: 'red orphan' }),
+        },
+      ],
       triaged: [triaged('a', 'red', '')], // empty reasoning
     });
     expect(md).toContain('- **red orphan** — Low impact for CDK Insights.');
@@ -385,13 +421,14 @@ describe('renderDigestMarkdown — red one-liners', () => {
 });
 
 describe('renderDigestMarkdown — footer', () => {
-  it('emits the save-path footer with the date + slug', () => {
+  it('emits a host-neutral suggested filename footer', () => {
     const md = renderDigestMarkdown({
       ...BASE,
       entries: [],
       triaged: [],
     });
-    expect(md).toContain('`.claude/upgrade-digests/2026-05-19-cdk-insights-upgrade-digest.md`');
+    expect(md).toContain('`2026-05-19-cdk-insights-upgrade-digest.md`');
+    expect(md).toContain('Review with your coding agent');
   });
 });
 
@@ -406,7 +443,7 @@ describe('renderDigestMarkdown — non-cc action types', () => {
     expect(md).toContain('<summary>Summary (click to expand)</summary>');
     expect(md).toContain('Mixins reshape construct composition.');
     expect(md).toContain('How it could fit:');
-    expect(md).not.toContain('Claude Code prompt (click to expand)');
+    expect(md).not.toContain('Coding agent prompt (click to expand)');
   });
 
   it('embeds the task builder output in a <details> titled "Task"', () => {

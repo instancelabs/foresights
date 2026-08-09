@@ -6,14 +6,14 @@
 
 <p align="center">
   News that affects your stack — before it lands.<br/>
-  A Claude Code &amp; Cowork plugin by <a href="https://instancelabs.dev">Instance Labs</a>.
+  A ChatGPT Work, Codex, Claude Code &amp; Cowork plugin by <a href="https://instancelabs.dev">Instance Labs</a>.
 </p>
 
 ---
 
 Foresights spins up a news dashboard customised to your product in about 15 minutes. It shows just the GitHub releases, PRs, RFCs, and RSS items that touch *your* stack — plus curated highlights, a rotating spotlight, and per-product relevance flagging so you see what matters immediately.
 
-When something is worth acting on, click through to a Haiku-generated brief grounded in *your* codebase, then generate a self-contained Claude Code prompt to implement it — or batch everything into a triaged upgrade digest that drops into your repo's `.claude/upgrade-digests/` folder.
+When something is worth acting on, click through to an evidence-aware brief grounded in *your* codebase, then generate a self-contained coding-agent prompt — or batch everything into a conservative upgrade digest for review in ChatGPT Work/Codex or Claude Code.
 
 <p align="center">
   <img src="assets/screenshot-dashboard.png" width="32%" alt="A live Foresights dashboard with product badges">
@@ -27,27 +27,40 @@ When something is worth acting on, click through to a Haiku-generated brief grou
 
 ## Requirements
 
-- **[Claude Code](https://claude.com/claude-code)** (the CLI) **or Cowork** (the Claude desktop app's workspace for live, interactive artifacts) — Foresights runs in either.
+- **ChatGPT Work/Codex, [Claude Code](https://claude.com/claude-code), or Cowork** — Foresights ships a standalone static dashboard in coding-agent hosts and a live artifact in Cowork.
 - **Node ≥ 20** — the wizard compiles your dashboard locally. `/foresights-doctor` verifies this for you.
 - A connected **GitHub MCP server** *if* you want live GitHub release / PR / issue data — optional; RSS-only and curated-only dashboards work without it.
-- Brief generation uses **Claude Haiku**, so expect a small amount of model usage.
+- Brief generation uses the active host model; live Cowork dashboards use **Claude Haiku**, while static builds are synthesized by the coding agent.
 
 ## Install &amp; first run
 
-### In Claude Code
+### Claude app / Cowork
 
+Download the latest `foresights-<version>.plugin` from the [releases page](https://github.com/instancelabs/foresights/releases). In Claude, open **Plugins**, upload the custom plugin file, and start a new chat. Invoke `/create-dashboard` or ask Claude to use Foresights.
+
+### ChatGPT Work / Codex app
+
+Until the public universal-directory listing is approved, add the GitHub marketplace once:
+
+```bash
+npx github:instancelabs/foresights install --codex
 ```
-/plugin marketplace add instancelabs/foresights
-/plugin install foresights@instancelabs
+
+Restart the ChatGPT desktop app, open **Plugins → Instance Labs**, and install or enable Foresights. Start a new Work/Codex chat before using it.
+
+### Claude Code and Codex CLI
+
+Use the same installer for either host:
+
+```bash
+npx github:instancelabs/foresights install --claude
+npx github:instancelabs/foresights install --codex
+npx github:instancelabs/foresights install --all
 ```
 
-Then run **`/create-dashboard`** and answer ~6 quick questions (topic, accent, data sources, products to flag, spotlight seeds, cadence). You get a **self-contained static HTML dashboard** that opens in any browser.
+Run it again to refresh an existing installation, or use `npx github:instancelabs/foresights status --all` for a read-only check. Then run `/create-dashboard` in Claude Code, or ask Codex to use Foresights to create a dashboard.
 
-### In Cowork
-
-Install the latest `.plugin` from this repo's [releases page](https://github.com/instancelabs/foresights/releases) (or build it yourself with `scripts/build-plugin.sh`), then run **`/create-dashboard`**. In Cowork you get a **live artifact** that re-fetches GitHub / RSS data every time you open it.
-
-> **Two output modes, picked automatically.** Cowork → a live artifact that re-fetches on open. Claude Code → a static HTML file baked once, portable and shareable. The wizard detects your host; you can force either.
+> **Two output modes, picked automatically.** Cowork → a live artifact that re-fetches on open. ChatGPT Work/Codex and Claude Code → a static HTML file baked once, portable and shareable. The wizard detects your host; you can force either.
 
 On a locked-down or corporate machine? Run **`/foresights-doctor`** first — it probes your environment and routes the wizard to the data path that works there.
 
@@ -72,8 +85,8 @@ Every generated dashboard follows the same proven pattern:
 1. **Live data** — GitHub releases / PRs / issues via the MCP bridge, plus RSS / Atom feeds baked at build time. Refreshed each time you open the dashboard (artifact mode) or pre-baked into the file (static mode).
 2. **Curated content** — hand-picked highlights, a rotating spotlight (daily / weekly / on-demand), community libs, tips, and resources. Each section has a `↻ Refresh content` button.
 3. **Relevance flagging** — regex matchers per product flag items that affect *your* stack. Items can carry multiple product badges; matchers stress-tested at build time for catastrophic-backtracking patterns.
-4. **Brief panel** — click any badge → Haiku-generated "why relevant" + "how it could integrate" with specific src paths from your repo, cached locally by content hash.
-5. **Implementation** — every brief has a Claude Code prompt button (or a summary / task output, depending on the product's action type). Per-product "Upgrade digest" button batches all flagged items into 🟢/🟡/🔴 triage buckets with embedded ready-to-paste prompts. `/setup-cc` wires the receiving side into your repo.
+4. **Brief panel** — click any badge → a model-generated, evidence-aware "why relevant" + "how it could integrate," grounded in the available repo context and cached locally by content hash.
+5. **Implementation** — every brief has a coding-agent prompt button (or a summary / task output, depending on the product's action type). Per-product "Upgrade digest" button batches all flagged items into 🟢/🟡/🔴 triage buckets with embedded ready-to-paste prompts. `/setup-cc` remains available for Claude Code-specific repository wiring.
 
 Output as a Cowork **artifact** (live, re-fetches on open) or a **static HTML file** (briefs and digest triage pre-baked at build time, no Cowork runtime needed — useful for sharing or for environments without live-artifact support).
 
@@ -81,7 +94,7 @@ Output as a Cowork **artifact** (live, re-fetches on open) or a **static HTML fi
 
 Foresights stores a small amount of data in your browser's `localStorage` to keep the dashboard responsive between opens:
 
-- **Brief cache** — each Haiku-generated brief (the "why relevant" + "how it could integrate" text for a flagged item) is cached by content hash, keyed by topic + product. Refreshing the dashboard's source data invalidates entries whose underlying item changed.
+- **Brief cache** — each generated brief (the "why relevant" + "how it could integrate" text for a flagged item) is cached by content hash, keyed by topic + product. Refreshing the dashboard's source data invalidates entries whose underlying item changed.
 - **Repo-context cache** — when a product opts into context refresh, the dashboard stores the literal text of your repo's `CLAUDE.md` and `README.md` (capped at 16KB per file), so subsequent brief generations can ground integration suggestions in your conventions.
 - **Spotlight rotation state** — which spotlight card was last shown and when, so the rotation period (daily / weekly / on-demand) rolls over correctly.
 
@@ -89,6 +102,6 @@ All local-only — nothing is exfiltrated, no telemetry, no analytics. Worth bei
 
 ## Status
 
-**v0.9.9 — actively maintained.** Latest: Claude Code (static-output) support alongside Cowork, plus a security-hardening pass — `safeHref` on every link, a build-time XSS allowlist on trusted-HTML fields, an SSRF guard on feed fetches, and a regex-DoS smoke check; `npm audit` is clean. See the [releases page](https://github.com/instancelabs/foresights/releases) for the full per-version writeups.
+**v0.10.0 — release candidate.** Adds shared Claude and OpenAI plugin packaging, a unified Claude Code/Codex installer, and more conservative evidence-aware briefs and upgrade digests. See the [releases page](https://github.com/instancelabs/foresights/releases) for published releases.
 
 Author: [Instance Labs Ltd](https://instancelabs.dev). Licensed under [MIT](../LICENSE).

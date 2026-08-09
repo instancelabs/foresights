@@ -1,6 +1,6 @@
 ---
 name: create-dashboard
-description: Wizard that builds a live, product-customised news dashboard. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, or set up Foresights — and also whenever they describe wanting to keep up with, stay on top of, stay current on, follow what's new in, or stop falling behind on a technology, library, framework, tool, or ecosystem. Asks 6 questions, then ships the dashboard — a live Cowork artifact in the Cowork desktop app, or a standalone HTML file in Claude Code. Works in both.
+description: Wizard that builds a live, product-customised news dashboard. Use when the user asks to create a dashboard, build a news dashboard, track an ecosystem, or set up Foresights — and also whenever they describe wanting to keep up with, stay on top of, stay current on, follow what's new in, or stop falling behind on a technology, library, framework, tool, or ecosystem. Asks 6 questions, then ships a live Cowork artifact or a standalone HTML file in ChatGPT, Codex, Claude Code, and other coding-agent hosts.
 ---
 
 # Create Dashboard
@@ -9,11 +9,11 @@ description: Wizard that builds a live, product-customised news dashboard. Use w
 
 ## What this skill does
 
-Walks the user through ~6 questions (output mode is auto-detected, not asked), then generates a fully-populated dashboard: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + Claude Code prompt + upgrade-digest builder. Ships the right way for the host — a live Cowork artifact in the Cowork desktop app, or a self-contained standalone HTML file (`outputMode: 'static'`) in Claude Code. Step 0a detects which automatically.
+Walks the user through ~6 questions (output mode is auto-detected, not asked), then generates a fully-populated dashboard: live ecosystem news (GitHub releases / PRs / issues, plus RSS / Atom feeds) + curated highlights, spotlight, patterns, tips + per-product relevance flagging + coding-agent prompt + upgrade-digest builder. Ships the right way for the host — a live Cowork artifact in the Cowork desktop app, or a self-contained standalone HTML file (`outputMode: 'static'`) in ChatGPT, Codex, Claude Code, and other non-Cowork hosts. Step 0a detects which automatically.
 
 ## Wizard flow
 
-Use `AskUserQuestion` for each step. Don't ask follow-ups if the user's free-text answer already covers the next question.
+Use the host's structured user-input tool when one is available; otherwise ask one concise question at a time. Don't ask follow-ups if the user's free-text answer already covers the next question.
 
 ### 1. Topic + slug
 
@@ -53,13 +53,13 @@ Source examples in `references/build-internals.md` → "Source examples".
 
 For each product, first ask its **action type** — what a flagged item should produce:
 
-- `claude-code` *(default)* — a ready-to-run Claude Code handoff prompt, with Plan / Plan+Implement toggle and the upgrade-digest workflow. For products backed by a code repo.
+- `claude-code` *(default internal id; shown as “coding agent”)* — a ready-to-run handoff prompt for ChatGPT/Codex or Claude Code, with Plan / Plan+Implement toggle and the upgrade-digest workflow. For products backed by a code repo.
 - `summary` — a plain-prose summary. For research / marketing / non-engineering products with no repo.
 - `task` — a tracker-ready item: one-line title, the "why", and a checklist.
 
 Then, per product: `label`, `badgeColor`, `rules[]` (`{re, reason}` regex matchers ordered by signal strength), `systemPrompt` (architecture / domain summary).
 
-For `claude-code` products only, also collect `repo` and read CLAUDE.md + README.md via `mcp__<gh_server>__get_file_contents` to extract repo-navigation context (becomes `ccPromptBody`). Optionally collect a `contextRefresh` spec.
+For `claude-code` products only, also collect `repo` and read the repository instructions (`AGENTS.md` and/or `CLAUDE.md`) plus `README.md`, using the local filesystem or the detected GitHub connector. Extract repo-navigation and analysis-boundary context (becomes `ccPromptBody`). Optionally collect a `contextRefresh` spec.
 
 For `summary` / `task` products, skip the repo entirely. Derive `rules[]` + `systemPrompt` from a short user description. Their action is built generically by the `ACTION_TYPES` registry — no per-product builder code is emitted.
 
@@ -83,9 +83,9 @@ Omit `cadence` for `daily` so a daily dashboard's build output stays byte-identi
 
 ### 7. Output mode
 
-**Already decided by the Step 0a host probe — don't ask.** Cowork (the `mcp__cowork__create_artifact` tool is present) → `outputMode: 'artifact'`. Claude Code / any other host (that tool absent) → `outputMode: 'static'`. Only override when the user explicitly asks for the other kind — e.g. a Cowork user who wants a portable, downloadable file should get `static`.
+**Already decided by the Step 0a host probe — don't ask.** Cowork (the `mcp__cowork__create_artifact` tool is present) → `outputMode: 'artifact'`. ChatGPT/Codex, Claude Code, or any other host without that tool → `outputMode: 'static'`. Only override when the user explicitly asks for the other kind — e.g. a Cowork user who wants a portable, downloadable file should get `static`.
 
-Static dashboards run as standalone HTML files with no `window.cowork`: every section (GitHub data, RSS, briefs, digest triage) is baked at build time, so the file opens and works in any browser with no host bridge. See `references/static-mode.md` for the full static path (fetching baked GitHub data, the two-pass brief + triage flow, file output). This is the path that makes `/create-dashboard` work in Claude Code.
+Static dashboards run as standalone HTML files with no `window.cowork`: every section (GitHub data, RSS, briefs, digest triage) is baked at build time, so the file opens and works in any browser with no host bridge. See `references/static-mode.md` for the full static path (fetching baked GitHub data, the two-pass brief + triage flow, file output). This is the path used by ChatGPT/Codex and Claude Code.
 
 ## Wizard outputs
 
@@ -93,10 +93,10 @@ Static dashboards run as standalone HTML files with no `window.cowork`: every se
 
 Four quick probes that jointly decide the host output mode + the data-fetch strategy for the rest of the wizard. Total runtime under 10 seconds. (For a full report instead of just routing, the user can invoke `/foresights-doctor` — same checks, formatted output.)
 
-**0a. Host detection (Cowork vs Claude Code) — sets the output mode.** Scan your tool list for `mcp__cowork__create_artifact`.
+**0a. Host detection (Cowork vs coding-agent host) — sets the output mode.** Scan your tool list for `mcp__cowork__create_artifact`.
 
 - **Present → Cowork desktop app.** Default to `outputMode: 'artifact'` — a live Cowork artifact (GitHub sections re-fetch on every open via the `window.cowork` bridge). This is the richest experience.
-- **Absent → Claude Code (or any non-Cowork host).** Default to `outputMode: 'static'` — a self-contained HTML file with every section baked at build time (no `window.cowork` runtime dependency, opens in any browser). **Do not** attempt `mcp__cowork__create_artifact` — it isn't there; the build writes a file and you report its path (Step 6).
+- **Absent → ChatGPT/Codex, Claude Code, or another non-Cowork host.** Default to `outputMode: 'static'` — a self-contained HTML file with every section baked at build time (no `window.cowork` runtime dependency, opens in any browser). **Do not** attempt `mcp__cowork__create_artifact` — it isn't there; the build writes a file and you report its path (Step 6).
 
 This is a capability check, not a question — don't ask the user which host they're in. Only revisit the mode if the user explicitly asks for the other kind (e.g. a Cowork user who wants a portable file → `static`). The rest of the wizard is identical either way; only Step 1's GitHub-data handling (live vs baked) and Step 6's ship step differ.
 
@@ -110,7 +110,7 @@ node -e "fetch('https://example.com', { signal: AbortSignal.timeout(8000) }).the
 
 PASS if it prints `node-fetch:200`.
 
-**0d. WebFetch reachability.** Use your own `WebFetch` tool against `https://example.com`. PASS if it returns content; FAIL on any error or block message.
+**0d. Agent web-fetch reachability.** Use the host's web browsing/fetch capability against `https://example.com`. The tool may be named `WebFetch`, `web`, or Browser. PASS if it returns content; FAIL on any error or block message.
 
 **Strategy by probe result:**
 
@@ -150,7 +150,7 @@ The fetch path depends on the Step 0 strategy:
 
 **Atom-feed fallback (no GH MCP, Node fetch works).** GitHub sources were swapped to `kind: 'rss'` in Step 0 using the repo's atom feeds. Leave `items` unset for all RSS sources and pass just the `url` — `wizard/fetch-feeds.ts` hydrates them all in Node.
 
-**Restricted-environment path (no GH MCP, only WebFetch works).** GitHub sources were swapped to atom-feed RSS in Step 0. **Pre-populate `items` yourself**: `WebFetch` each URL, parse the atom/rss XML into `RssItem[]` (`{title, link, description, pubDate, author, guid}` — shape in `templates/types.ts`), and set `items` on the source before invoking the build. `hydrateRssSources` short-circuits when `items.length > 0`, so the blocked Node fetch is bypassed.
+**Restricted-environment path (no GH MCP, only agent web fetch works).** GitHub sources were swapped to atom-feed RSS in Step 0. **Pre-populate `items` yourself**: fetch each URL with the host's web capability, parse the atom/rss XML into `RssItem[]` (`{title, link, description, pubDate, author, guid}` — shape in `templates/types.ts`), and set `items` on the source before invoking the build. `hydrateRssSources` short-circuits when `items.length > 0`, so the blocked Node fetch is bypassed.
 
 **Verify your fetches actually returned data.** Count items per source. If any source returned **zero** items, raise it explicitly before continuing — that section will render an empty "no recent items in this feed" card and the user gets a half-broken dashboard with no obvious cause. Either try the alternative fetch path or warn the user. The orchestrator surfaces zero-item warnings in its stdout summary (v0.9.1+), but catching it before the build is faster.
 
@@ -172,6 +172,14 @@ Per-array JSON shapes and the inline-HTML rule (`<code>` allowed, everything els
 
 Static-mode only. The same agent-synthesis approach: a two-pass `build.ts --emit-flags` flow generates per-(product × item) briefs and digest verdicts. Full step-by-step in `references/static-mode.md` → "Two-pass brief + triage flow". Skip this step for `'artifact'` builds — they generate briefs and triage live via the dashboard's `askClaude` bridge.
 
+Accuracy gate for the static synthesis pass:
+
+- Treat the manifest entry's title/text/kind/version as source evidence; product prompts and generated integrations are context, not evidence.
+- Do not invent APIs, properties, defaults, permissions, pricing, security impact, paths, or shipment status.
+- Use `evidenceBasis: 'source' | 'inference' | 'unknown'` on every triage verdict. Green requires `source` and an explicitly shipped/merged active change.
+- Alpha/preview work, RFCs/issues, and proposals cannot be green. If one item reverts another, mark the revert and the withdrawn change red.
+- When evidence is thin, use zero integrations or a verification step and keep the item yellow/red.
+
 ### 4. Build the dashboard
 
 Hand the populated `WizardConfig` to `wizard/build.ts`. See the "Build step" below.
@@ -190,27 +198,30 @@ Run the built bundle in Node with stubbed `window` / `document` / `localStorage`
 ### 6. Ship
 
 - **Artifact mode (Cowork)** — call `mcp__cowork__create_artifact` with the built HTML, the `mcp_tools` the dashboard actually uses (one `${ghServer}__list_<kind>` per distinct GitHub kind in use, plus `__get_file_contents` + `__search_repositories` when products are configured for context refresh; RSS sources need no entry), and the orchestrator's `artifact.description`.
-- **Static mode (Claude Code / non-Cowork)** — write the built HTML into a **discoverable location in the user's working directory**, not `/tmp`. Pass `--out "$(pwd)/<topicSlug>-dashboard.html"` (or a folder the user named) so the final artifact lands where they can find it — `/tmp` files are easy to lose and get cleaned up. Do **not** call `create_artifact` (it isn't available). See `references/static-mode.md`.
+- **Static mode (ChatGPT/Codex, Claude Code, or another non-Cowork host)** — write the built HTML into a **discoverable location in the user's working directory**, not `/tmp`. Pass `--out "$(pwd)/<topicSlug>-dashboard.html"` (or a folder the user named) so the final artifact lands where they can find it — `/tmp` files are easy to lose and get cleaned up. Do **not** call `create_artifact` (it isn't available). See `references/static-mode.md`.
 
 ### 7. Report
 
 - **Artifact mode** — report the dashboard opened as a live Cowork artifact.
 - **Static mode** — report the **absolute file path** of the written HTML and tell the user how to open it: "Open it in your browser (`open <path>` on macOS, `xdg-open <path>` on Linux) — it's a self-contained file, no server needed." Mention that live sections are a point-in-time snapshot baked at build (re-run `/refresh-dashboard` to update them), since a standalone file can't re-fetch.
 
-Suggest `/setup-cc` **only when the dashboard has at least one `claude-code` product** — the `/digest` slash-command workflow it installs is Claude-Code-specific.
+Suggest `/setup-cc` only in Claude Code and only when the dashboard has at least one `claude-code` product. ChatGPT/Codex users can review or implement the downloaded digest directly; do not install Claude-specific files into their repo.
 
 ## Build step
 
 The plugin ships a pre-bundled `wizard/build.js` plus a vendored `esbuild-wasm` next to it, so the wizard runs with **zero `npm install`** — Node ≥20 is the only requirement. The plugin directory is read-only, so stage a writable copy to `/tmp` once per session, then reuse it.
 
 ```bash
-# One-time per session — copy the plugin templates to a writable dir. No
-# npm install needed; the staged tree already contains the pre-bundled
-# wizard/build.js and node_modules/esbuild-wasm.
+# Resolve the template source first. In a packaged plugin it is the
+# `templates/` directory beside this SKILL.md. In a source checkout it is
+# `../../templates` relative to this file. Claude installs may also expose
+# `${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates`. Use the first
+# existing directory and substitute its absolute path below.
+FORESIGHTS_TEMPLATE_SOURCE="<resolved absolute templates path>"
 FORESIGHTS_TPL=/tmp/foresights-templates
 if [ ! -f "$FORESIGHTS_TPL/wizard/build.js" ]; then
   rm -rf "$FORESIGHTS_TPL"
-  cp -R "${CLAUDE_PLUGIN_ROOT}/skills/create-dashboard/templates" "$FORESIGHTS_TPL"
+  cp -R "$FORESIGHTS_TEMPLATE_SOURCE" "$FORESIGHTS_TPL"
   chmod -R u+w "$FORESIGHTS_TPL"
 fi
 
@@ -222,7 +233,7 @@ cd "$FORESIGHTS_TPL" && node wizard/build.js \
   --fast
 ```
 
-> **`--out` location.** Artifact mode (Cowork) can stage the HTML in `/tmp` — it's handed straight to `create_artifact`. **Static mode (Claude Code) must write the final file somewhere the user can find it** — set `--out "$(pwd)/<topicSlug>-dashboard.html"` (or a user-named folder), not `/tmp`. See Step 6.
+> **`--out` location.** Artifact mode (Cowork) can stage the HTML in `/tmp` — it's handed straight to `create_artifact`. **Static mode must write the final file somewhere the user can find it** — set `--out "$(pwd)/<topicSlug>-dashboard.html"` (or a user-named folder), not `/tmp`. See Step 6.
 
 Key flags (`--config`, `--out`, `--fast`, `--templates`, `--with-tests`, `--emit-flags`) and the full 8-step pipeline are documented in `references/build-internals.md` → "Build invocation" and "Pipeline guarantees".
 
