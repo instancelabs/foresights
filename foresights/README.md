@@ -102,6 +102,6 @@ All local-only — nothing is exfiltrated, no telemetry, no analytics. Worth bei
 
 ## Status
 
-**v0.10.0 — release candidate.** Adds shared Claude and OpenAI plugin packaging, a unified Claude Code/Codex installer, and more conservative evidence-aware briefs and upgrade digests. See the [releases page](https://github.com/instancelabs/foresights/releases) for published releases.
+**v0.10.0 — current.** Adds shared Claude and OpenAI plugin packaging, a unified Claude Code/Codex installer, and more conservative evidence-aware briefs and upgrade digests. See the [releases page](https://github.com/instancelabs/foresights/releases) for published releases.
 
 Author: [Instance Labs Ltd](https://instancelabs.dev). Licensed under [MIT](../LICENSE).

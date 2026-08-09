@@ -3,7 +3,7 @@
 Notable changes to Foresights are recorded here. Published release assets and migration notes are
 also available on the [GitHub releases page](https://github.com/instancelabs/foresights/releases).
 
-## [0.10.0] - Unreleased
+## [0.10.0] - 2026-08-09
 
 ### Added
 
@@ -30,6 +30,8 @@ also available on the [GitHub releases page](https://github.com/instancelabs/for
 ### Packaging
 
 - The `.plugin` release artifact now contains both `.claude-plugin` and `.codex-plugin` manifests.
+- Release tags now build separate Claude `.plugin` and OpenAI `.zip` assets, checksums, and a GitHub
+  Release through GitHub Actions.
 - The root npm package exposes the unified installer and supports direct installation from GitHub.
 
 ## Earlier releases
@@ -37,4 +39,4 @@ also available on the [GitHub releases page](https://github.com/instancelabs/for
 See [GitHub Releases](https://github.com/instancelabs/foresights/releases) for versions 0.9.9 and
 earlier.
 
-[0.10.0]: https://github.com/instancelabs/foresights/compare/v0.9.9...HEAD
+[0.10.0]: https://github.com/instancelabs/foresights/compare/v0.9.9...v0.10.0

@@ -6,3 +6,4 @@ node_modules/
 
 # Build artifacts (scripts/build-plugin.sh output) — distributed via GitHub Releases
 *.plugin
+/foresights-*-openai.zip
