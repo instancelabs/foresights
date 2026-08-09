@@ -159,6 +159,9 @@ const buildTriageInputs = (entries: readonly DigestEntry[]): readonly TriageInpu
     const base: TriageInput = {
       stableId: e.flag.stableId,
       text: e.item.text,
+      ...(e.flag.title ? { title: e.flag.title } : {}),
+      ...(e.item.kind ? { kind: e.item.kind } : {}),
+      ...(e.item.version ? { version: e.item.version } : {}),
     };
     return {
       ...base,

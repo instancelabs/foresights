@@ -1,11 +1,11 @@
 /**
- * Repo-context block for Claude Code prompts.
+ * Repo-context block for coding-agent prompts.
  *
  * When a product's context has been refreshed (the ↻ button in the context
  * bar — see products/context-refresh.ts), the fetched repo layout is
  * persisted by products/context-store.ts. This module turns that stored
  * layout into a short markdown block that callers append to a generated
- * Claude Code prompt, so the prompt reflects the *current* repo structure
+ * coding-agent prompt, so the prompt reflects the *current* repo structure
  * rather than only the structure baked in at wizard time.
  *
  * If the product was never refreshed, formatRepoContext returns '' and the
@@ -14,8 +14,8 @@
  *
  * The block is a structural overview: one bullet per fetched path, with
  * type + size, plus an instruction to open the paths in the repo. We
- * deliberately DON'T dump file bodies into the prompt — Claude Code has the
- * repo and reads current files itself (and auto-loads CLAUDE.md), so a path
+ * deliberately DON'T dump file bodies into the prompt — the receiving agent
+ * has the repo and reads current files itself, so a path
  * list avoids prompt bloat and staleness. context-refresh.ts still captures
  * file content for the change-detection fingerprint; it just isn't inlined.
  */
@@ -83,7 +83,7 @@ export const formatRepoContext = (
   const lines = [
     `## Repo context (refreshed ${refreshedOn})`,
     '',
-    'These are the product repo paths the Foresights dashboard tracks for this product. Open them in the repo to ground your work against the current source — they reflect the repo as of the refresh date above and may have changed since. Claude Code auto-loads CLAUDE.md.',
+    'These are starting points tracked by Foresights, not proof that a proposed implementation belongs there. Open them in the repo along with the repository instructions (for example AGENTS.md or CLAUDE.md), inspect the current source, and search for existing coverage before proposing changes.',
     '',
     ...paths.map((e) => `- ${describeEntry(e)}`),
   ];

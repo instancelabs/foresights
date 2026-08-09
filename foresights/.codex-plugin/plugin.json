@@ -1,0 +1,39 @@
+{
+  "name": "foresights",
+  "version": "0.10.0",
+  "description": "Build product-specific ecosystem news dashboards with evidence-aware briefs, triaged upgrade digests, and coding-agent handoffs.",
+  "author": {
+    "name": "Instance Labs Ltd",
+    "url": "https://instancelabs.dev"
+  },
+  "homepage": "https://github.com/instancelabs/foresights",
+  "repository": "https://github.com/instancelabs/foresights",
+  "license": "MIT",
+  "keywords": [
+    "foresights",
+    "dashboard",
+    "news",
+    "ecosystem",
+    "upgrades",
+    "developer-tools"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Foresights",
+    "shortDescription": "News that affects your stack, before it lands.",
+    "longDescription": "Build a product-specific dashboard from GitHub and RSS sources, then turn verified changes into conservative briefs and upgrade digests for ChatGPT, Codex, Claude Code, or Cowork.",
+    "developerName": "Instance Labs Ltd",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/instancelabs/foresights",
+    "defaultPrompt": [
+      "Build a dashboard for the ecosystem my product depends on.",
+      "Refresh my Foresights dashboard with current sources.",
+      "Check whether Foresights is configured correctly."
+    ],
+    "brandColor": "#ff6a14"
+  }
+}

@@ -243,8 +243,13 @@ export const briefFromReason = (flag: Flag, item: BriefItem): Brief => ({
 const BRIEF_OUTPUT_CONTRACT =
   '\n\nRespond with ONLY a JSON object (no markdown fences, no prose) of exactly this shape: ' +
   '{"why": "<1-2 sentences on why this item matters to the product above>", ' +
-  '"integrations": [{"title": "<short imperative>", "detail": "<1-2 sentences referencing concrete repo paths / services / conventions>"}]}. ' +
-  'Provide 1-3 integrations. Be technical and specific; avoid generic platitudes.';
+  '"integrations": [{"title": "<short imperative>", "detail": "<1-2 evidence-grounded sentences>"}]}. ' +
+  'Treat only ITEM fields as source evidence. The relevance reason and product context explain why the item was selected, but do not prove technical claims. ' +
+  'Do not invent APIs, CloudFormation properties, defaults, IAM flows, pricing, source paths, security impact, or implementation status. ' +
+  'Do not turn a service name alone into a new rule or feature. Distinguish shipped releases and merged changes from alpha work, proposals, documentation corrections, and reverts. ' +
+  'If the supplied evidence is insufficient, say what must be verified and return zero integrations or a single verification step instead of a speculative implementation plan. ' +
+  'When suggesting code work, describe the observable configuration or behaviour to inspect; name a repo path only when the product context explicitly provided it. ' +
+  'Provide 0-3 integrations. Be technical, conservative, and specific.';
 
 export const fetchBrief = async (
   deps: Pick<Deps, 'storage' | 'askClaude'>,

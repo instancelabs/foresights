@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a Cowork-installable .plugin from this repo.
+# Build a portable Foresights plugin bundle from this repo.
 #
 # The repo's source layout keeps `foresights/templates/` at the root of the
 # plugin directory for ergonomics — that's where you run `npm install` /
@@ -69,20 +69,21 @@ echo "-> Rebuild wizard entrypoints from source (prebuild-wizard)"
 
 echo "-> Staging plugin v$VERSION at $STAGE"
 
-# Copy the four things that belong in the bundle: manifest, README, skills,
-# and assets. Reference/ stays out (gitignored content not needed at runtime).
-for d in .claude-plugin README.md skills assets; do
+# Copy the manifests, README, skills, and assets. Reference/ stays out
+# (gitignored content not needed at runtime).
+for d in .claude-plugin .codex-plugin README.md skills assets; do
   if [[ -e "$SRC/$d" ]]; then
     cp -R "$SRC/$d" "$STAGE/"
   fi
 done
 
-# LICENSE lives at the REPO ROOT (one source of truth) — copy it into the
-# plugin staging so the marketplace card can render the license badge and
-# users can read the terms from inside the installed plugin folder.
-if [[ -e "$REPO_ROOT/LICENSE" ]]; then
-  cp "$REPO_ROOT/LICENSE" "$STAGE/LICENSE"
-fi
+# Release-level documentation lives at the repo root (one source of truth).
+# Include it so installed users can inspect the license and version history.
+for document in LICENSE CHANGELOG.md; do
+  if [[ -e "$REPO_ROOT/$document" ]]; then
+    cp "$REPO_ROOT/$document" "$STAGE/$document"
+  fi
+done
 
 # Move templates/ under skills/create-dashboard/ to match SKILL.md path.
 if [[ -d "$SRC/templates" ]]; then
@@ -134,6 +135,15 @@ for required in \
   fi
 done
 echo "   precompiled wizard ✓"
+
+echo "-> Verifying host manifests are present"
+for manifest in ".claude-plugin/plugin.json" ".codex-plugin/plugin.json"; do
+  if [[ ! -f "$STAGE/$manifest" ]]; then
+    echo "   !! $manifest missing — the bundle would not be portable across supported hosts" >&2
+    exit 1
+  fi
+done
+echo "   host manifests ✓"
 
 echo "-> Verifying templates/ tree is import-complete"
 import_misses=0
@@ -188,4 +198,4 @@ fi
 echo "   only esbuild-wasm in node_modules ✓"
 
 echo "
-Drag $OUT into Cowork to install."
+Install $OUT in Cowork, or install the repository marketplace plugin in ChatGPT/Codex."
