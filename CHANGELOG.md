@@ -32,6 +32,7 @@ also available on the [GitHub releases page](https://github.com/instancelabs/for
 - The `.plugin` release artifact now contains both `.claude-plugin` and `.codex-plugin` manifests.
 - Release tags now build separate Claude `.plugin` and OpenAI `.zip` assets, checksums, and a GitHub
   Release through GitHub Actions.
+- Clean template installs now preserve the peer-dependency mode used by the committed lockfile.
 - The root npm package exposes the unified installer and supports direct installation from GitHub.
 
 ## Earlier releases
